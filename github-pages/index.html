@@ -1,0 +1,2301 @@
+<title>NährWert – Ernährungstagebuch</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{
+  --bg:#F6F7F3; --surface:#FFFFFF; --surface2:#EEF1E9; --ink:#232B21; --muted:#6B7466;
+  --accent:#3F7A4F; --accent-soft:#E3EEE5; --drink:#3E7E9B; --drink-soft:#E2EEF3;
+  --ok:#44935B; --warn:#D9A13B; --over:#C25B4E; --line:#E0E4DA; --shadow:0 1px 3px rgba(35,43,33,.07);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#151813; --surface:#1E231C; --surface2:#262C24; --ink:#E9ECE4; --muted:#9AA394;
+    --accent:#7FB98D; --accent-soft:#28362B; --drink:#6FAEC9; --drink-soft:#22323B;
+    --ok:#6FBE85; --warn:#E0B15C; --over:#D97F73; --line:#313830; --shadow:0 1px 3px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#F6F7F3; --surface:#FFFFFF; --surface2:#EEF1E9; --ink:#232B21; --muted:#6B7466;
+  --accent:#3F7A4F; --accent-soft:#E3EEE5; --drink:#3E7E9B; --drink-soft:#E2EEF3;
+  --ok:#44935B; --warn:#D9A13B; --over:#C25B4E; --line:#E0E4DA; --shadow:0 1px 3px rgba(35,43,33,.07);
+}
+:root[data-theme="dark"]{
+  --bg:#151813; --surface:#1E231C; --surface2:#262C24; --ink:#E9ECE4; --muted:#9AA394;
+  --accent:#7FB98D; --accent-soft:#28362B; --drink:#6FAEC9; --drink-soft:#22323B;
+  --ok:#6FBE85; --warn:#E0B15C; --over:#D97F73; --line:#313830; --shadow:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size:15px; line-height:1.45;
+  padding-bottom:calc(76px + env(safe-area-inset-bottom));
+}
+.wrap{max-width:640px; margin:0 auto; padding:0 14px}
+header.app{padding:18px 0 6px}
+header.app h1{font-size:21px; font-weight:700; margin:0; letter-spacing:-.01em}
+header.app h1 span{color:var(--accent)}
+header.app .date{color:var(--muted); font-size:13px; margin-top:2px}
+h2{font-size:15px; font-weight:650; margin:0 0 10px; letter-spacing:.01em}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px; margin:12px 0; box-shadow:var(--shadow)}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+.num{font-variant-numeric:tabular-nums}
+button{font:inherit; cursor:pointer; border:none; border-radius:10px; color:inherit; background:var(--surface2); padding:8px 12px}
+button:focus-visible, input:focus-visible, select:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+button.primary{background:var(--accent); color:#fff; font-weight:600}
+:root[data-theme="dark"] button.primary, @media (prefers-color-scheme:dark){}
+button.ghost{background:transparent; border:1px solid var(--line)}
+button.danger{background:var(--over); color:#fff; font-weight:600}
+button.chip{padding:6px 11px; border-radius:999px; font-size:13px; border:1px solid var(--line); background:var(--surface)}
+button.chip[aria-pressed="true"]{background:var(--accent-soft); border-color:var(--accent); color:var(--accent); font-weight:600}
+input[type=text],input[type=number],input[type=search],select,textarea{
+  font:inherit; color:inherit; background:var(--surface); border:1px solid var(--line);
+  border-radius:10px; padding:9px 11px; width:100%;
+}
+textarea{resize:vertical; line-height:1.45}
+textarea:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+/* ---------- Heute: Ringe ---------- */
+.kcalrow{display:flex; align-items:center; gap:16px}
+.kcalrow .big{flex:0 0 auto}
+.kcalstats{flex:1}
+.kcalstats .v{font-size:26px; font-weight:700; letter-spacing:-.02em}
+.kcalstats .v small{font-size:14px; font-weight:500; color:var(--muted)}
+.ringrow{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:14px}
+.ringcell{text-align:center}
+.ringcell .lbl{font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-top:4px}
+.ringcell .val{font-size:12.5px; margin-top:1px}
+.ringcell .sub{font-size:11px; color:var(--muted)}
+.ring{position:relative; display:inline-block}
+.ring svg{display:block}
+.ring .center{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:650}
+/* ---------- Getränke ---------- */
+.fluidbar{height:12px; border-radius:999px; background:var(--surface2); overflow:hidden; margin:8px 0 4px}
+.fluidbar i{display:block; height:100%; background:var(--drink); border-radius:999px; transition:width .4s ease}
+.drinkstats{display:flex; gap:10px; margin-top:10px}
+.drinkstats .pill{flex:1; background:var(--drink-soft); border-radius:10px; padding:8px 10px; text-align:center}
+.drinkstats .pill b{display:block; font-size:15px}
+.drinkstats .pill span{font-size:11.5px; color:var(--muted)}
+/* ---------- Listen ---------- */
+.mealhead{display:flex; align-items:baseline; justify-content:space-between; margin:14px 0 4px}
+.mealhead h3{font-size:14px; margin:0; font-weight:650}
+.mealhead .sum{font-size:12.5px; color:var(--muted)}
+.entry{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line)}
+.entry:last-child{border-bottom:none}
+.entry .name{flex:1; min-width:0}
+.entry .name b{font-weight:550; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.entry .name span{font-size:12px; color:var(--muted)}
+.entry .kcal{font-size:13px; color:var(--muted); white-space:nowrap}
+.entry .del{background:transparent; padding:6px; color:var(--muted); font-size:16px; line-height:1}
+.addline{width:100%; text-align:left; background:transparent; color:var(--accent); font-weight:600; padding:8px 0; font-size:13.5px}
+.empty{color:var(--muted); font-size:13px; padding:6px 0}
+/* ---------- Mikro-Balken ---------- */
+.micro{display:grid; grid-template-columns:110px 1fr 86px; gap:10px; align-items:center; padding:5px 0}
+.micro .lbl{font-size:13px}
+.micro .bar{height:8px; background:var(--surface2); border-radius:999px; overflow:hidden}
+.micro .bar i{display:block; height:100%; border-radius:999px; transition:width .4s ease}
+.micro .val{font-size:11.5px; color:var(--muted); text-align:right; white-space:nowrap}
+.legend{display:flex; gap:14px; margin-top:10px; font-size:11.5px; color:var(--muted); flex-wrap:wrap}
+.legend i{display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:5px; vertical-align:-1px}
+/* ---------- Woche ---------- */
+.chart{display:flex; align-items:flex-end; gap:8px; height:140px; margin:16px 0 4px; position:relative}
+.chart .goal{position:absolute; left:0; right:0; border-top:1.5px dashed var(--line); z-index:0}
+.chart .goal span{position:absolute; right:0; top:-16px; font-size:10.5px; color:var(--muted)}
+.chart .col{flex:1; display:flex; flex-direction:column; justify-content:flex-end; height:100%; z-index:1}
+.chart .col i{display:block; background:var(--accent); opacity:.55; border-radius:6px 6px 3px 3px; min-height:2px}
+.chart .col.today i{opacity:1}
+.chartlabels{display:flex; gap:8px}
+.chartlabels span{flex:1; text-align:center; font-size:11px; color:var(--muted)}
+.chartlabels span.today{color:var(--accent); font-weight:650}
+table.avg{width:100%; border-collapse:collapse; font-size:13.5px}
+table.avg td{padding:6px 0; border-bottom:1px solid var(--line)}
+table.avg tr:last-child td{border-bottom:none}
+table.avg td:last-child{text-align:right; color:var(--muted)}
+.gaplist{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+.gaplist .tag{background:var(--surface2); border-radius:999px; padding:4px 10px; font-size:12.5px}
+.gaplist .tag b{color:var(--warn)}
+/* ---------- Rezepte ---------- */
+.recipecard{border:1px solid var(--line); border-radius:12px; padding:12px; margin:10px 0; background:var(--surface)}
+.recipecard h4{margin:0 0 2px; font-size:14.5px}
+.recipecard .why{display:inline-block; background:var(--accent-soft); color:var(--accent); border-radius:999px; padding:2px 9px; font-size:11.5px; font-weight:600; margin-bottom:6px}
+.recipecard .ing{font-size:12.5px; color:var(--muted); margin:4px 0 8px}
+.recipecard .nut{font-size:12px; color:var(--muted); margin-bottom:10px}
+.prep{margin:0 0 10px}
+.prep summary{cursor:pointer; font-size:13px; font-weight:600; color:var(--accent); list-style:none; padding:6px 0}
+.prep summary::-webkit-details-marker{display:none}
+.prep summary::before{content:"▸"; display:inline-block; width:14px}
+.prep[open] summary::before{content:"▾"}
+.prep ol{margin:2px 0 4px; padding-left:20px}
+.prep li{font-size:13px; line-height:1.5; margin-bottom:6px; padding-left:2px}
+.prep li::marker{color:var(--accent); font-weight:650}
+.preptext{font-size:13px; line-height:1.5; white-space:pre-wrap; margin:2px 0 4px}
+.storagestate{border-left:3px solid var(--line); background:var(--surface2); border-radius:0 10px 10px 0; padding:9px 12px; margin:2px 0 10px}
+.storagestate b{font-size:12.5px; text-transform:uppercase; letter-spacing:.05em}
+.prep ul{margin:4px 0}
+.prep li{font-size:13px; line-height:1.5; margin-bottom:6px}
+.recipefoot{display:flex; gap:8px}
+.recipefoot select{width:auto; flex:1; padding:7px 9px; font-size:13px}
+/* ---------- Nav ---------- */
+nav.tabs{position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--line); z-index:40; padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs .inner{max-width:640px; margin:0 auto; display:flex}
+nav.tabs button{flex:1; background:transparent; border-radius:0; padding:9px 0 10px; color:var(--muted); font-size:11px; display:flex; flex-direction:column; align-items:center; gap:3px}
+nav.tabs button svg{width:22px; height:22px}
+nav.tabs button[aria-current="true"]{color:var(--accent); font-weight:650}
+/* ---------- Modal / Sheet ---------- */
+.overlay{position:fixed; inset:0; background:rgba(15,20,14,.45); z-index:50; display:none}
+.overlay.open{display:block}
+.sheet{position:fixed; left:0; right:0; bottom:0; z-index:51; background:var(--surface); border-radius:18px 18px 0 0;
+  max-width:640px; margin:0 auto; max-height:88vh; display:none; flex-direction:column; border:1px solid var(--line); border-bottom:none}
+.sheet.open{display:flex}
+.sheet .grab{width:38px; height:4px; border-radius:99px; background:var(--line); margin:8px auto 0}
+.sheet .head{display:flex; align-items:center; justify-content:space-between; padding:8px 16px 6px}
+.sheet .head h3{margin:0; font-size:16px}
+.sheet .body{overflow-y:auto; padding:0 16px 20px; -webkit-overflow-scrolling:touch}
+.srctabs{display:flex; gap:6px; margin:6px 0 10px}
+.catchips{display:flex; flex-wrap:wrap; gap:7px; margin:10px 0 4px}
+.catchips .hint{width:100%; font-size:12.5px; color:var(--muted); margin-bottom:2px}
+.reshead{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:12px 0 2px}
+.result{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); cursor:pointer}
+.result .name{flex:1; min-width:0}
+.result .name b{font-weight:550; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.result .name span{font-size:11.5px; color:var(--muted)}
+.result .k{font-size:12.5px; color:var(--muted); white-space:nowrap}
+.result .fav{background:transparent; padding:4px 6px; font-size:17px; color:var(--muted)}
+.result .fav.on{color:var(--warn)}
+.apistatus{font-size:11.5px; color:var(--muted); padding:6px 0}
+.portchips{display:flex; flex-wrap:wrap; gap:7px; margin:10px 0}
+.amountrow{display:flex; gap:8px; align-items:center; margin:6px 0 12px}
+.amountrow input{width:110px; text-align:center}
+.amountrow .unit{color:var(--muted)}
+.mealchips{display:flex; flex-wrap:wrap; gap:7px; margin:6px 0 14px}
+.confirmbox{padding:6px 2px}
+.confirmbox p{margin:6px 0 14px}
+.confirmrow{display:flex; gap:10px}
+.confirmrow button{flex:1}
+.toast{position:fixed; bottom:calc(86px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+  background:var(--ink); color:var(--bg); border-radius:999px; padding:9px 18px; font-size:13.5px; z-index:60;
+  opacity:0; transition:opacity .25s; pointer-events:none; white-space:nowrap}
+.toast.show{opacity:1}
+.settingrow{display:grid; grid-template-columns:1fr 130px; gap:10px; align-items:center; padding:7px 0}
+.settingrow label{font-size:14px}
+.targetgrid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px}
+.targetgrid .t{background:var(--surface2); border-radius:10px; padding:8px 10px}
+.targetgrid .t b{display:block; font-size:15px}
+.targetgrid .t span{font-size:11.5px; color:var(--muted)}
+.ingline{display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--line)}
+.ingline .n{flex:1; font-size:13.5px}
+.ingline input{width:74px; text-align:center; padding:6px}
+.ingline .del{background:transparent; color:var(--muted); padding:4px 6px}
+.view{display:none}
+.view.active{display:block}
+.rowbtns{display:flex; gap:8px; margin:10px 0}
+.rowbtns button{flex:1; font-size:13px}
+@media (prefers-reduced-motion: reduce){ *{transition:none !important} }
+@media (min-width:520px){ .ringrow{gap:12px} }
+</style>
+
+<div class="wrap">
+  <header class="app">
+    <h1>Nähr<span>Wert</span></h1>
+    <div class="date" id="hdrDate"></div>
+  </header>
+
+  <!-- ================= HEUTE ================= -->
+  <section class="view active" id="view-heute">
+    <div class="card">
+      <div class="kcalrow">
+        <div class="big" id="kcalRing"></div>
+        <div class="kcalstats">
+          <div class="v num"><span id="kcalEaten">0</span> <small>kcal erfasst</small></div>
+          <div class="small muted num" id="kcalRest"></div>
+          <div class="small muted num" id="kcalDrinkShare"></div>
+        </div>
+      </div>
+      <div class="ringrow" id="macroRings"></div>
+    </div>
+
+    <div class="card">
+      <h2>Getränke</h2>
+      <div class="small num"><b id="fluidVal">0,0 l</b> <span class="muted">von <span id="fluidGoal"></span> Trinkziel</span></div>
+      <div class="fluidbar"><i id="fluidFill" style="width:0%"></i></div>
+      <div class="small muted">Gesamtbedarf ≈ <span id="fluidTotal"></span>/Tag inkl. Flüssigkeit aus fester Nahrung</div>
+      <div class="drinkstats num">
+        <div class="pill"><b id="cafVal">0 mg</b><span>Koffein</span></div>
+        <div class="pill"><b id="drinkSugar">0 g</b><span>Zucker aus Getränken</span></div>
+        <div class="pill"><b id="drinkKcal">0 kcal</b><span>fließen in die Bilanz ein</span></div>
+      </div>
+      <div id="drinkList"></div>
+      <button class="addline" data-addmeal="getraenk">+ Getränk hinzufügen</button>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+        <h2 style="margin:0">Mahlzeiten</h2>
+        <button class="chip" id="btnYesterday">↺ Gestern wiederholen</button>
+      </div>
+      <div id="mealsBox"></div>
+    </div>
+
+    <div class="card">
+      <h2>Mikronährstoffe</h2>
+      <div id="microBox"></div>
+      <div class="legend">
+        <span><i style="background:var(--ok)"></i>im Zielbereich</span>
+        <span><i style="background:var(--warn)"></i>unter 70 %</span>
+        <span><i style="background:var(--over)"></i>Natrium über Referenz</span>
+      </div>
+      <div class="small muted" style="margin-top:8px">Referenz: DGE-Referenzwerte (<span id="refLabel"></span>)</div>
+    </div>
+  </section>
+
+  <!-- ================= WOCHE ================= -->
+  <section class="view" id="view-woche">
+    <div class="card">
+      <h2>Kalorien – letzte 7 Tage</h2>
+      <div class="chart" id="weekChart"></div>
+      <div class="chartlabels" id="weekLabels"></div>
+    </div>
+    <div class="card">
+      <h2>Durchschnitt pro erfasstem Tag</h2>
+      <table class="avg num" id="avgTable"></table>
+    </div>
+    <div class="card">
+      <h2>Kommt über die Woche zu kurz</h2>
+      <div class="small muted">Nährstoffe, die im 7-Tage-Schnitt unter 70 % der Referenz liegen.</div>
+      <div class="gaplist" id="gapList"></div>
+    </div>
+  </section>
+
+  <!-- ================= REZEPTE ================= -->
+  <section class="view" id="view-rezepte">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h2 style="margin:0">Vorschläge für dich</h2>
+        <button class="chip" id="btnShuffle">↻ Neue Vorschläge</button>
+      </div>
+      <div class="small muted" style="margin-top:4px">Einfache Rezepte, ausgewählt nach deinen Nährstofflücken der letzten Tage. Wechselt täglich.</div>
+      <div id="suggestBox"></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h2 style="margin:0">Eigene Rezepte &amp; Kombis</h2>
+        <button class="chip" id="btnNewRecipe">+ Neu</button>
+      </div>
+      <div class="small muted" style="margin-top:4px">Mehrere Zutaten als eine Einheit speichern – z. B. „Mein Frühstücksmüsli“.</div>
+      <div id="ownRecipeBox"></div>
+    </div>
+  </section>
+
+  <!-- ================= PROFIL ================= -->
+  <section class="view" id="view-profil">
+    <div class="card">
+      <h2>Profil</h2>
+      <div class="settingrow"><label for="pAlter">Alter</label><input type="number" id="pAlter" min="15" max="99"></div>
+      <div class="settingrow"><label for="pSex">Geschlecht</label>
+        <select id="pSex"><option value="m">männlich</option><option value="w">weiblich</option></select></div>
+      <div class="settingrow"><label for="pGr">Größe (cm)</label><input type="number" id="pGr" min="120" max="230"></div>
+      <div class="settingrow"><label for="pGw">Gewicht (kg)</label><input type="number" id="pGw" min="35" max="200" step="0.5"></div>
+      <div class="settingrow"><label for="pPal">Aktivität (PAL)</label>
+        <select id="pPal">
+          <option value="1.4">1,4 – überwiegend sitzend</option>
+          <option value="1.6">1,6 – moderat aktiv</option>
+          <option value="1.8">1,8 – aktiv</option>
+          <option value="2.0">2,0 – sehr aktiv</option>
+        </select></div>
+    </div>
+    <div class="card">
+      <h2>Deine Tagesziele</h2>
+      <div class="small muted">Energie nach Mifflin-St-Jeor × PAL, Ziel: Gewicht halten. Nährstoffe nach DGE.</div>
+      <div class="targetgrid num" id="targetGrid"></div>
+    </div>
+    <div class="card">
+      <h2>Daten</h2>
+      <div class="small muted" style="margin-bottom:10px">Einträge werden auf diesem Gerät gespeichert. Einträge, die älter als 7 Tage sind, werden automatisch entfernt.</div>
+      <div id="storageInfo"></div>
+      <div class="rowbtns">
+        <button class="ghost" id="btnBackup">↓ Sicherung</button>
+        <button class="ghost" id="btnRestore">↑ Wiederherstellen</button>
+      </div>
+      <details class="prep" style="margin:4px 0 12px">
+        <summary>Daten verschwinden trotzdem? Das hilft</summary>
+        <ul class="small" style="padding-left:18px;margin:4px 0">
+          <li>Öffne die App immer im selben Browser und nicht in einem privaten Fenster – dort wird beim Schließen alles gelöscht.</li>
+          <li>Prüfe in den Browser-Einstellungen, ob „Cookies und Websitedaten beim Beenden löschen“ aktiv ist, und nimm die App davon aus.</li>
+          <li>Reinigungsprogramme wie CleanMyMac oder CCleaner löschen Browserdaten mit. Schließe die App dort aus.</li>
+          <li>Lege dir nach größeren Einträgen eine Sicherung an – die Datei überlebt jede Browser-Reinigung.</li>
+        </ul>
+      </details>
+      <button class="danger" id="btnReset" style="width:100%">Alles zurücksetzen …</button>
+    </div>
+    <div class="card">
+      <h2>Datenquellen</h2>
+      <div class="small muted" id="sourceInfo"></div>
+    </div>
+  </section>
+</div>
+
+<!-- ============ Navigation ============ -->
+<nav class="tabs" aria-label="Hauptnavigation"><div class="inner">
+  <button data-tab="heute" aria-current="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v4.5l3 2"/></svg>
+    Heute</button>
+  <button data-tab="woche" aria-current="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V10M9.3 19V5M14.6 19v-8M20 19V8"/></svg>
+    Woche</button>
+  <button data-tab="rezepte" aria-current="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3v7M9 3v7M7.5 10v11M16 3c-1.7 1-2.5 3-2.5 5.5 0 2 .8 3 2.5 3s2.5-1 2.5-3C18.5 6 17.7 4 16 3zM16 11.5V21"/></svg>
+    Rezepte</button>
+  <button data-tab="profil" aria-current="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg>
+    Profil</button>
+</div></nav>
+
+<div class="overlay" id="overlay"></div>
+
+<!-- ============ Add-Sheet ============ -->
+<div class="sheet" id="addSheet" role="dialog" aria-label="Lebensmittel hinzufügen">
+  <div class="grab"></div>
+  <div class="head"><h3 id="addTitle">Hinzufügen</h3><button class="ghost" data-close>Schließen</button></div>
+  <div class="body">
+    <div id="addStep1">
+      <div class="srctabs">
+        <button class="chip" data-src="suche" aria-pressed="true">Suche</button>
+        <button class="chip" data-src="favoriten" aria-pressed="false">★ Favoriten</button>
+        <button class="chip" data-src="eigene" aria-pressed="false">Eigene Rezepte</button>
+      </div>
+      <input type="search" id="searchInput" placeholder="Lebensmittel suchen … z. B. Haferflocken" autocomplete="off">
+      <div class="apistatus" id="apiStatus"></div>
+      <div id="catChips" class="catchips"></div>
+      <div id="resultBox"></div>
+    </div>
+    <div id="addStep2" style="display:none">
+      <button class="ghost" id="backToSearch" style="margin-bottom:6px">← Zurück zur Suche</button>
+      <h3 id="selName" style="margin:4px 0 0"></h3>
+      <div class="small muted" id="selInfo"></div>
+      <div class="portchips" id="portChips"></div>
+      <div class="amountrow">
+        <button class="chip" id="amtMinus" aria-label="weniger">−</button>
+        <input type="number" id="amtInput" min="1" step="1" value="100" inputmode="decimal">
+        <span class="unit" id="amtUnit">g</span>
+        <button class="chip" id="amtPlus" aria-label="mehr">+</button>
+      </div>
+      <div class="small muted" id="amtPreview"></div>
+      <div style="margin-top:12px" id="mealPickWrap">
+        <div class="small" style="font-weight:600;margin-bottom:4px">Mahlzeit</div>
+        <div class="mealchips" id="mealChips"></div>
+      </div>
+      <button class="primary" id="btnConfirmAdd" style="width:100%">Hinzufügen</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Rezept-Editor ============ -->
+<div class="sheet" id="recipeSheet" role="dialog" aria-label="Eigenes Rezept">
+  <div class="grab"></div>
+  <div class="head"><h3>Eigenes Rezept</h3><button class="ghost" data-close>Schließen</button></div>
+  <div class="body">
+    <input type="text" id="recName" placeholder="Name, z. B. Mein Frühstücksmüsli" style="margin-bottom:10px">
+    <input type="search" id="recSearch" placeholder="Zutat suchen und antippen …" autocomplete="off">
+    <div id="recResults"></div>
+    <div style="margin-top:10px"><b class="small">Zutaten</b><div id="recIngs"><div class="empty">Noch keine Zutaten.</div></div></div>
+    <div class="small muted num" id="recTotals" style="margin:8px 0 12px"></div>
+    <div class="small" style="font-weight:600;margin-bottom:4px">Zubereitung <span class="muted" style="font-weight:400">(optional, ein Schritt je Zeile)</span></div>
+    <textarea id="recSteps" rows="4" placeholder="z. B.&#10;Zwiebel würfeln und andünsten.&#10;Restliche Zutaten zugeben und 10 Minuten köcheln."></textarea>
+    <div class="settingrow" style="grid-template-columns:1fr 90px">
+      <label for="recMin" class="small">Zeitaufwand in Minuten</label>
+      <input type="number" id="recMin" min="0" max="480" placeholder="z. B. 20">
+    </div>
+    <button class="primary" id="btnSaveRecipe" style="width:100%;margin-top:8px">Rezept speichern</button>
+  </div>
+</div>
+
+<!-- ============ Sicherung ============ -->
+<div class="sheet" id="backupSheet" role="dialog" aria-label="Sicherung">
+  <div class="grab"></div>
+  <div class="head"><h3>Sicherung</h3><button class="ghost" data-close>Schließen</button></div>
+  <div class="body">
+    <div class="small" style="font-weight:600;margin:4px 0">Daten sichern</div>
+    <div class="small muted" style="margin-bottom:8px">Speichere deine Einträge als Datei. Damit lässt sich alles wiederherstellen, auch wenn der Browser seine Daten löscht.</div>
+    <button class="primary" id="btnDoExport" style="width:100%">Als Datei speichern</button>
+    <details class="prep" style="margin-top:8px">
+      <summary>Oder Text kopieren</summary>
+      <textarea id="backupText" rows="5" readonly onclick="this.select()"></textarea>
+      <div class="small muted" style="margin-top:4px">Antippen markiert alles. Text z. B. in eine Notiz einfügen.</div>
+    </details>
+
+    <div style="border-top:1px solid var(--line);margin:16px 0 12px"></div>
+
+    <div class="small" style="font-weight:600;margin-bottom:4px">Sicherung wiederherstellen</div>
+    <div class="small muted" style="margin-bottom:8px">Achtung: Die aktuellen Daten werden dabei ersetzt.</div>
+    <input type="file" id="fileInput" accept=".json,application/json" style="display:none">
+    <button class="ghost" id="btnPickFile" style="width:100%">Datei auswählen …</button>
+    <textarea id="restoreText" rows="4" placeholder="Oder gesicherten Text hier einfügen …" style="margin-top:8px"></textarea>
+    <button class="ghost" id="btnRestoreText" style="width:100%;margin-top:8px">Aus Text wiederherstellen</button>
+  </div>
+</div>
+
+<!-- ============ Bestätigen ============ -->
+<div class="sheet" id="confirmSheet" role="dialog" aria-label="Bestätigung">
+  <div class="grab"></div>
+  <div class="body confirmbox">
+    <h3 id="confTitle" style="margin:10px 0 0">Sicher?</h3>
+    <p class="small muted" id="confText"></p>
+    <div class="confirmrow">
+      <button class="ghost" data-close>Abbrechen</button>
+      <button class="danger" id="confYes">Ja, fortfahren</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<!-- Markenprodukte aus Open Food Facts (optional – fehlt die Datei, läuft die App ohne sie) -->
+<script src="naehrwert-produkte.js"></script>
+<script>
+"use strict";
+/* =====================================================================
+   NährWert – Ernährungstagebuch
+   ===================================================================== */
+
+/* ---------- Speicher (localStorage mit Speicher-Fallback) ---------- */
+const LS = "nw1.";
+const KEYS = ["log","favs","recipes","profile"];
+let storageOk = true;      // localStorage nutzbar?
+let persistState = "unbekannt";  // "dauerhaft" | "nicht garantiert" | "nicht verfügbar"
+let idbOk = true;          // zweite Kopie in IndexedDB nutzbar?
+const mem = {};
+
+function sget(k, d){
+  try{ const v = localStorage.getItem(LS+k); return v ? JSON.parse(v) : d; }
+  catch(e){ storageOk = false; return (k in mem) ? mem[k] : d; }
+}
+function sset(k, v){
+  mem[k] = v;
+  try{ localStorage.setItem(LS+k, JSON.stringify(v)); }catch(e){ storageOk = false; }
+  idbSet(k, v);            // Zweitkopie, falls localStorage geleert wird
+  try{ localStorage.setItem(LS+"savedAt", JSON.stringify(Date.now())); }catch(e){}
+}
+
+/* ---------- Zweitspeicher: IndexedDB ----------
+   Manche Browser leeren localStorage beim Beenden oder bei Platzmangel,
+   lassen IndexedDB aber stehen (und umgekehrt). Wir schreiben in beide
+   und stellen beim Start aus der jeweils gefüllten Quelle wieder her. */
+let _db = null, _dbPromise = null;
+function idbOpen(){
+  if(_dbPromise) return _dbPromise;
+  _dbPromise = new Promise(function(res){
+    let rq;
+    try{
+      if(typeof indexedDB === "undefined"){ idbOk = false; return res(null); }
+      rq = indexedDB.open("naehrwert", 1);
+    }catch(e){ idbOk = false; return res(null); }
+    rq.onupgradeneeded = function(){ try{ rq.result.createObjectStore("kv"); }catch(e){} };
+    rq.onsuccess = function(){ _db = rq.result; res(_db); };
+    rq.onerror = function(){ idbOk = false; res(null); };
+    rq.onblocked = function(){ res(null); };
+    setTimeout(function(){ res(_db); }, 3000);
+  });
+  return _dbPromise;
+}
+function idbSet(k, v){
+  idbOpen().then(function(db){
+    if(!db) return;
+    try{ db.transaction("kv","readwrite").objectStore("kv").put(v, k); }catch(e){}
+  });
+}
+function idbGet(db, k){
+  return new Promise(function(res){
+    try{
+      const rq = db.transaction("kv","readonly").objectStore("kv").get(k);
+      rq.onsuccess = function(){ res(rq.result); };
+      rq.onerror = function(){ res(undefined); };
+    }catch(e){ res(undefined); }
+  });
+}
+
+/* Dauerhaften Speicher anfordern – verhindert, dass der Browser die Daten
+   bei Platzmangel oder beim Aufräumen automatisch verwirft. */
+function requestPersistence(){
+  try{
+    if(!navigator.storage || !navigator.storage.persist){ persistState = "nicht verfügbar"; return Promise.resolve(); }
+    return navigator.storage.persisted().then(function(already){
+      if(already){ persistState = "dauerhaft"; return; }
+      return navigator.storage.persist().then(function(granted){
+        persistState = granted ? "dauerhaft" : "nicht garantiert";
+      });
+    }).catch(function(){ persistState = "nicht verfügbar"; });
+  }catch(e){ persistState = "nicht verfügbar"; return Promise.resolve(); }
+}
+
+/* Beim Start: fehlt etwas im localStorage, aber die Zweitkopie hat Daten,
+   dann von dort wiederherstellen. */
+function restoreFromMirror(){
+  return idbOpen().then(function(db){
+    if(!db) return false;
+    return Promise.all(KEYS.map(function(k){ return idbGet(db, k); })).then(function(vals){
+      let restored = false;
+      KEYS.forEach(function(k, i){
+        const mirror = vals[i];
+        if(mirror === undefined || mirror === null) return;
+        const local = sget(k, null);
+        const localLeer = local === null ||
+          (Array.isArray(local) && local.length === 0 && Array.isArray(mirror) && mirror.length > 0);
+        if(localLeer && !(Array.isArray(mirror) && mirror.length === 0)){
+          mem[k] = mirror;
+          try{ localStorage.setItem(LS+k, JSON.stringify(mirror)); }catch(e){}
+          if(k === "log") log = mirror;
+          else if(k === "favs") favs = mirror;
+          else if(k === "recipes") recipes = mirror;
+          else if(k === "profile") profile = Object.assign({}, DEFAULT_PROFILE, mirror);
+          restored = true;
+        }
+      });
+      return restored;
+    });
+  }).catch(function(){ return false; });
+}
+
+/* ---------- Nährstoff-Schlüssel ---------- */
+const MICROS = [
+  ["vitA","Vitamin A","µg"], ["vitC","Vitamin C","mg"], ["vitD","Vitamin D","µg"],
+  ["b12","Vitamin B12","µg"], ["folat","Folat","µg"], ["eisen","Eisen","mg"],
+  ["calcium","Calcium","mg"], ["magnesium","Magnesium","mg"], ["zink","Zink","mg"],
+  ["kalium","Kalium","mg"], ["natrium","Natrium","mg"], ["jod","Jod","µg"]
+];
+const MACRO_KEYS = ["kcal","p","c","z","f","sf","b"];
+const ALL_KEYS = MACRO_KEYS.concat(MICROS.map(m=>m[0]));
+
+/* ---------- DGE-Referenzwerte (Mikros) nach Geschlecht/Alter ---------- */
+function microRefs(p){
+  const y = p.alter < 19;
+  if(p.geschlecht === "m"){
+    return y
+      ? {vitA:950, vitC:105, vitD:20, b12:4, folat:300, eisen:12, calcium:1200, magnesium:400, zink:14, kalium:4000, natrium:1500, jod:200}
+      : {vitA:850, vitC:110, vitD:20, b12:4, folat:300, eisen:11, calcium:1000, magnesium:350, zink:14, kalium:4000, natrium:1500, jod:200};
+  }
+  return y
+    ? {vitA:800, vitC:90, vitD:20, b12:4, folat:300, eisen:16, calcium:1200, magnesium:350, zink:11, kalium:4000, natrium:1500, jod:200}
+    : {vitA:700, vitC:95, vitD:20, b12:4, folat:300, eisen:16, calcium:1000, magnesium:300, zink:8, kalium:4000, natrium:1500, jod:200};
+}
+
+/* ---------- Ziele (Mifflin-St Jeor × PAL, DGE-Makros) ---------- */
+function computeTargets(p){
+  const bmr = 10*p.gewicht + 6.25*p.groesse - 5*p.alter + (p.geschlecht==="m" ? 5 : -161);
+  const kcal = Math.round(bmr * p.pal);
+  const protein = Math.round(p.gewicht * (p.alter < 19 ? 0.9 : 0.8));
+  const fett = Math.round(kcal*0.30/9);
+  const sfMax = Math.round(kcal*0.10/9);
+  const kh = Math.round((kcal - protein*4 - fett*9)/4);
+  const zuckerMax = Math.round(kcal*0.10/4);
+  const trinkziel = p.alter < 19 ? 1530 : 1450;     // ml aus Getränken (DGE)
+  const gesamtwasser = p.alter < 19 ? 2600 : 2450;  // ml inkl. fester Nahrung
+  return {kcal, protein, kh, fett, sfMax, zuckerMax, ballast:30, trinkziel, gesamtwasser, micros:microRefs(p)};
+}
+
+/* =====================================================================
+   Eingebaute Lebensmitteldatenbank (Werte je 100 g / 100 ml, gerundete
+   Durchschnittswerte aus Standard-Nährwerttabellen)
+   Felder: n=Name, d=Getränk, k=kcal, p=Protein, c=KH, z=Zucker, f=Fett,
+   sf=gesättigt, b=Ballaststoffe, m=Mikros, po=Portionen, cf=Koffein mg/100ml
+   ===================================================================== */
+const DB = [
+ // --- Brot & Getreide ---
+ {n:"Weißbrot", k:265,p:8.5,c:49,z:3,f:3.2,sf:0.7,b:2.7, m:{folat:30,eisen:1.2,natrium:500,calcium:30,magnesium:25,zink:0.8,kalium:120}, po:[["1 Scheibe",25]]},
+ {n:"Vollkornbrot", k:203,p:6.5,c:38,z:1.5,f:1.2,sf:0.2,b:7.5, m:{folat:40,eisen:2,magnesium:60,zink:1.5,natrium:430,kalium:250,calcium:40}, po:[["1 Scheibe",45]]},
+ {n:"Brötchen", k:270,p:8.5,c:53,z:2,f:1.5,sf:0.3,b:3, m:{natrium:500,eisen:1.1,folat:25,calcium:30}, po:[["1 Stück",55]]},
+ {n:"Toastbrot", k:265,p:8,c:48,z:4,f:3.5,sf:0.8,b:3, m:{natrium:480,eisen:1,folat:25}, po:[["1 Scheibe",25]]},
+ {n:"Knäckebrot", k:330,p:10,c:66,z:1.5,f:1.5,sf:0.2,b:14, m:{magnesium:80,eisen:3,zink:2.5,kalium:400}, po:[["1 Scheibe",10]]},
+ {n:"Haferflocken", k:372,p:13.5,c:59,z:0.7,f:7,sf:1.2,b:10, m:{eisen:4.3,magnesium:130,zink:4,folat:40,kalium:400,calcium:54,natrium:5}, po:[["1 EL",10],["1 Portion",50]]},
+ {n:"Müsli (ungesüßt)", k:360,p:10,c:60,z:12,f:6,sf:1.5,b:8, m:{eisen:3.5,magnesium:110,zink:3,folat:35,kalium:380}, po:[["1 Portion",50]]},
+ {n:"Cornflakes", k:380,p:7,c:84,z:8,f:0.9,sf:0.2,b:3, m:{eisen:2.8,natrium:650,folat:20}, po:[["1 Portion",40]]},
+ {n:"Reis (gekocht)", k:130,p:2.7,c:28,z:0.1,f:0.3,sf:0.1,b:0.4, m:{magnesium:12,kalium:35,zink:0.5}, po:[["1 Portion",180]]},
+ {n:"Nudeln (gekocht)", k:158,p:5.8,c:30,z:0.6,f:0.9,sf:0.2,b:1.8, m:{folat:7,eisen:0.5,magnesium:18,zink:0.6}, po:[["1 Portion",200]]},
+ {n:"Vollkornnudeln (gekocht)", k:149,p:6,c:28,z:1,f:1.1,sf:0.2,b:4.5, m:{magnesium:40,eisen:1.3,zink:1.1,folat:8}, po:[["1 Portion",200]]},
+ {n:"Kartoffeln (gekocht)", k:86,p:1.9,c:20,z:0.8,f:0.1,sf:0,b:1.8, m:{vitC:14,kalium:420,magnesium:20,folat:10,eisen:0.4}, po:[["1 mittlere",90],["1 Portion",250]]},
+ {n:"Pommes frites", k:310,p:4,c:40,z:0.5,f:15,sf:1.8,b:3.5, m:{kalium:580,natrium:250,vitC:10}, po:[["1 Portion",150]]},
+ {n:"Couscous (gekocht)", k:112,p:3.8,c:23,z:0.1,f:0.2,sf:0,b:1.4, m:{magnesium:8,folat:15}, po:[["1 Portion",180]]},
+ {n:"Quinoa (gekocht)", k:120,p:4.4,c:21,z:0.9,f:1.9,sf:0.2,b:2.8, m:{magnesium:64,eisen:1.5,folat:42,zink:1.1}, po:[["1 Portion",180]]},
+ // --- Milchprodukte & Ei ---
+ {n:"Vollmilch 3,5 %", d:1, k:65,p:3.3,c:4.8,z:4.8,f:3.6,sf:2.3,b:0, m:{calcium:120,b12:0.4,vitA:28,jod:11,zink:0.4,kalium:150,natrium:50,vitD:0.1}, po:[["1 Glas",200],["1 Becher",250]]},
+ {n:"Fettarme Milch 1,5 %", d:1, k:47,p:3.4,c:4.9,z:4.9,f:1.5,sf:1,b:0, m:{calcium:123,b12:0.4,jod:11,kalium:155,natrium:50}, po:[["1 Glas",200]]},
+ {n:"Naturjoghurt 3,5 %", k:66,p:3.8,c:4.7,z:4.7,f:3.5,sf:2.2,b:0, m:{calcium:120,b12:0.4,jod:8,zink:0.5,kalium:180}, po:[["1 Becher",150]]},
+ {n:"Griechischer Joghurt 10 %", k:130,p:5.6,c:4,z:4,f:10,sf:6.6,b:0, m:{calcium:110,b12:0.4}, po:[["1 Becher",150]]},
+ {n:"Skyr", k:63,p:11,c:4,z:4,f:0.2,sf:0.1,b:0, m:{calcium:150,b12:0.5,jod:10,kalium:150}, po:[["1 Becher",150]]},
+ {n:"Magerquark", k:67,p:12,c:4,z:4,f:0.3,sf:0.2,b:0, m:{calcium:90,b12:0.8,zink:0.5,kalium:100}, po:[["1 EL",30],["1 Portion",150]]},
+ {n:"Hüttenkäse", k:100,p:12.5,c:2.5,z:2.5,f:4.5,sf:2.9,b:0, m:{calcium:80,b12:0.7,natrium:350}, po:[["1 Portion",100]]},
+ {n:"Gouda", k:356,p:25,c:0,z:0,f:28,sf:18,b:0, m:{calcium:800,b12:2,vitA:250,zink:4,natrium:800,jod:40}, po:[["1 Scheibe",30]]},
+ {n:"Emmentaler", k:380,p:29,c:0,z:0,f:29,sf:19,b:0, m:{calcium:1000,b12:2.5,vitA:280,zink:4.5,natrium:450,jod:35}, po:[["1 Scheibe",30]]},
+ {n:"Mozzarella", k:250,p:18,c:1,z:1,f:19,sf:12,b:0, m:{calcium:400,b12:1.5,vitA:160,natrium:370}, po:[["½ Kugel",62],["1 Kugel",125]]},
+ {n:"Frischkäse", k:250,p:6,c:3,z:3,f:24,sf:15,b:0, m:{calcium:100,vitA:200,natrium:350}, po:[["1 EL",30]]},
+ {n:"Ei", k:155,p:12.5,c:0.6,z:0.6,f:11,sf:3.3,b:0, m:{vitA:270,vitD:2.9,b12:1.9,folat:67,eisen:1.8,zink:1.3,jod:20,natrium:140,kalium:130,calcium:50}, po:[["1 Stück",60]]},
+ // --- Fleisch, Fisch, Wurst, Alternativen ---
+ {n:"Hähnchenbrust", k:105,p:23,c:0,z:0,f:1.5,sf:0.4,b:0, m:{b12:0.4,zink:0.7,eisen:0.4,kalium:330,magnesium:28,natrium:60}, po:[["1 Portion",150]]},
+ {n:"Putenbrust", k:105,p:24,c:0,z:0,f:1,sf:0.3,b:0, m:{b12:0.5,zink:1.2,eisen:0.7,kalium:350}, po:[["1 Portion",150]]},
+ {n:"Rinderhackfleisch", k:250,p:19,c:0,z:0,f:19,sf:8,b:0, m:{eisen:2.3,zink:4.2,b12:2.5,kalium:290,natrium:70}, po:[["1 Portion",125]]},
+ {n:"Rindersteak", k:121,p:22,c:0,z:0,f:3.5,sf:1.5,b:0, m:{eisen:2.2,zink:4.5,b12:2.7,kalium:350,magnesium:25}, po:[["1 Portion",150]]},
+ {n:"Schweineschnitzel (natur)", k:105,p:22,c:0,z:0,f:2,sf:0.7,b:0, m:{zink:2,b12:0.8,eisen:1,kalium:340}, po:[["1 Stück",150]]},
+ {n:"Lachs", k:200,p:20,c:0,z:0,f:13,sf:2.5,b:0, m:{vitD:16,b12:3.5,jod:30,kalium:360,magnesium:29}, po:[["1 Portion",125]]},
+ {n:"Thunfisch (Dose, Wasser)", k:110,p:25,c:0,z:0,f:1,sf:0.3,b:0, m:{b12:3,vitD:1.5,jod:15,natrium:300,eisen:1,kalium:250}, po:[["1 Dose",130]]},
+ {n:"Seelachs", k:82,p:18,c:0,z:0,f:0.9,sf:0.2,b:0, m:{jod:190,b12:3.5,vitD:1,kalium:340,natrium:90}, po:[["1 Portion",150]]},
+ {n:"Hering", k:230,p:18,c:0,z:0,f:17,sf:3.5,b:0, m:{vitD:25,b12:8,jod:40,kalium:320}, po:[["1 Portion",100]]},
+ {n:"Garnelen", k:90,p:19,c:0,z:0,f:1,sf:0.2,b:0, m:{jod:90,zink:1.5,natrium:300,b12:1.2}, po:[["1 Portion",100]]},
+ {n:"Salami", k:380,p:19,c:1,z:1,f:33,sf:13,b:0, m:{natrium:1800,zink:2,b12:1.5,eisen:1.5}, po:[["1 Scheibe",8]]},
+ {n:"Kochschinken", k:110,p:20,c:1,z:1,f:3,sf:1,b:0, m:{natrium:1000,b12:0.7,zink:1.6,eisen:0.8}, po:[["1 Scheibe",15]]},
+ {n:"Leberwurst", k:330,p:13,c:1,z:1,f:29,sf:11,b:0, m:{vitA:4200,eisen:5.3,b12:13,natrium:800,zink:2.3}, po:[["1 Portion",25]]},
+ {n:"Bratwurst", k:300,p:13,c:1,z:1,f:27,sf:10,b:0, m:{natrium:800,zink:1.7,b12:1,eisen:1}, po:[["1 Stück",100]]},
+ {n:"Tofu", k:125,p:13,c:1.5,z:0.7,f:7.5,sf:1.1,b:1, m:{calcium:150,eisen:2.5,magnesium:60,zink:1,folat:20}, po:[["1 Portion",125]]},
+ // --- Hülsenfrüchte & Nüsse ---
+ {n:"Linsen (gekocht)", k:116,p:9,c:17,z:1.8,f:0.4,sf:0.1,b:8, m:{eisen:3.3,folat:180,zink:1.3,magnesium:36,kalium:370}, po:[["1 Portion",150]]},
+ {n:"Kichererbsen (gekocht)", k:130,p:7,c:17,z:0.5,f:2.5,sf:0.3,b:7, m:{folat:170,eisen:1.7,magnesium:48,zink:1.5,kalium:290}, po:[["1 Portion",150]]},
+ {n:"Kidneybohnen (Dose)", k:105,p:7.5,c:15,z:1,f:0.6,sf:0.1,b:7, m:{eisen:2,folat:47,kalium:400,magnesium:40,zink:1}, po:[["1 Portion",150]]},
+ {n:"Erbsen", k:82,p:5.5,c:12,z:4,f:0.5,sf:0.1,b:5, m:{vitC:20,folat:60,eisen:1.5,zink:1.2}, po:[["1 Portion",100]]},
+ {n:"Erdnüsse", k:590,p:26,c:10,z:4,f:49,sf:7,b:7.5, m:{magnesium:160,zink:3,folat:110,kalium:700,eisen:2.4}, po:[["1 Handvoll",30]]},
+ {n:"Mandeln", k:590,p:21,c:7,z:4.5,f:53,sf:4.2,b:12, m:{calcium:250,magnesium:250,zink:3.5,eisen:3.7,folat:50,kalium:730}, po:[["1 Handvoll",25]]},
+ {n:"Walnüsse", k:663,p:15,c:6,z:3,f:63,sf:6.5,b:6, m:{magnesium:130,zink:2.7,folat:77,eisen:2.5,kalium:440}, po:[["1 Handvoll",25]]},
+ {n:"Cashewkerne", k:570,p:18,c:30,z:6,f:44,sf:8,b:3, m:{magnesium:270,zink:5.5,eisen:6,kalium:660,folat:25}, po:[["1 Handvoll",25]]},
+ {n:"Haselnüsse", k:640,p:14,c:6,z:4.5,f:62,sf:4.5,b:8, m:{magnesium:160,calcium:150,eisen:3.8,zink:2,folat:70}, po:[["1 Handvoll",25]]},
+ {n:"Erdnussbutter", k:620,p:25,c:12,z:7,f:50,sf:9,b:6, m:{magnesium:150,zink:2.8,folat:90,kalium:650}, po:[["1 EL",15]]},
+ {n:"Kürbiskerne", k:560,p:30,c:5,z:1.5,f:46,sf:8,b:6, m:{magnesium:400,zink:7,eisen:8.8,kalium:800}, po:[["1 EL",10]]},
+ {n:"Leinsamen (geschrotet)", k:490,p:22,c:3,z:1.5,f:37,sf:3.5,b:35, m:{magnesium:350,eisen:6,zink:5,kalium:730}, po:[["1 EL",10]]},
+ // --- Gemüse ---
+ {n:"Tomate", k:18,p:0.9,c:2.6,z:2.6,f:0.2,sf:0,b:1.2, m:{vitC:19,folat:22,kalium:240,vitA:40}, po:[["1 Stück",120]]},
+ {n:"Gurke", k:12,p:0.6,c:2,z:1.6,f:0.1,sf:0,b:0.5, m:{vitC:8,kalium:150,folat:10}, po:[["½ Gurke",200]]},
+ {n:"Paprika (rot)", k:37,p:1.1,c:6,z:4.5,f:0.4,sf:0.1,b:2, m:{vitC:140,vitA:100,folat:55,kalium:210}, po:[["1 Stück",150]]},
+ {n:"Karotte", k:36,p:0.8,c:7,z:5,f:0.2,sf:0,b:3, m:{vitA:850,kalium:290,vitC:7,folat:15}, po:[["1 Stück",80]]},
+ {n:"Brokkoli", k:34,p:3.5,c:3,z:1.5,f:0.4,sf:0.1,b:3, m:{vitC:90,folat:90,vitA:30,calcium:60,kalium:300,eisen:0.8,magnesium:20}, po:[["1 Portion",150]]},
+ {n:"Blumenkohl", k:23,p:2,c:2.5,z:2.3,f:0.3,sf:0.1,b:2.5, m:{vitC:55,folat:55,kalium:300}, po:[["1 Portion",150]]},
+ {n:"Spinat", k:20,p:2.7,c:1,z:0.5,f:0.4,sf:0.1,b:2.5, m:{folat:145,vitA:470,eisen:3.4,magnesium:60,vitC:50,calcium:120,kalium:550}, po:[["1 Portion",150]]},
+ {n:"Zucchini", k:19,p:1.6,c:2,z:2,f:0.3,sf:0.1,b:1, m:{vitC:17,folat:30,kalium:230}, po:[["½ Zucchini",150]]},
+ {n:"Aubergine", k:24,p:1.2,c:3,z:2.5,f:0.2,sf:0,b:3, m:{kalium:230,folat:20}, po:[["1 Portion",150]]},
+ {n:"Champignons", k:22,p:3,c:0.5,z:0.3,f:0.3,sf:0.1,b:2, m:{vitD:0.6,folat:25,kalium:390,zink:0.5,eisen:0.6}, po:[["1 Portion",100]]},
+ {n:"Zwiebel", k:28,p:1.2,c:5,z:4.5,f:0.2,sf:0,b:1.5, m:{vitC:7,folat:15,kalium:160}, po:[["1 Stück",80]]},
+ {n:"Knoblauch", k:140,p:6,c:28,z:1,f:0.1,sf:0,b:2, m:{vitC:14,kalium:400}, po:[["1 Zehe",5]]},
+ {n:"Blattsalat", k:14,p:1.2,c:1.5,z:1.5,f:0.2,sf:0,b:1.5, m:{folat:60,vitA:130,vitC:10,kalium:230}, po:[["1 Portion",50]]},
+ {n:"Feldsalat", k:21,p:1.8,c:1,z:0.7,f:0.4,sf:0,b:1.5, m:{vitC:35,folat:145,vitA:330,eisen:2,kalium:420}, po:[["1 Portion",50]]},
+ {n:"Mais (Dose)", k:80,p:2.5,c:15,z:3,f:1,sf:0.2,b:3, m:{folat:40,kalium:220,magnesium:25}, po:[["1 Portion",80]]},
+ {n:"Süßkartoffel", k:86,p:1.6,c:20,z:4.2,f:0.1,sf:0,b:3, m:{vitA:710,kalium:340,vitC:20,magnesium:25}, po:[["1 Stück",200]]},
+ {n:"Rote Bete", k:42,p:1.5,c:8.5,z:7,f:0.1,sf:0,b:2.5, m:{folat:85,kalium:330,eisen:0.9}, po:[["1 Portion",100]]},
+ {n:"Kürbis (Hokkaido)", k:25,p:1,c:5,z:3,f:0.1,sf:0,b:2, m:{vitA:430,kalium:300,vitC:12}, po:[["1 Portion",200]]},
+ {n:"Avocado", k:160,p:2,c:3,z:0.7,f:15,sf:2.5,b:7, m:{folat:80,kalium:490,magnesium:29,vitC:10}, po:[["½ Avocado",100]]},
+ {n:"Sauerkraut", k:19,p:1.3,c:2,z:1.5,f:0.2,sf:0,b:3, m:{vitC:15,natrium:350,folat:30,kalium:220}, po:[["1 Portion",100]]},
+ // --- Obst ---
+ {n:"Apfel", k:54,p:0.3,c:12,z:10,f:0.2,sf:0,b:2.4, m:{vitC:12,kalium:120}, po:[["1 Stück",150]]},
+ {n:"Banane", k:93,p:1.1,c:21,z:17,f:0.3,sf:0.1,b:2.6, m:{kalium:370,magnesium:30,vitC:11,folat:20}, po:[["1 Stück",120]]},
+ {n:"Orange", k:47,p:0.9,c:9,z:8.5,f:0.2,sf:0,b:2.2, m:{vitC:50,folat:30,kalium:170,calcium:40}, po:[["1 Stück",150]]},
+ {n:"Mandarine", k:50,p:0.7,c:10,z:9,f:0.3,sf:0,b:1.7, m:{vitC:30,kalium:150}, po:[["1 Stück",80]]},
+ {n:"Erdbeeren", k:32,p:0.8,c:5.5,z:5.5,f:0.4,sf:0,b:2, m:{vitC:57,folat:43,kalium:150}, po:[["1 Portion",150]]},
+ {n:"Blaubeeren", k:45,p:0.6,c:10,z:7,f:0.6,sf:0,b:2.5, m:{vitC:10,kalium:80}, po:[["1 Portion",100]]},
+ {n:"Himbeeren", k:43,p:1.3,c:5,z:4.5,f:0.3,sf:0,b:6.7, m:{vitC:25,folat:30,kalium:170,magnesium:22}, po:[["1 Portion",100]]},
+ {n:"Weintrauben", k:70,p:0.6,c:16,z:16,f:0.3,sf:0,b:1.5, m:{kalium:190,vitC:4}, po:[["1 Portion",100]]},
+ {n:"Birne", k:55,p:0.5,c:12.5,z:10,f:0.3,sf:0,b:3, m:{kalium:120,vitC:5}, po:[["1 Stück",160]]},
+ {n:"Kiwi", k:55,p:1,c:9,z:9,f:0.6,sf:0,b:3, m:{vitC:90,kalium:300,folat:30}, po:[["1 Stück",75]]},
+ {n:"Pfirsich", k:41,p:0.9,c:9,z:8,f:0.2,sf:0,b:1.9, m:{kalium:190,vitC:7}, po:[["1 Stück",130]]},
+ {n:"Wassermelone", k:30,p:0.6,c:7,z:6,f:0.2,sf:0,b:0.4, m:{vitA:30,vitC:8,kalium:110}, po:[["1 Portion",200]]},
+ {n:"Ananas", k:55,p:0.5,c:12.5,z:12,f:0.2,sf:0,b:1.4, m:{vitC:19,kalium:110,magnesium:12}, po:[["1 Portion",120]]},
+ {n:"Rosinen", k:300,p:2.5,c:72,z:65,f:0.5,sf:0.1,b:5, m:{eisen:2,kalium:750}, po:[["1 EL",15]]},
+ // --- Fette, Süßes, Snacks, Fertiges ---
+ {n:"Olivenöl", k:884,p:0,c:0,z:0,f:100,sf:14,b:0, m:{}, po:[["1 TL",5],["1 EL",10]]},
+ {n:"Rapsöl", k:884,p:0,c:0,z:0,f:100,sf:7,b:0, m:{}, po:[["1 TL",5],["1 EL",10]]},
+ {n:"Butter", k:741,p:0.7,c:0.6,z:0.6,f:82,sf:52,b:0, m:{vitA:650,vitD:1.2,natrium:10}, po:[["1 TL",5],["1 EL",10]]},
+ {n:"Margarine", k:720,p:0.2,c:0.4,z:0.4,f:80,sf:20,b:0, m:{vitD:2.5,vitA:600,natrium:100}, po:[["1 TL",5]]},
+ {n:"Honig", k:304,p:0.4,c:75,z:75,f:0,sf:0,b:0, m:{kalium:50}, po:[["1 TL",8]]},
+ {n:"Marmelade", k:250,p:0.3,c:60,z:60,f:0.1,sf:0,b:1, m:{}, po:[["1 TL",10],["1 EL",20]]},
+ {n:"Nuss-Nougat-Creme", k:550,p:6,c:57,z:56,f:31,sf:10,b:3, m:{magnesium:60,eisen:2.5,calcium:100}, po:[["1 TL",15]]},
+ {n:"Zucker", k:400,p:0,c:100,z:100,f:0,sf:0,b:0, m:{}, po:[["1 TL",4]]},
+ {n:"Milchschokolade", k:535,p:7.5,c:57,z:55,f:31,sf:19,b:2, m:{calcium:200,magnesium:60,eisen:1.5,kalium:400}, po:[["1 Stück",6],["1 Riegel",25],["1 Tafel",100]]},
+ {n:"Zartbitterschokolade", k:510,p:6,c:45,z:40,f:32,sf:19,b:8, m:{eisen:6.7,magnesium:150,zink:2,kalium:600}, po:[["1 Stück",6],["1 Riegel",25]]},
+ {n:"Gummibärchen", k:340,p:7,c:77,z:60,f:0.2,sf:0.1,b:0, m:{}, po:[["1 Handvoll",25]]},
+ {n:"Butterkekse", k:440,p:7,c:72,z:25,f:13,sf:7,b:2, m:{natrium:300}, po:[["1 Stück",8]]},
+ {n:"Kartoffelchips", k:540,p:6,c:50,z:2,f:35,sf:4,b:4, m:{natrium:500,kalium:1000,vitC:15}, po:[["1 Handvoll",25],["1 Tüte",175]]},
+ {n:"Vanilleeis", k:200,p:3.5,c:23,z:21,f:10,sf:7,b:0, m:{calcium:110}, po:[["1 Kugel",75]]},
+ {n:"Pizza Margherita", k:230,p:9,c:28,z:3,f:9,sf:4,b:2, m:{calcium:150,natrium:500,folat:20,eisen:1}, po:[["1 Stück",100],["1 Pizza",400]]},
+ {n:"Döner Kebab", k:215,p:12,c:18,z:2,f:10,sf:4,b:1.5, m:{natrium:600,eisen:1.5,zink:2,b12:1,folat:25}, po:[["1 Döner",350]]},
+ // --- Getränke (je 100 ml) ---
+ {n:"Wasser (Leitungswasser)", d:1, k:0,p:0,c:0,z:0,f:0,sf:0,b:0, m:{calcium:6,magnesium:2,natrium:2}, po:[["1 Glas",250],["1 Flasche",500]]},
+ {n:"Mineralwasser", d:1, k:0,p:0,c:0,z:0,f:0,sf:0,b:0, m:{calcium:15,magnesium:10,natrium:10}, po:[["1 Glas",250],["1 Flasche",500]]},
+ {n:"Apfelschorle", d:1, k:25,p:0,c:6,z:5.8,f:0,sf:0,b:0, m:{kalium:50}, po:[["1 Glas",250],["1 Flasche",500]]},
+ {n:"Orangensaft", d:1, k:45,p:0.7,c:9,z:8.6,f:0.2,sf:0,b:0.2, m:{vitC:40,folat:25,kalium:180}, po:[["1 Glas",200]]},
+ {n:"Apfelsaft", d:1, k:46,p:0.1,c:11,z:10.5,f:0.1,sf:0,b:0.1, m:{kalium:120}, po:[["1 Glas",200]]},
+ {n:"Cola", d:1, cf:10, k:42,p:0,c:10.6,z:10.6,f:0,sf:0,b:0, m:{natrium:5}, po:[["1 Glas",250],["1 Dose",330]]},
+ {n:"Cola Zero", d:1, cf:10, k:0,p:0,c:0,z:0,f:0,sf:0,b:0, m:{natrium:10}, po:[["1 Glas",250],["1 Dose",330]]},
+ {n:"Limonade", d:1, k:40,p:0,c:10,z:10,f:0,sf:0,b:0, m:{}, po:[["1 Glas",250]]},
+ {n:"Eistee", d:1, cf:5, k:30,p:0,c:7.5,z:7.3,f:0,sf:0,b:0, m:{}, po:[["1 Glas",250],["1 Flasche",500]]},
+ {n:"Energy-Drink", d:1, cf:32, k:45,p:0,c:11,z:11,f:0,sf:0,b:0, m:{natrium:100}, po:[["1 Dose",250]]},
+ {n:"Kaffee (schwarz)", d:1, cf:45, k:2,p:0.2,c:0,z:0,f:0,sf:0,b:0, m:{kalium:90,magnesium:8}, po:[["1 Tasse",150],["1 Becher",250]]},
+ {n:"Cappuccino", d:1, cf:27, k:27,p:1.6,c:2.4,z:2.4,f:1.4,sf:0.9,b:0, m:{calcium:55}, po:[["1 Tasse",150]]},
+ {n:"Latte Macchiato", d:1, cf:15, k:40,p:2,c:4,z:4,f:1.8,sf:1.1,b:0, m:{calcium:75}, po:[["1 Glas",250]]},
+ {n:"Schwarzer Tee", d:1, cf:20, k:1,p:0,c:0.2,z:0,f:0,sf:0,b:0, m:{}, po:[["1 Tasse",250]]},
+ {n:"Grüner Tee", d:1, cf:12, k:1,p:0,c:0.2,z:0,f:0,sf:0,b:0, m:{}, po:[["1 Tasse",250]]},
+ {n:"Kräutertee", d:1, k:1,p:0,c:0.2,z:0,f:0,sf:0,b:0, m:{}, po:[["1 Tasse",250]]},
+ {n:"Kakao (mit Milch)", d:1, cf:2, k:78,p:3.3,c:10,z:9.5,f:2.8,sf:1.8,b:0.5, m:{calcium:110,magnesium:25}, po:[["1 Tasse",250]]},
+ {n:"Smoothie (Frucht)", d:1, k:55,p:0.7,c:12,z:10,f:0.3,sf:0,b:1.5, m:{vitC:30,kalium:200,folat:15}, po:[["1 Flasche",250]]},
+ {n:"Bier", d:1, k:43,p:0.5,c:3,z:0,f:0,sf:0,b:0, m:{kalium:40,magnesium:9,folat:5}, po:[["1 Flasche",330],["0,5 l",500]]},
+ {n:"Alkoholfreies Bier", d:1, k:25,p:0.4,c:5,z:3,f:0,sf:0,b:0, m:{folat:10,kalium:40}, po:[["1 Flasche",330]]}
+];
+
+/* ---------- Kategorien ---------- */
+const CATS = [
+  ["brot","Brot & Backwaren"], ["beilage","Getreide & Beilagen"], ["milch","Milch & Eier"],
+  ["fleisch","Fleisch & Wurst"], ["fisch","Fisch"], ["veggie","Vegetarisch & Vegan"],
+  ["huelsen","Hülsenfrüchte, Nüsse & Samen"], ["gemuese","Gemüse"], ["obst","Obst"],
+  ["fett","Fette, Saucen & Gewürze"], ["suess","Süßes & Snacks"], ["gericht","Fertige Gerichte"],
+  ["getraenk","Getränke"]
+];
+const CAT_LABEL = Object.fromEntries(CATS);
+
+/* Kategorien der Grundeinträge (nach Position in der Liste oben) */
+[[0,4,"brot"],[5,14,"beilage"],[15,26,"milch"],[27,31,"fleisch"],[32,36,"fisch"],
+ [37,40,"fleisch"],[41,41,"veggie"],[42,53,"huelsen"],[54,73,"gemuese"],[74,87,"obst"],
+ [88,91,"fett"],[92,101,"suess"],[102,103,"gericht"],[104,123,"getraenk"]
+].forEach(function(r){ for(var i=r[0]; i<=r[1] && i<DB.length; i++) DB[i].cat = r[2]; });
+
+/* Zusätzliche Suchbegriffe: findet z. B. Spaghetti auch über "Nudeln" oder "Pasta" */
+const KEYWORDS = [
+  [/spaghetti|penne|fusilli|makkaroni|tagliatelle|lasagneplatten|tortellini|ravioli|bandnudeln|eiernudeln|spätzle|gnocchi|soba|udon|mie-nudeln|glasnudeln|reisnudeln/i, "nudeln pasta"],
+  [/nudel|lasagne|spaghetti|penne|fusilli|makkaroni|tagliatelle|tortellini|ravioli/i, "pasta"],
+  [/joghurt|quark|skyr|käse|milch|sahne|butter|kefir|schmand/i, "milchprodukt"],
+  [/salami|schinken|wurst|speck|bacon|leberwurst|frikadelle/i, "aufschnitt wurst"],
+  [/lachs|forelle|hering|makrele|sardinen|thunfisch|kabeljau|scholle|seelachs|matjes|garnelen|miesmuscheln/i, "fisch meeresfrüchte"],
+  [/mandeln|walnüsse|haselnüsse|cashew|pistazien|paranüsse|pekan|macadamia|erdnüsse/i, "nüsse"],
+  [/linsen|bohnen|kichererbsen|erbsen|edamame/i, "hülsenfrüchte"]
+];
+function applyKeywords(){
+  DB.forEach(function(d){
+    KEYWORDS.forEach(function(kw){
+      if(kw[0].test(d.n)) d.kw = (d.kw ? d.kw+" " : "") + kw[1];
+    });
+  });
+}
+
+/* Kompakter Helfer für die erweiterte Datenbank */
+function add(cat,d,n,k,p,c,z,f,sf,b,m,po,cf){
+  DB.push({n:n, cat:cat, d:d?1:0, k:k,p:p,c:c,z:z,f:f,sf:sf,b:b, m:m||{}, po:po||[], cf:cf||0});
+}
+
+/* ===== Brot & Backwaren ===== */
+add("brot",0,"Mehrkornbrötchen",255,9,44,3,4.5,0.7,5,{eisen:2,magnesium:55,natrium:450,folat:30,zink:1.3},[["1 Stück",70]]);
+add("brot",0,"Roggenbrot",210,6,42,2,1.2,0.2,6,{eisen:1.8,magnesium:45,natrium:480,folat:25,kalium:230},[["1 Scheibe",45]]);
+add("brot",0,"Dinkelvollkornbrot",215,7.5,38,2,2,0.3,7,{magnesium:70,eisen:2.2,zink:1.6,natrium:420,folat:30},[["1 Scheibe",45]]);
+add("brot",0,"Pumpernickel",185,5.5,36,4,1.2,0.2,9,{eisen:2,magnesium:60,natrium:400,kalium:290},[["1 Scheibe",30]]);
+add("brot",0,"Baguette",270,8,54,2,1.5,0.3,3,{natrium:520,eisen:1.2,folat:25},[["1 Stück",60],["½ Baguette",125]]);
+add("brot",0,"Ciabatta",270,8.5,50,1.5,3.5,0.6,2.5,{natrium:500,eisen:1.1,folat:20},[["1 Scheibe",40]]);
+add("brot",0,"Laugenbrezel",320,10,60,2,4,0.8,3,{natrium:1200,eisen:1.5,magnesium:30},[["1 Stück",80]]);
+add("brot",0,"Croissant",406,8,45,8,21,12,2.5,{vitA:250,natrium:450,eisen:1.5,calcium:40},[["1 Stück",60]]);
+add("brot",0,"Vollkorntoast",240,9,40,3,3.5,0.6,6,{magnesium:55,eisen:2,natrium:430,zink:1.3},[["1 Scheibe",30]]);
+add("brot",0,"Wrap / Tortilla (Weizen)",300,8,48,2,8,3,3,{natrium:600,eisen:2,calcium:80},[["1 Stück",62]]);
+add("brot",0,"Fladenbrot",280,8.5,54,2,2.5,0.5,3,{natrium:500,eisen:1.5,folat:30},[["1 Stück",100]]);
+add("brot",0,"Pita",275,9,55,2,1.2,0.2,2.5,{natrium:490,eisen:1.6,folat:25},[["1 Stück",60]]);
+add("brot",0,"Reiswaffel",385,8,81,0.5,3,0.6,3,{magnesium:60,kalium:120,natrium:10},[["1 Stück",8]]);
+add("brot",0,"Zwieback",380,10,74,10,3.5,0.5,4,{natrium:250,eisen:1.5,magnesium:40},[["1 Stück",10]]);
+add("brot",0,"Milchbrötchen",340,8,52,10,11,5,2,{calcium:80,natrium:350,vitA:80},[["1 Stück",60]]);
+
+/* ===== Getreide & Beilagen ===== */
+add("beilage",0,"Vollkornreis (gekocht)",120,2.7,23,0.4,1,0.2,1.8,{magnesium:44,zink:0.7,eisen:0.5,kalium:80},[["1 Portion",180]]);
+add("beilage",0,"Basmatireis (gekocht)",130,2.8,28,0.1,0.3,0.1,0.5,{magnesium:14,kalium:40},[["1 Portion",180]]);
+add("beilage",0,"Kartoffelpüree",85,2,13,1.5,2.8,1.7,1.2,{calcium:35,kalium:300,vitC:6,natrium:280},[["1 Portion",200]]);
+add("beilage",0,"Bratkartoffeln",150,2.5,20,0.8,6.5,1,2,{kalium:400,vitC:10,natrium:200,magnesium:20},[["1 Portion",200]]);
+add("beilage",0,"Kartoffelsalat",145,2,14,2,8.5,1.2,1.6,{kalium:350,natrium:400,vitC:8},[["1 Portion",200]]);
+add("beilage",0,"Gnocchi (gekocht)",140,3.5,28,0.8,1.5,0.4,1.5,{kalium:200,natrium:350},[["1 Portion",200]]);
+add("beilage",0,"Spätzle (gekocht)",165,6,28,1,3,0.8,1.5,{eisen:0.8,natrium:180,folat:15,calcium:20},[["1 Portion",200]]);
+
+/* ===== Nudeln =====
+   Rohe Sorten zum Abwiegen vor dem Kochen, gekochte zum direkten Eintragen.
+   100 g rohe Nudeln ergeben etwa 220–250 g gekochte. */
+add("beilage",0,"Nudeln, roh (Hartweizen)",350,12.5,70,3.5,1.5,0.3,3,{folat:18,eisen:1.3,magnesium:50,zink:1.4,kalium:200,natrium:6},[["1 Portion",125],["kleine Portion",80]]);
+add("beilage",0,"Vollkornnudeln, roh",340,14,62,3,2.5,0.5,9,{magnesium:120,eisen:3.5,zink:2.5,folat:25,kalium:280},[["1 Portion",125],["kleine Portion",80]]);
+add("beilage",0,"Spaghetti (gekocht)",158,5.8,30,0.6,0.9,0.2,1.8,{folat:7,eisen:0.5,magnesium:18,zink:0.6,kalium:45},[["1 Portion",200],["große Portion",250]]);
+add("beilage",0,"Penne (gekocht)",158,5.8,30,0.6,0.9,0.2,1.8,{folat:7,eisen:0.5,magnesium:18,zink:0.6,kalium:45},[["1 Portion",200]]);
+add("beilage",0,"Fusilli (gekocht)",158,5.8,30,0.6,0.9,0.2,1.8,{folat:7,eisen:0.5,magnesium:18,zink:0.6,kalium:45},[["1 Portion",200]]);
+add("beilage",0,"Makkaroni (gekocht)",158,5.8,30,0.6,0.9,0.2,1.8,{folat:7,eisen:0.5,magnesium:18,zink:0.6,kalium:45},[["1 Portion",200]]);
+add("beilage",0,"Bandnudeln / Eiernudeln (gekocht)",168,6.5,29,0.8,2.2,0.7,1.5,{folat:10,eisen:0.8,magnesium:20,zink:0.7,calcium:15},[["1 Portion",200]]);
+add("beilage",0,"Tagliatelle frisch (gekocht)",175,7,32,1,2.2,0.7,1.8,{folat:12,eisen:0.9,magnesium:22,calcium:18},[["1 Portion",200]]);
+add("beilage",0,"Dinkelnudeln (gekocht)",155,6.5,29,1,1.2,0.2,3,{magnesium:35,eisen:1.1,zink:1,folat:10},[["1 Portion",200]]);
+add("beilage",0,"Lasagneplatten, roh",355,12.5,70,3,1.8,0.4,3,{folat:18,eisen:1.3,magnesium:50,zink:1.4},[["1 Platte",15]]);
+add("beilage",0,"Tortellini gefüllt (gekocht)",220,9,30,2,7,3.5,2,{calcium:90,natrium:450,b12:0.3,eisen:1},[["1 Portion",250]]);
+add("beilage",0,"Ravioli gefüllt (gekocht)",190,8,27,2,5.5,2.2,1.8,{natrium:420,eisen:1.2,calcium:50,b12:0.3},[["1 Portion",250]]);
+add("beilage",0,"Reisnudeln (gekocht)",110,1.8,25,0.1,0.2,0.1,1,{magnesium:8,kalium:20,natrium:10},[["1 Portion",200]]);
+add("beilage",0,"Glasnudeln (gekocht)",85,0.1,21,0.1,0.1,0,0.5,{natrium:5,kalium:5},[["1 Portion",200]]);
+add("beilage",0,"Mie-Nudeln (gekocht)",140,4.5,26,0.5,1.8,0.5,1.2,{natrium:200,folat:8,eisen:0.7,magnesium:15},[["1 Portion",200]]);
+add("beilage",0,"Udon-Nudeln (gekocht)",125,4,26,0.3,0.4,0.1,1.5,{natrium:180,magnesium:12,eisen:0.4},[["1 Portion",200]]);
+add("beilage",0,"Soba-Nudeln (gekocht)",130,5.5,26,0.4,0.4,0.1,1.8,{magnesium:45,eisen:0.9,zink:0.8,kalium:60,natrium:60},[["1 Portion",200]]);
+add("beilage",0,"Linsennudeln (gekocht)",150,10,22,1,0.8,0.2,5,{eisen:3,folat:60,magnesium:35,zink:1.4,kalium:280},[["1 Portion",200]]);
+add("beilage",0,"Kichererbsennudeln (gekocht)",145,8,23,1.2,1.5,0.2,5,{eisen:2.2,folat:55,magnesium:32,zink:1.2,kalium:250},[["1 Portion",200]]);
+add("beilage",0,"Instant-Nudeln (zubereitet)",190,4.5,25,0.5,8,4,1,{natrium:800,folat:8,eisen:0.8},[["1 Becher",300]]);
+add("beilage",0,"Bulgur (gekocht)",115,3.5,22,0.2,0.3,0.1,4.5,{magnesium:32,eisen:1,folat:18,kalium:70},[["1 Portion",180]]);
+add("beilage",0,"Hirse (gekocht)",120,3.5,23,0.1,1,0.2,1.3,{magnesium:44,eisen:1.1,zink:0.9},[["1 Portion",180]]);
+add("beilage",0,"Polenta (gekocht)",85,2,18,0.3,0.4,0.1,1,{magnesium:20,kalium:40},[["1 Portion",200]]);
+add("beilage",0,"Semmelknödel",160,5,28,1.5,3,1,2,{natrium:400,calcium:50,eisen:1},[["1 Stück",80]]);
+add("beilage",0,"Chiasamen",490,17,3,1,31,3.3,34,{calcium:630,magnesium:340,eisen:7.7,zink:4.6,kalium:410},[["1 EL",12]]);
+add("beilage",0,"Weizenkleie",180,16,18,1,4.5,0.7,45,{magnesium:590,eisen:13,zink:9,kalium:1350,folat:80},[["1 EL",8]]);
+add("beilage",0,"Sushi-Reis (gekocht)",140,2.5,31,1.5,0.2,0,0.4,{natrium:100,magnesium:12},[["1 Portion",180]]);
+
+/* ===== Milch & Eier ===== */
+add("milch",1,"Haferdrink (ungesüßt)",45,0.8,6.5,4,1.5,0.2,0.8,{calcium:120,vitD:1.5,b12:0.4,jod:4},[["1 Glas",200]]);
+add("milch",1,"Sojadrink (ungesüßt)",39,3.3,1,0.5,1.8,0.3,0.6,{calcium:120,vitD:0.8,b12:0.4,folat:12},[["1 Glas",200]]);
+add("milch",1,"Mandeldrink (ungesüßt)",22,0.5,0.2,0.1,1.9,0.2,0.4,{calcium:120,vitD:0.8,b12:0.4,vitA:60},[["1 Glas",200]]);
+add("milch",1,"Buttermilch",37,3.5,4,4,0.5,0.3,0,{calcium:110,b12:0.3,jod:9,kalium:150},[["1 Glas",250]]);
+add("milch",1,"Kefir",55,3.3,4,4,2.8,1.8,0,{calcium:120,b12:0.4,jod:9,kalium:160},[["1 Glas",250]]);
+add("milch",0,"Fruchtjoghurt",95,3,14,13,2.8,1.8,0.2,{calcium:110,b12:0.3,jod:7,kalium:150},[["1 Becher",150]]);
+add("milch",0,"Sojajoghurt",55,4,2,1.5,2.5,0.4,0.8,{calcium:120,vitD:0.8,b12:0.4,folat:15},[["1 Becher",150]]);
+add("milch",0,"Speisequark 20 %",110,12,3.5,3.5,5,3.2,0,{calcium:95,b12:0.8,zink:0.5,kalium:110},[["1 Portion",150]]);
+add("milch",0,"Saure Sahne / Schmand",115,3,3.5,3.5,10,6.5,0,{calcium:100,vitA:100,b12:0.3},[["1 EL",25]]);
+add("milch",0,"Sahne 30 %",290,2.4,3,3,30,19,0,{calcium:80,vitA:290,b12:0.3},[["1 EL",15],["1 Becher",200]]);
+add("milch",0,"Crème fraîche",300,2.4,3,3,30,20,0,{calcium:80,vitA:280},[["1 EL",25]]);
+add("milch",0,"Butterkäse",370,22,0,0,31,20,0,{calcium:600,b12:1.8,vitA:280,natrium:600,zink:3},[["1 Scheibe",30]]);
+add("milch",0,"Camembert",300,20,0.5,0.5,24,16,0,{calcium:400,b12:1.3,vitA:240,natrium:840,zink:2.4},[["1 Portion",30]]);
+add("milch",0,"Feta",265,17,1,1,21,15,0,{calcium:490,b12:1.7,natrium:1100,zink:2.9},[["1 Portion",50]]);
+add("milch",0,"Parmesan",400,36,0,0,28,18,0,{calcium:1180,b12:1.5,zink:5.3,natrium:1500,vitA:210},[["1 EL",5],["1 Portion",20]]);
+add("milch",0,"Harzer Käse",125,30,0,0,0.7,0.5,0,{calcium:130,b12:1.5,natrium:1100,zink:3},[["1 Stück",25]]);
+add("milch",0,"Schmelzkäse",280,12,4,4,23,15,0,{calcium:450,natrium:1200,vitA:200,b12:0.8},[["1 Portion",25]]);
+add("milch",0,"Rührei (zubereitet)",165,11,1.5,1.2,13,4.5,0,{vitA:280,vitD:2.4,b12:1.6,folat:55,eisen:1.6,jod:18,natrium:300},[["1 Portion",120]]);
+add("milch",0,"Spiegelei",180,12,0.6,0.6,14,4.2,0,{vitA:290,vitD:2.8,b12:1.8,folat:60,eisen:1.7,jod:19},[["1 Stück",65]]);
+add("milch",0,"Eiklar",52,11,0.7,0.7,0.2,0,0,{b12:0.1,kalium:160,natrium:170},[["1 Stück",33]]);
+
+/* ===== Fleisch & Wurst ===== */
+add("fleisch",0,"Hähnchenschenkel",180,18,0,0,12,3.4,0,{b12:0.5,zink:1.9,eisen:0.9,kalium:250},[["1 Stück",130]]);
+add("fleisch",0,"Chicken Nuggets",280,15,17,1,17,3,1.2,{natrium:600,eisen:1,zink:1.2,b12:0.3},[["1 Portion",100]]);
+add("fleisch",0,"Schweinebraten",240,25,0,0,15,5.5,0,{zink:2.5,b12:1,eisen:1.2,natrium:250,kalium:330},[["1 Portion",150]]);
+add("fleisch",0,"Schweinefilet",105,22,0,0,2,0.7,0,{zink:2,b12:0.8,eisen:0.9,kalium:380,magnesium:25},[["1 Portion",150]]);
+add("fleisch",0,"Rinderbraten",190,27,0,0,9,3.5,0,{eisen:2.5,zink:5,b12:2.5,kalium:330},[["1 Portion",150]]);
+add("fleisch",0,"Gemischtes Hackfleisch",240,18,0,0,19,7.5,0,{eisen:2,zink:3.5,b12:2,kalium:290},[["1 Portion",125]]);
+add("fleisch",0,"Lammkotelett",250,20,0,0,19,8,0,{eisen:1.8,zink:3.5,b12:2.2,kalium:280},[["1 Stück",100]]);
+add("fleisch",0,"Ente (gebraten)",330,19,0,0,28,9,0,{eisen:2.5,zink:1.9,b12:0.4,kalium:250},[["1 Portion",150]]);
+add("fleisch",0,"Frikadelle",280,16,7,1,21,8,0.7,{eisen:2,zink:3,natrium:600,b12:1.7},[["1 Stück",80]]);
+add("fleisch",0,"Wiener Würstchen",290,12,0.5,0.5,27,10,0,{natrium:1000,zink:1.5,b12:1,eisen:1},[["1 Stück",50]]);
+add("fleisch",0,"Currywurst",290,12,4,3,25,9,0.5,{natrium:900,zink:1.6,eisen:1.2,b12:1},[["1 Portion",150]]);
+add("fleisch",0,"Fleischwurst",300,12,1,1,28,11,0,{natrium:950,zink:1.5,eisen:1.2,b12:1},[["1 Scheibe",25]]);
+add("fleisch",0,"Serrano-/Parmaschinken",240,30,0.5,0.5,13,4.5,0,{natrium:2300,zink:2.5,b12:1,eisen:1.5},[["1 Scheibe",15]]);
+add("fleisch",0,"Putenaufschnitt",105,19,1,1,2.5,0.8,0,{natrium:950,zink:1.4,b12:0.6,eisen:0.7},[["1 Scheibe",15]]);
+add("fleisch",0,"Speck / Bacon",400,14,0.5,0.5,38,14,0,{natrium:1600,zink:1.3,b12:0.8},[["1 Scheibe",12]]);
+add("fleisch",0,"Rinderleber",130,20,4,0,4,1.3,0,{vitA:16000,b12:65,folat:590,eisen:7,zink:5,kalium:330},[["1 Portion",125]]);
+
+/* ===== Fisch ===== */
+add("fisch",0,"Forelle",105,20,0,0,2.7,0.6,0,{vitD:14,b12:4.5,jod:3,kalium:400,magnesium:28},[["1 Portion",150]]);
+add("fisch",0,"Kabeljau",76,17,0,0,0.7,0.1,0,{jod:120,b12:1,vitD:1.3,kalium:380},[["1 Portion",150]]);
+add("fisch",0,"Scholle",86,17,0,0,1.7,0.4,0,{jod:190,b12:1.3,vitD:1.5,kalium:340},[["1 Portion",150]]);
+add("fisch",0,"Makrele",180,19,0,0,12,3,0,{vitD:4,b12:9,jod:50,kalium:390},[["1 Portion",125]]);
+add("fisch",0,"Sardinen (Dose)",210,21,0,0,14,3.5,0,{vitD:11,b12:14,calcium:330,jod:30,eisen:2.5},[["1 Dose",90]]);
+add("fisch",0,"Räucherlachs",180,22,0,0,10,2,0,{vitD:14,b12:3.5,natrium:1200,jod:25},[["1 Portion",50]]);
+add("fisch",0,"Fischstäbchen",210,12,18,1,10,1.5,1,{jod:60,b12:1,natrium:450,vitD:0.8},[["1 Stück",30]]);
+add("fisch",0,"Matjes",250,16,0,0,20,4,0,{vitD:20,b12:7,jod:35,natrium:900},[["1 Stück",80]]);
+add("fisch",0,"Miesmuscheln",85,15,3,0,1.5,0.3,0,{eisen:5,jod:130,b12:8,zink:2.2},[["1 Portion",150]]);
+add("fisch",0,"Thunfisch (Dose, Öl)",190,24,0,0,10,2,0,{b12:3,vitD:2,jod:15,natrium:350},[["1 Dose",130]]);
+
+/* ===== Vegetarisch & Vegan ===== */
+add("veggie",0,"Räuchertofu",170,17,1,0.5,10,1.5,1.5,{calcium:180,eisen:3,magnesium:65,zink:1.4,natrium:600},[["1 Portion",100]]);
+add("veggie",0,"Tempeh",190,19,9,1,11,2.2,6,{eisen:2.7,magnesium:80,zink:1.9,folat:24,calcium:110},[["1 Portion",100]]);
+add("veggie",0,"Seitan",140,25,4,0.5,2,0.3,1,{eisen:1.5,zink:0.8,natrium:400},[["1 Portion",100]]);
+add("veggie",0,"Sojaschnetzel (zubereitet)",115,15,6,1,1.5,0.3,4,{eisen:3,magnesium:60,zink:1.5,folat:40},[["1 Portion",150]]);
+add("veggie",0,"Falafel",330,13,32,2,17,2.2,7,{folat:100,eisen:3,magnesium:80,natrium:450,zink:1.5},[["1 Stück",25],["1 Portion",120]]);
+add("veggie",0,"Hummus",240,7.5,14,0.5,17,2.3,6,{folat:80,eisen:2.4,magnesium:70,calcium:60,natrium:380},[["1 EL",25],["1 Portion",100]]);
+add("veggie",0,"Veggie-Burger-Patty",200,17,10,1.5,10,1.5,5,{eisen:3,b12:1.5,zink:2,natrium:600},[["1 Stück",90]]);
+add("veggie",0,"Vegane Wurst",230,16,4,1,17,3,3,{eisen:2.5,b12:1.2,natrium:900,zink:1.5},[["1 Stück",40]]);
+add("veggie",0,"Hefeflocken",320,45,10,2,5,0.8,25,{b12:30,folat:300,zink:8,eisen:5,magnesium:130},[["1 EL",5]]);
+add("veggie",0,"Gemüsebratling",200,6,22,2,9,1.2,4,{eisen:1.5,folat:40,natrium:450,vitA:300},[["1 Stück",80]]);
+
+/* ===== Hülsenfrüchte, Nüsse & Samen ===== */
+add("huelsen",0,"Weiße Bohnen (Dose)",110,7,15,1,0.6,0.1,6.5,{eisen:2,folat:50,magnesium:45,kalium:420},[["1 Portion",150]]);
+add("huelsen",0,"Schwarze Bohnen (Dose)",115,7.5,16,0.5,0.5,0.1,7,{eisen:2.1,folat:60,magnesium:50,kalium:400},[["1 Portion",150]]);
+add("huelsen",0,"Rote Linsen (gekocht)",110,8,17,1.2,0.4,0.1,5,{eisen:2.8,folat:130,zink:1.2,magnesium:30,kalium:280},[["1 Portion",150]]);
+add("huelsen",0,"Edamame (Sojabohnen)",125,11,4,1.5,5,0.7,5,{folat:150,eisen:2.2,magnesium:60,calcium:60,zink:1.3},[["1 Portion",100]]);
+add("huelsen",0,"Paranüsse",680,14,4,2,67,15,7,{magnesium:160,zink:4,calcium:160,eisen:2.6,kalium:660},[["1 Stück",5],["1 Handvoll",20]]);
+add("huelsen",0,"Pistazien",580,20,17,7,49,6,10,{kalium:1000,magnesium:120,eisen:4,zink:2.3,folat:50},[["1 Handvoll",25]]);
+add("huelsen",0,"Pekannüsse",690,9,5,4,72,6,10,{magnesium:120,zink:4.5,eisen:2.5,kalium:410},[["1 Handvoll",25]]);
+add("huelsen",0,"Macadamia",720,8,5,4,75,12,8,{magnesium:130,eisen:3.7,kalium:370},[["1 Handvoll",25]]);
+add("huelsen",0,"Sonnenblumenkerne",580,21,12,3,49,5,6,{magnesium:390,zink:5,eisen:6,folat:230,kalium:700},[["1 EL",10]]);
+add("huelsen",0,"Sesam",570,18,10,0.5,50,7,11,{calcium:780,eisen:10,magnesium:350,zink:7.8,kalium:460},[["1 EL",10]]);
+add("huelsen",0,"Mandelmus",620,22,7,4,55,4.3,11,{calcium:250,magnesium:260,eisen:3.7,zink:3.5,kalium:730},[["1 EL",15]]);
+add("huelsen",0,"Studentenfutter",480,14,38,32,29,3,7,{magnesium:150,eisen:3,kalium:750,zink:2.5},[["1 Handvoll",30]]);
+
+/* ===== Gemüse ===== */
+add("gemuese",0,"Grüne Bohnen",31,2.4,5,2,0.2,0,3,{folat:35,vitC:15,kalium:240,eisen:0.8,calcium:50},[["1 Portion",150]]);
+add("gemuese",0,"Rosenkohl",43,4.5,3.3,2,0.3,0.1,4.4,{vitC:110,folat:180,kalium:410,eisen:1.1,calcium:35},[["1 Portion",150]]);
+add("gemuese",0,"Grünkohl",49,4.3,2.5,1.5,0.9,0.1,4.2,{vitA:860,vitC:105,calcium:210,folat:190,eisen:1.9,kalium:490},[["1 Portion",150]]);
+add("gemuese",0,"Weißkohl",25,1.4,4,3,0.2,0,2.5,{vitC:45,folat:50,kalium:250,calcium:45},[["1 Portion",150]]);
+add("gemuese",0,"Rotkohl",26,1.5,3.5,3,0.2,0,2.5,{vitC:50,folat:35,kalium:270,calcium:35},[["1 Portion",150]]);
+add("gemuese",0,"Spargel",20,2.2,2,1.5,0.1,0,1.5,{folat:110,vitC:20,kalium:200,vitA:50},[["1 Portion",250]]);
+add("gemuese",0,"Lauch / Porree",29,2,3,2,0.3,0,2.3,{folat:100,vitC:25,kalium:270,calcium:60},[["1 Stange",150]]);
+add("gemuese",0,"Sellerie (Knolle)",21,1.5,2.3,1.5,0.3,0,4.2,{kalium:320,folat:30,vitC:8,magnesium:12},[["1 Portion",150]]);
+add("gemuese",0,"Fenchel",24,1.2,2.8,2.2,0.3,0,3,{vitC:93,folat:100,calcium:110,kalium:390,vitA:130},[["1 Knolle",250]]);
+add("gemuese",0,"Radieschen",14,1,2,2,0.1,0,1.6,{vitC:29,kalium:255,folat:24},[["1 Bund",100]]);
+add("gemuese",0,"Rucola",27,2.6,2,2,0.7,0.1,1.6,{folat:100,vitA:290,calcium:160,eisen:1.5,kalium:370},[["1 Portion",40]]);
+add("gemuese",0,"Eisbergsalat",13,0.9,2,2,0.2,0,1.4,{folat:30,vitC:6,kalium:170},[["1 Portion",80]]);
+add("gemuese",0,"Chinakohl",13,1.2,1.2,1.2,0.2,0,1.9,{vitC:36,folat:80,calcium:100,kalium:230},[["1 Portion",150]]);
+add("gemuese",0,"Kohlrabi",24,2,3.7,3.5,0.1,0,1.4,{vitC:63,folat:70,kalium:380,magnesium:43},[["1 Knolle",250]]);
+add("gemuese",0,"Pastinake",58,1.3,12,5,0.4,0.1,4.5,{folat:70,kalium:470,vitC:18,magnesium:30},[["1 Stück",150]]);
+add("gemuese",0,"Mangold",19,2.1,0.7,0.5,0.3,0,1.8,{vitA:590,vitC:39,magnesium:81,eisen:2.7,kalium:380,calcium:100},[["1 Portion",150]]);
+add("gemuese",0,"Erbsen (tiefgekühlt)",78,5,9,2.5,0.4,0.1,5,{vitC:18,folat:65,eisen:1.5,zink:1.2,magnesium:33},[["1 Portion",150]]);
+add("gemuese",0,"Oliven (grün)",145,1,1,0,15,2,3,{natrium:1500,eisen:1,calcium:60,vitA:20},[["1 Handvoll",30]]);
+add("gemuese",0,"Getrocknete Tomaten",250,14,24,20,3,0.4,12,{kalium:3400,eisen:9,magnesium:190,vitC:39,natrium:250},[["1 Portion",25]]);
+add("gemuese",0,"Artischocke",47,3.3,2.6,1,0.2,0,5.4,{folat:68,vitC:8,kalium:370,magnesium:60},[["1 Stück",120]]);
+add("gemuese",0,"Ingwer",80,1.8,15,1.7,0.8,0.2,2,{kalium:415,magnesium:43,vitC:5},[["1 Stück",10]]);
+add("gemuese",0,"Chili (frisch)",40,2,7,5,0.4,0,1.5,{vitC:140,vitA:100,kalium:320},[["1 Stück",15]]);
+add("gemuese",0,"Sprossen (Mungbohnen)",30,3,4,4,0.2,0,1.8,{vitC:13,folat:60,eisen:0.9,kalium:150},[["1 Portion",50]]);
+add("gemuese",0,"Tiefkühl-Gemüsemischung",45,2.5,6,3,0.4,0.1,3,{vitA:400,vitC:20,folat:45,kalium:250},[["1 Portion",200]]);
+add("gemuese",0,"Gurkensalat",40,0.8,3,2.5,2.5,0.4,0.6,{vitC:7,kalium:150,natrium:200},[["1 Portion",150]]);
+
+/* ===== Obst ===== */
+add("obst",0,"Aprikose",43,0.9,9,8,0.1,0,1.5,{vitA:270,kalium:280,vitC:9},[["1 Stück",50]]);
+add("obst",0,"Pflaume",47,0.6,10,9,0.2,0,1.7,{kalium:220,vitC:5,vitA:20},[["1 Stück",50]]);
+add("obst",0,"Kirschen",63,0.9,13,13,0.3,0,1.3,{kalium:210,vitC:15},[["1 Portion",150]]);
+add("obst",0,"Nektarine",44,1,9,8,0.3,0,1.7,{kalium:200,vitC:10,vitA:20},[["1 Stück",130]]);
+add("obst",0,"Grapefruit",42,0.8,8,7,0.1,0,1.6,{vitC:44,kalium:180,folat:13},[["½ Stück",150]]);
+add("obst",0,"Zitrone",35,0.7,3.2,3,0.6,0,1.3,{vitC:53,kalium:150},[["1 Stück",70]]);
+add("obst",0,"Mango",60,0.8,13,13,0.4,0.1,1.6,{vitA:180,vitC:37,folat:43,kalium:170},[["½ Stück",150]]);
+add("obst",0,"Papaya",43,0.5,9,8,0.3,0.1,1.7,{vitA:280,vitC:60,folat:38,kalium:180},[["1 Portion",150]]);
+add("obst",0,"Brombeeren",43,1.4,5,4.5,0.5,0,5,{vitC:21,folat:34,kalium:160,magnesium:20},[["1 Portion",100]]);
+add("obst",0,"Schwarze Johannisbeeren",63,1.4,7,7,0.4,0,7,{vitC:180,kalium:310,eisen:1.3,calcium:46},[["1 Portion",100]]);
+add("obst",0,"Granatapfel",83,1.7,14,14,1.2,0.1,4,{kalium:236,folat:38,vitC:10},[["½ Stück",100]]);
+add("obst",0,"Feige (frisch)",74,0.8,16,16,0.3,0,3,{kalium:230,calcium:35,magnesium:17},[["1 Stück",50]]);
+add("obst",0,"Datteln (getrocknet)",280,2.5,65,63,0.5,0,8,{kalium:650,magnesium:50,eisen:2,calcium:60},[["1 Stück",8]]);
+add("obst",0,"Aprikosen (getrocknet)",240,3.4,55,53,0.5,0,10,{vitA:290,eisen:4,kalium:1370,magnesium:50},[["1 Stück",8]]);
+add("obst",0,"Pflaumen (getrocknet)",240,2.3,55,44,0.4,0,7,{kalium:730,vitA:40,eisen:2.5,magnesium:41},[["1 Stück",9]]);
+add("obst",0,"Cranberrys (getrocknet)",310,0.2,75,70,1,0,5,{kalium:40},[["1 EL",15]]);
+add("obst",0,"Apfelmus",80,0.3,19,18,0.1,0,1.2,{vitC:2,kalium:80},[["1 Portion",100]]);
+add("obst",0,"Obstsalat",55,0.7,12,11,0.2,0,1.8,{vitC:25,kalium:180,folat:15},[["1 Portion",200]]);
+
+/* ===== Fette, Saucen & Gewürze ===== */
+add("fett",0,"Sonnenblumenöl",884,0,0,0,100,11,0,{},[["1 TL",5],["1 EL",10]]);
+add("fett",0,"Kokosöl",890,0,0,0,100,87,0,{},[["1 TL",5],["1 EL",10]]);
+add("fett",0,"Leinöl",884,0,0,0,100,9,0,{},[["1 TL",5],["1 EL",10]]);
+add("fett",0,"Mayonnaise",700,1,2,2,75,6,0,{natrium:600,vitA:50},[["1 EL",15]]);
+add("fett",0,"Ketchup",110,1.2,25,22,0.2,0,0.8,{natrium:900,kalium:380,vitA:40,vitC:5},[["1 EL",15]]);
+add("fett",0,"Senf",90,5,6,4,4,0.3,3,{natrium:1200,calcium:60,magnesium:50},[["1 TL",5]]);
+add("fett",0,"Sojasauce",55,8,5,2,0,0,0.8,{natrium:5500,eisen:2,magnesium:40,kalium:210},[["1 EL",15]]);
+add("fett",0,"Tomatensauce (Passata)",35,1.5,5,4.5,0.3,0,1.5,{kalium:300,vitC:12,vitA:50,natrium:200},[["1 Portion",125]]);
+add("fett",0,"Pesto (Basilikum)",470,6,5,3,47,7,2,{calcium:200,natrium:900,vitA:150},[["1 EL",15]]);
+add("fett",0,"Joghurt-Dressing",130,2,6,5,10,2,0.3,{calcium:60,natrium:600},[["1 EL",15]]);
+add("fett",0,"Balsamico-Essig",90,0.5,17,15,0,0,0,{kalium:110,calcium:27},[["1 EL",15]]);
+add("fett",0,"Currypulver",325,14,26,3,14,2,33,{eisen:29,calcium:480,magnesium:250,kalium:1540},[["1 TL",2]]);
+add("fett",0,"Jodsalz",0,0,0,0,0,0,0,{natrium:39000,jod:2000},[["1 Prise",0.3],["1 TL",5]]);
+add("fett",0,"Gemüsebrühe (zubereitet)",8,0.3,1,0.4,0.2,0,0,{natrium:400,kalium:20},[["1 Tasse",250]]);
+
+/* ===== Süßes & Snacks ===== */
+add("suess",0,"Salzstangen",370,10,73,3,3,0.5,3,{natrium:1700,eisen:1.5,magnesium:30},[["1 Handvoll",25]]);
+add("suess",0,"Erdnussflips",530,15,45,4,32,5,4,{magnesium:100,natrium:600,kalium:400,zink:1.8},[["1 Handvoll",25]]);
+add("suess",0,"Popcorn (gesalzen)",480,8,55,1,25,10,10,{natrium:600,magnesium:80,eisen:1.8},[["1 Portion",30]]);
+add("suess",0,"Müsliriegel",400,6,65,25,12,5,5,{eisen:2,magnesium:70,calcium:60},[["1 Stück",25]]);
+add("suess",0,"Proteinriegel",350,32,32,5,10,5,8,{calcium:250,magnesium:80,eisen:3,b12:1},[["1 Stück",60]]);
+add("suess",0,"Schokoriegel (gefüllt)",480,7,60,52,23,13,2,{calcium:130,magnesium:50,eisen:1.2},[["1 Stück",50]]);
+add("suess",0,"Schokokeks",490,6,63,35,24,13,3,{calcium:60,eisen:2,natrium:350},[["1 Stück",12]]);
+add("suess",0,"Donut",420,6,50,25,22,9,2,{natrium:400,eisen:1.8,calcium:60},[["1 Stück",60]]);
+add("suess",0,"Käsekuchen",280,7,28,20,15,9,0.7,{calcium:100,vitA:150,b12:0.4},[["1 Stück",120]]);
+add("suess",0,"Apfelkuchen",250,3,35,20,11,4,1.8,{kalium:120,calcium:30},[["1 Stück",120]]);
+add("suess",0,"Marmorkuchen",400,6,48,26,20,9,1.5,{calcium:60,eisen:1.2,vitA:120},[["1 Stück",80]]);
+add("suess",0,"Milchreis (gesüßt)",120,3.5,20,11,2.8,1.8,0.3,{calcium:100,b12:0.3,jod:8},[["1 Becher",200]]);
+add("suess",0,"Pudding (Vanille)",110,3,18,15,3,1.9,0,{calcium:110,b12:0.3,jod:8},[["1 Becher",125]]);
+add("suess",0,"Frozen Yogurt",180,3,28,25,6,4,0,{calcium:100,b12:0.3},[["1 Kugel",75]]);
+add("suess",0,"Schokoladeneis",230,4,26,24,12,7,1,{calcium:120,magnesium:25},[["1 Kugel",75]]);
+add("suess",0,"Waffel",320,6,40,15,15,7,1.5,{calcium:80,eisen:1.5,vitA:100},[["1 Stück",80]]);
+add("suess",0,"Pfannkuchen / Crêpe",220,7,26,6,9,3,1,{calcium:90,b12:0.4,eisen:1.2},[["1 Stück",100]]);
+add("suess",0,"Salzcracker",450,9,65,4,16,7,3,{natrium:1000,eisen:2,magnesium:30},[["1 Handvoll",25]]);
+
+/* ===== Fertige Gerichte (Werte je 100 g des fertigen Gerichts) ===== */
+add("gericht",0,"Spaghetti Bolognese",145,8,17,2,5,1.8,1.6,{eisen:1.5,zink:1.8,b12:0.7,natrium:300,folat:15,kalium:200},[["1 Portion",400]]);
+add("gericht",0,"Spaghetti Carbonara",200,9,20,1.5,9,4,1.2,{calcium:100,b12:0.5,natrium:400,vitA:80},[["1 Portion",400]]);
+add("gericht",0,"Lasagne",150,8,14,2.5,7,3.5,1.2,{calcium:130,eisen:1.2,b12:0.6,natrium:400},[["1 Portion",400]]);
+add("gericht",0,"Nudeln mit Tomatensauce",120,4,20,3,2.5,0.4,2,{kalium:200,vitC:8,eisen:0.8,natrium:250},[["1 Portion",400]]);
+add("gericht",0,"Nudelauflauf mit Käse",175,8,18,2,8,4,1.5,{calcium:180,b12:0.5,natrium:400},[["1 Portion",400]]);
+add("gericht",0,"Pizza Salami",270,11,27,3,13,5,2,{calcium:170,natrium:750,eisen:1.3,zink:1.5},[["1 Stück",120],["1 Pizza",400]]);
+add("gericht",0,"Pizza Hawaii",230,10,29,6,8,3.5,1.8,{calcium:160,natrium:600,vitC:5},[["1 Stück",120],["1 Pizza",400]]);
+add("gericht",0,"Hamburger",250,13,25,5,11,4,1.5,{eisen:2,zink:2.5,natrium:500,b12:1},[["1 Stück",180]]);
+add("gericht",0,"Cheeseburger",260,14,24,5,13,5.5,1.4,{calcium:130,eisen:2,zink:2.6,natrium:600,b12:1.1},[["1 Stück",200]]);
+add("gericht",0,"Chicken Wrap",200,12,20,2,8,2.5,2,{eisen:1.5,natrium:500,vitC:6,calcium:70},[["1 Stück",250]]);
+add("gericht",0,"Gyros mit Tzatziki",210,15,5,2,14,5,1,{zink:2.5,b12:1.2,calcium:70,natrium:600},[["1 Portion",300]]);
+add("gericht",0,"Falafel-Teller",240,9,25,3,12,1.8,6,{folat:90,eisen:2.8,magnesium:70,natrium:400},[["1 Portion",350]]);
+add("gericht",0,"Chicken Curry mit Reis",140,9,17,3,4,1.5,1.2,{b12:0.3,eisen:1,zink:1,natrium:350,vitA:60},[["1 Portion",400]]);
+add("gericht",0,"Gemüsecurry mit Reis",115,3.5,18,3,3.5,1.8,2.2,{vitA:250,vitC:15,folat:30,kalium:250},[["1 Portion",400]]);
+add("gericht",0,"Gebratene Nudeln mit Gemüse",150,5,20,3,5,0.9,2,{natrium:450,vitC:12,eisen:1,kalium:200},[["1 Portion",400]]);
+add("gericht",0,"Sushi (gemischt)",145,6,26,4,1.5,0.3,1,{jod:25,natrium:400,b12:0.8,vitD:1.5},[["1 Stück",25],["1 Portion",250]]);
+add("gericht",0,"Ramen / Nudelsuppe",70,4,8,1,2.5,0.8,0.8,{natrium:600,b12:0.4,eisen:0.7},[["1 Schüssel",500]]);
+add("gericht",0,"Tomatensuppe",45,1.2,6,4,1.8,0.6,0.9,{vitC:10,kalium:220,vitA:50,natrium:350},[["1 Teller",300]]);
+add("gericht",0,"Gemüsesuppe",40,1.5,5,2,1.5,0.4,1.5,{vitA:350,vitC:10,kalium:220,natrium:350},[["1 Teller",300]]);
+add("gericht",0,"Linsensuppe",75,4.5,10,1.5,1.8,0.5,3.5,{eisen:1.8,folat:60,kalium:250,natrium:350},[["1 Teller",300]]);
+add("gericht",0,"Kürbissuppe",55,1.3,6,3,2.8,1.5,1.5,{vitA:400,vitC:9,kalium:250,natrium:300},[["1 Teller",300]]);
+add("gericht",0,"Chili con Carne",120,8,10,2,5,1.8,3.5,{eisen:2,zink:2,folat:35,natrium:350,kalium:300},[["1 Portion",350]]);
+add("gericht",0,"Gulasch",135,13,4,1,7,2.8,0.8,{eisen:2.2,zink:3.5,b12:1.5,natrium:400},[["1 Portion",300]]);
+add("gericht",0,"Rouladen mit Rotkohl",130,11,7,4,6,2.3,1.8,{eisen:2,zink:3,vitC:15,natrium:400},[["1 Portion",400]]);
+add("gericht",0,"Schnitzel mit Pommes",240,11,23,1,12,2.2,2.2,{natrium:400,zink:1.5,kalium:400,vitC:7},[["1 Portion",400]]);
+add("gericht",0,"Fisch mit Kartoffeln",95,10,10,0.7,1.8,0.4,1.2,{jod:70,b12:1.2,vitD:2,kalium:350},[["1 Portion",400]]);
+add("gericht",0,"Kartoffel-Gemüse-Auflauf",120,4.5,13,2.5,5.5,3,2,{calcium:110,kalium:350,vitC:12,natrium:300},[["1 Portion",400]]);
+add("gericht",0,"Käsespätzle",220,9,24,1.5,9.5,5.5,1.5,{calcium:200,b12:0.6,natrium:450},[["1 Portion",350]]);
+add("gericht",0,"Maultaschen",190,9,22,1.5,7,2.5,1.5,{eisen:1.5,natrium:500,b12:0.5},[["1 Portion",300]]);
+add("gericht",0,"Bratkartoffeln mit Ei",165,5.5,17,1,8,2,1.8,{vitD:0.9,b12:0.5,kalium:350,vitC:8},[["1 Portion",350]]);
+add("gericht",0,"Caesar Salad mit Hähnchen",130,10,4,1.5,8,2,1.2,{calcium:90,folat:40,vitA:150,natrium:400},[["1 Portion",300]]);
+add("gericht",0,"Griechischer Salat",115,3.5,4,3.5,9,4,1.8,{calcium:150,natrium:500,vitC:20,folat:25},[["1 Portion",300]]);
+add("gericht",0,"Nudelsalat",190,4.5,20,3,10,1.5,1.5,{natrium:400,kalium:180,folat:15},[["1 Portion",250]]);
+add("gericht",0,"Belegtes Käsebrötchen",280,13,32,3,11,6,2,{calcium:280,b12:0.8,natrium:650},[["1 Stück",120]]);
+add("gericht",0,"Wurstbrot",270,12,30,3,11,4,2.5,{eisen:1.6,natrium:800,zink:1.5,b12:0.7},[["1 Stück",100]]);
+add("gericht",0,"Müsli mit Milch & Obst",105,3.8,16,7,2.5,0.9,2,{calcium:90,magnesium:40,eisen:1,b12:0.2},[["1 Schüssel",350]]);
+add("gericht",0,"Porridge mit Obst",95,3.2,15,5,2.2,0.6,2,{magnesium:35,eisen:1,calcium:70},[["1 Schüssel",350]]);
+add("gericht",0,"Rührei mit Brot",200,10,18,2,10,3.2,2,{vitD:1.4,b12:0.9,folat:35,eisen:1.5,jod:10},[["1 Portion",250]]);
+add("gericht",0,"Pommes mit Currywurst",290,10,22,3,18,6,2.5,{natrium:700,zink:1.3,kalium:450},[["1 Portion",400]]);
+add("gericht",0,"Kebab-Teller",180,14,10,2,10,3.5,1.5,{zink:2.5,eisen:2,natrium:550,b12:1},[["1 Portion",400]]);
+
+/* ===== Getränke ===== */
+add("getraenk",1,"Sprudelwasser mit Zitrone",2,0,0.3,0.3,0,0,0,{calcium:15,magnesium:8,vitC:2},[["1 Glas",250],["1 Flasche",500]]);
+add("getraenk",1,"Traubensaft",67,0.3,16,16,0.1,0,0.1,{kalium:150,vitC:3},[["1 Glas",200]]);
+add("getraenk",1,"Multivitaminsaft",55,0.5,12,12,0.1,0,0.3,{vitC:60,vitA:180,folat:40,kalium:150},[["1 Glas",200]]);
+add("getraenk",1,"Kirschsaft",55,0.5,13,12,0.2,0,0.3,{kalium:180,vitC:8},[["1 Glas",200]]);
+add("getraenk",1,"Tomatensaft",20,0.9,3,2.8,0.1,0,0.6,{vitC:15,kalium:230,vitA:45,natrium:230},[["1 Glas",200]]);
+add("getraenk",1,"Johannisbeerschorle",30,0.2,7,7,0,0,0,{vitC:15,kalium:70},[["1 Glas",250]]);
+add("getraenk",1,"Espresso",5,0.4,0,0,0,0,0,{kalium:110,magnesium:10},[["1 Tasse",30],["1 Doppelter",60]],105);
+add("getraenk",1,"Milchkaffee",45,2.5,3.5,3.5,2.2,1.4,0,{calcium:90,b12:0.3,jod:8},[["1 Tasse",200]],25);
+add("getraenk",1,"Eiskaffee",90,2,12,11,3.5,2.2,0,{calcium:70,b12:0.2},[["1 Glas",250]],20);
+add("getraenk",1,"Chai Latte",65,2.5,10,9,1.8,1.1,0,{calcium:80,b12:0.3},[["1 Tasse",250]],15);
+add("getraenk",1,"Matcha-Tee",4,0.5,0.5,0,0,0,0.3,{vitA:30,kalium:30},[["1 Tasse",250]],35);
+add("getraenk",1,"Pfefferminztee",1,0,0.2,0,0,0,0,{},[["1 Tasse",250]]);
+add("getraenk",1,"Rooibostee",1,0,0.2,0,0,0,0,{calcium:5},[["1 Tasse",250]]);
+add("getraenk",1,"Ingwer-Zitronen-Tee",8,0,2,1.5,0,0,0,{vitC:4,kalium:20},[["1 Tasse",250]]);
+add("getraenk",1,"Orangenlimonade",44,0,11,11,0,0,0,{natrium:10},[["1 Glas",250],["1 Dose",330]]);
+add("getraenk",1,"Spezi",42,0,10,10,0,0,0,{natrium:8},[["1 Glas",250],["1 Dose",330]],7);
+add("getraenk",1,"Sportgetränk (isotonisch)",25,0,6,5,0,0,0,{natrium:40,kalium:25,magnesium:5},[["1 Flasche",500]]);
+add("getraenk",1,"Proteinshake (mit Wasser)",40,8,1,0.5,0.6,0.3,0.3,{calcium:60,magnesium:15,b12:0.4},[["1 Shaker",400]]);
+add("getraenk",1,"Proteinshake (mit Milch)",75,9,5,5,2,1.2,0.2,{calcium:170,b12:0.7,jod:10},[["1 Shaker",400]]);
+add("getraenk",1,"Buttermilch-Drink (Frucht)",60,3,10,9,0.6,0.4,0.2,{calcium:110,b12:0.3,jod:8},[["1 Flasche",500]]);
+add("getraenk",1,"Kombucha",25,0,6,5,0,0,0,{kalium:30},[["1 Glas",250]],5);
+add("getraenk",1,"Radler",50,0.3,6,3,0,0,0,{kalium:35,magnesium:6},[["0,5 l",500]]);
+add("getraenk",1,"Weißwein",70,0.1,2.5,1,0,0,0,{kalium:80,magnesium:10},[["1 Glas",200]]);
+add("getraenk",1,"Rotwein",75,0.2,2.5,0.6,0,0,0,{kalium:130,eisen:0.5,magnesium:12},[["1 Glas",200]]);
+add("getraenk",1,"Weizenbier",45,0.5,3.5,0.3,0,0,0,{kalium:50,magnesium:10,folat:8},[["0,5 l",500]]);
+
+/* ---------- Rezeptvorschläge (eingebaut, rotierend) ---------- */
+const SUGGESTIONS = [
+ {name:"Porridge mit Banane & Mandeln", desc:"Haferflocken in Milch aufkochen, Banane und Mandeln dazu.", focus:["magnesium","calcium","b"], ings:[["Haferflocken",60],["Vollmilch 3,5 %",250],["Banane",120],["Mandeln",15]]},
+ {name:"Rührei auf Vollkornbrot", desc:"2 Eier verquirlen, braten, mit Tomate aufs Brot.", focus:["vitD","b12","folat"], ings:[["Ei",120],["Butter",5],["Vollkornbrot",90],["Tomate",120]]},
+ {name:"Linsen-Bolognese", desc:"Linsen mit Tomaten und Zwiebel köcheln, zu Nudeln servieren.", focus:["eisen","folat","b"], ings:[["Nudeln (gekocht)",200],["Linsen (gekocht)",150],["Tomate",200],["Zwiebel",40],["Olivenöl",10]]},
+ {name:"Lachs mit Kartoffeln & Brokkoli", desc:"Lachs braten, dazu Salzkartoffeln und gedämpfter Brokkoli.", focus:["vitD","jod","vitC"], ings:[["Lachs",125],["Kartoffeln (gekocht)",250],["Brokkoli",150],["Rapsöl",5]]},
+ {name:"Hähnchen-Reis-Bowl", desc:"Hähnchen anbraten, mit Reis, Paprika und Avocado anrichten.", focus:["p","vitC","kalium"], ings:[["Hähnchenbrust",150],["Reis (gekocht)",180],["Paprika (rot)",100],["Avocado",50],["Olivenöl",5]]},
+ {name:"Skyr-Bowl mit Beeren", desc:"Skyr mit Blaubeeren, Haferflocken und etwas Honig.", focus:["p","calcium"], ings:[["Skyr",250],["Blaubeeren",100],["Haferflocken",30],["Honig",8]]},
+ {name:"Thunfisch-Sandwich", desc:"Vollkornbrot mit Frischkäse, Thunfisch und Gurke belegen.", focus:["b12","jod"], ings:[["Vollkornbrot",90],["Thunfisch (Dose, Wasser)",65],["Frischkäse",20],["Gurke",50]]},
+ {name:"Kichererbsen-Spinat-Curry", desc:"Kichererbsen mit Spinat und Zwiebel schmoren, dazu Reis.", focus:["eisen","folat","magnesium"], ings:[["Kichererbsen (gekocht)",150],["Reis (gekocht)",180],["Spinat",100],["Zwiebel",40],["Rapsöl",10]]},
+ {name:"Quark mit Apfel & Walnüssen", desc:"Magerquark glatt rühren, Apfelstücke und Walnüsse unterheben.", focus:["p","calcium","magnesium"], ings:[["Magerquark",200],["Apfel",100],["Walnüsse",20],["Honig",8]]},
+ {name:"Gemüseomelett", desc:"Eier mit Champignons und Paprika stocken lassen, Käse darüber.", focus:["vitD","b12","vitA"], ings:[["Ei",120],["Champignons",60],["Paprika (rot)",80],["Gouda",20],["Butter",5]]},
+ {name:"Pellkartoffeln mit Hüttenkäse", desc:"Kartoffeln kochen, mit Hüttenkäse und Feldsalat servieren.", focus:["kalium","vitC","folat"], ings:[["Kartoffeln (gekocht)",300],["Hüttenkäse",150],["Feldsalat",50]]},
+ {name:"Seelachs mit Couscous", desc:"Seelachs dünsten, Couscous und gebratene Zucchini dazu.", focus:["jod","p"], ings:[["Seelachs",150],["Couscous (gekocht)",180],["Zucchini",150],["Olivenöl",10]]},
+ {name:"Erdnussbutter-Banane-Toast", desc:"Vollkornbrot mit Erdnussbutter, Bananenscheiben darauf.", focus:["magnesium","kalium","b"], ings:[["Vollkornbrot",90],["Erdnussbutter",20],["Banane",60]]},
+ {name:"Tomate-Mozzarella mit Brot", desc:"Tomaten und Mozzarella schichten, Öl darüber, Brot dazu.", focus:["calcium","vitC"], ings:[["Tomate",150],["Mozzarella",125],["Olivenöl",10],["Weißbrot",50]]},
+ {name:"Chili sin Carne", desc:"Bohnen, Mais und Tomaten würzig köcheln, mit Reis servieren.", focus:["b","eisen","folat"], ings:[["Kidneybohnen (Dose)",150],["Mais (Dose)",80],["Tomate",200],["Reis (gekocht)",150],["Zwiebel",40]]},
+ {name:"Overnight Oats mit Himbeeren", desc:"Haferflocken über Nacht in Milch quellen lassen, Himbeeren dazu.", focus:["b","magnesium","calcium"], ings:[["Haferflocken",60],["Fettarme Milch 1,5 %",200],["Himbeeren",100],["Leinsamen (geschrotet)",10]]},
+ {name:"Steak mit Süßkartoffel", desc:"Steak kurz braten, dazu Süßkartoffelspalten aus dem Ofen.", focus:["eisen","zink","vitA"], ings:[["Rindersteak",150],["Süßkartoffel",200],["Blattsalat",50],["Olivenöl",10]]},
+ {name:"Ofengemüse mit Feta", desc:"Zucchini, Paprika und Kürbis mit Öl im Ofen rösten, Feta darüber.", focus:["vitA","vitC","calcium"], ings:[["Zucchini",150],["Paprika (rot)",150],["Kürbis (Hokkaido)",200],["Feta",50],["Olivenöl",15]]},
+ {name:"Grünkohl-Kartoffel-Pfanne", desc:"Kartoffeln würfeln, anbraten, Grünkohl kurz mitschmoren.", focus:["vitA","vitC","calcium"], ings:[["Kartoffeln (gekocht)",250],["Grünkohl",150],["Zwiebel",50],["Rapsöl",10]]},
+ {name:"Rote-Linsen-Suppe", desc:"Linsen mit Karotte und Zwiebel weich kochen, pürieren.", focus:["eisen","folat","vitA"], ings:[["Rote Linsen (gekocht)",200],["Karotte",120],["Zwiebel",50],["Olivenöl",10],["Vollkornbrot",45]]},
+ {name:"Makrele mit Ofenkartoffeln", desc:"Makrele im Ofen garen, Kartoffelspalten und Salat dazu.", focus:["vitD","b12","jod"], ings:[["Makrele",125],["Kartoffeln (gekocht)",250],["Feldsalat",50],["Rapsöl",10]]},
+ {name:"Sardinen auf Vollkornbrot", desc:"Sardinen zerdrücken, mit Zitrone aufs Brot, Tomate dazu.", focus:["vitD","calcium","b12"], ings:[["Sardinen (Dose)",90],["Vollkornbrot",90],["Tomate",120],["Zitrone",10]]},
+ {name:"Tempeh-Gemüse-Pfanne", desc:"Tempeh anbraten, Brokkoli und Paprika kurz mitgaren, Reis dazu.", focus:["eisen","zink","vitC"], ings:[["Tempeh",100],["Brokkoli",150],["Paprika (rot)",100],["Vollkornreis (gekocht)",180],["Rapsöl",10]]},
+ {name:"Spinat-Kichererbsen-Wrap", desc:"Kichererbsen mit Spinat erwärmen, mit Hummus in den Wrap füllen.", focus:["folat","eisen","calcium"], ings:[["Wrap / Tortilla (Weizen)",62],["Kichererbsen (gekocht)",120],["Spinat",100],["Hummus",50]]},
+ {name:"Rührei mit Champignons", desc:"Champignons anbraten, Eier darüber stocken lassen.", focus:["vitD","b12","folat"], ings:[["Ei",120],["Champignons",100],["Butter",5],["Vollkorntoast",60]]},
+ {name:"Joghurt mit Kürbiskernen", desc:"Naturjoghurt mit Kürbiskernen, Himbeeren und Haferflocken.", focus:["zink","magnesium","calcium"], ings:[["Naturjoghurt 3,5 %",200],["Kürbiskerne",20],["Himbeeren",100],["Haferflocken",30]]},
+ {name:"Nudeln mit Brokkoli & Parmesan", desc:"Vollkornnudeln kochen, Brokkoli mitgaren, Parmesan darüber.", focus:["calcium","b","vitC"], ings:[["Vollkornnudeln (gekocht)",200],["Brokkoli",200],["Parmesan",20],["Olivenöl",10]]},
+ {name:"Süßkartoffel-Linsen-Curry", desc:"Süßkartoffel und Linsen in Kokosmilch weich kochen.", focus:["vitA","eisen","b"], ings:[["Süßkartoffel",200],["Linsen (gekocht)",150],["Zwiebel",50],["Kokosöl",10],["Reis (gekocht)",150]]},
+ {name:"Vollkornbrot mit Harzer Käse", desc:"Harzer Käse mit Zwiebelringen und Kümmel aufs Brot.", focus:["p","calcium","b12"], ings:[["Vollkornbrot",90],["Harzer Käse",75],["Zwiebel",30],["Rapsöl",5]]},
+ {name:"Forelle mit Mangold", desc:"Forelle in der Pfanne garen, Mangold kurz dünsten.", focus:["vitD","magnesium","vitA"], ings:[["Forelle",150],["Mangold",200],["Kartoffeln (gekocht)",200],["Butter",10]]},
+ {name:"Bohnen-Mais-Salat", desc:"Kidneybohnen, Mais und Paprika mit Öl und Essig mischen.", focus:["b","folat","vitC"], ings:[["Kidneybohnen (Dose)",150],["Mais (Dose)",80],["Paprika (rot)",100],["Zwiebel",30],["Olivenöl",10]]},
+ {name:"Haferflocken mit Skyr & Beeren", desc:"Skyr mit Haferflocken, Leinsamen und Erdbeeren mischen.", focus:["p","calcium","b"], ings:[["Skyr",200],["Haferflocken",50],["Leinsamen (geschrotet)",10],["Erdbeeren",150]]},
+ {name:"Miesmuscheln in Tomatensud", desc:"Muscheln in Tomatensauce öffnen lassen, Baguette dazu.", focus:["eisen","jod","b12"], ings:[["Miesmuscheln",200],["Tomatensauce (Passata)",200],["Zwiebel",50],["Baguette",60]]},
+ {name:"Käse-Omelett mit Salat", desc:"Eier mit Gouda stocken lassen, Rucolasalat dazu.", focus:["vitD","calcium","folat"], ings:[["Ei",120],["Gouda",30],["Rucola",40],["Olivenöl",10]]},
+ {name:"Quinoa-Bowl mit Avocado", desc:"Quinoa mit Kichererbsen, Avocado und Tomate anrichten.", focus:["magnesium","folat","b"], ings:[["Quinoa (gekocht)",180],["Kichererbsen (gekocht)",100],["Avocado",80],["Tomate",120],["Olivenöl",10]]},
+ {name:"Putenpfanne mit Paprika", desc:"Putenbrust in Streifen braten, Paprika und Zwiebel dazu.", focus:["p","vitC","zink"], ings:[["Putenbrust",150],["Paprika (rot)",150],["Zwiebel",50],["Basmatireis (gekocht)",180],["Rapsöl",10]]},
+ {name:"Rosenkohl mit Kartoffeln", desc:"Rosenkohl dämpfen, mit Salzkartoffeln und Spiegelei servieren.", focus:["vitC","folat","vitD"], ings:[["Rosenkohl",200],["Kartoffeln (gekocht)",250],["Spiegelei",65],["Butter",10]]},
+ {name:"Thunfisch-Nudelsalat", desc:"Nudeln mit Thunfisch, Mais und Joghurt-Dressing mischen.", focus:["b12","jod","p"], ings:[["Nudeln (gekocht)",200],["Thunfisch (Dose, Wasser)",130],["Mais (Dose)",80],["Joghurt-Dressing",30]]},
+ {name:"Grießbrei mit Beeren", desc:"Milch aufkochen, Grieß einrühren, Blaubeeren darauf.", focus:["calcium","b12","jod"], ings:[["Vollmilch 3,5 %",300],["Haferflocken",40],["Blaubeeren",100],["Honig",8]]},
+ {name:"Falafel mit Hummus & Salat", desc:"Falafel aufbacken, mit Hummus und Tomatensalat servieren.", focus:["folat","eisen","b"], ings:[["Falafel",120],["Hummus",60],["Tomate",150],["Fladenbrot",100]]},
+ {name:"Ofenlachs mit Fenchel", desc:"Lachs mit Fenchelscheiben im Ofen garen, Reis dazu.", focus:["vitD","calcium","vitC"], ings:[["Lachs",125],["Fenchel",250],["Reis (gekocht)",180],["Olivenöl",10]]},
+ {name:"Hüttenkäse-Brot mit Radieschen", desc:"Vollkornbrot mit Hüttenkäse bestreichen, Radieschen darauf.", focus:["p","calcium","vitC"], ings:[["Vollkornbrot",90],["Hüttenkäse",150],["Radieschen",60]]},
+ {name:"Gemüsesuppe mit Linsen", desc:"Karotte, Lauch und Sellerie mit Linsen weich kochen.", focus:["vitA","eisen","folat"], ings:[["Karotte",120],["Lauch / Porree",100],["Sellerie (Knolle)",100],["Linsen (gekocht)",150],["Rapsöl",10]]},
+ {name:"Vollkornbrot mit Mandelmus & Banane", desc:"Mandelmus aufs Brot streichen, Bananenscheiben darauf.", focus:["magnesium","calcium","kalium"], ings:[["Vollkornbrot",90],["Mandelmus",20],["Banane",120]]}
+];
+
+/* ---------- Zubereitung: Zeit in Minuten + Schritte ---------- */
+const PREP = {
+"Porridge mit Banane & Mandeln":{min:10,steps:[
+ "Milch in einem kleinen Topf aufkochen lassen.",
+ "Haferflocken einrühren, Hitze reduzieren und unter Rühren 3–5 Minuten köcheln, bis der Brei cremig ist.",
+ "Topf vom Herd nehmen und 2 Minuten quellen lassen.",
+ "Banane in Scheiben schneiden, mit den Mandeln auf dem Porridge verteilen."]},
+"Rührei auf Vollkornbrot":{min:10,steps:[
+ "Eier mit einer Prise Salz und Pfeffer in einer Schüssel verquirlen.",
+ "Butter in einer beschichteten Pfanne bei mittlerer Hitze schmelzen.",
+ "Eier hineingeben und mit einem Pfannenwender langsam vom Rand zur Mitte schieben, bis sie gerade eben stocken – nicht zu lange, sonst wird das Rührei trocken.",
+ "Brot toasten, Rührei daraufgeben und die in Scheiben geschnittene Tomate dazu servieren."]},
+"Linsen-Bolognese":{min:30,steps:[
+ "Zwiebel fein würfeln und im Olivenöl bei mittlerer Hitze 3–4 Minuten glasig dünsten.",
+ "Tomaten grob würfeln, zugeben und 5 Minuten einkochen lassen.",
+ "Gekochte Linsen unterrühren, mit Salz, Pfeffer und Oregano würzen und 10 Minuten offen köcheln lassen.",
+ "Parallel die Nudeln nach Packungsangabe in Salzwasser garen, abgießen und mit der Sauce mischen."]},
+"Lachs mit Kartoffeln & Brokkoli":{min:30,steps:[
+ "Kartoffeln schälen, in Salzwasser 20 Minuten weich kochen.",
+ "Brokkoli in Röschen teilen und die letzten 8 Minuten über den Kartoffeln dämpfen oder separat garen.",
+ "Lachs trocken tupfen, salzen und im Rapsöl bei mittlerer Hitze 3–4 Minuten auf der Hautseite braten, dann wenden und 2 Minuten fertig garen.",
+ "Alles anrichten und mit Zitrone abschmecken."]},
+"Hähnchen-Reis-Bowl":{min:25,steps:[
+ "Reis nach Packungsangabe garen.",
+ "Hähnchenbrust in Streifen schneiden, salzen und pfeffern.",
+ "Im Olivenöl bei kräftiger Hitze 5–6 Minuten braten, bis das Fleisch durchgegart ist.",
+ "Paprika in Streifen schneiden und die letzten 2 Minuten mitbraten.",
+ "Reis in eine Schüssel geben, Hähnchen und Paprika daraufsetzen, Avocado in Scheiben dazulegen."]},
+"Skyr-Bowl mit Beeren":{min:5,steps:[
+ "Skyr in eine Schüssel geben und mit dem Honig glatt rühren.",
+ "Haferflocken untermischen oder darüberstreuen.",
+ "Blaubeeren darauf verteilen. Kein Kochen nötig."]},
+"Thunfisch-Sandwich":{min:8,steps:[
+ "Thunfisch abtropfen lassen und mit einer Gabel zerpflücken.",
+ "Brotscheiben mit Frischkäse bestreichen.",
+ "Thunfisch daraufgeben, Gurkenscheiben darüberlegen und mit Pfeffer würzen.",
+ "Zweite Brotscheibe auflegen und halbieren."]},
+"Kichererbsen-Spinat-Curry":{min:25,steps:[
+ "Reis nach Packungsangabe garen.",
+ "Zwiebel würfeln und im Rapsöl 3 Minuten andünsten, Currypulver kurz mitrösten.",
+ "Abgetropfte Kichererbsen zugeben, mit etwas Wasser ablöschen und 8 Minuten köcheln lassen.",
+ "Spinat unterheben und nur so lange erhitzen, bis er zusammenfällt. Mit Salz abschmecken und zum Reis servieren."]},
+"Quark mit Apfel & Walnüssen":{min:5,steps:[
+ "Magerquark mit dem Honig und einem Schuss Wasser oder Milch cremig rühren.",
+ "Apfel entkernen und in kleine Würfel schneiden.",
+ "Apfel und grob gehackte Walnüsse unterheben. Kein Kochen nötig."]},
+"Gemüseomelett":{min:15,steps:[
+ "Champignons in Scheiben, Paprika in Streifen schneiden.",
+ "Butter in der Pfanne erhitzen, Gemüse 4–5 Minuten braten, bis die Flüssigkeit verdampft ist.",
+ "Eier verquirlen, salzen und über das Gemüse gießen.",
+ "Bei mittlerer Hitze stocken lassen, geriebenen Gouda darüberstreuen und mit Deckel 2 Minuten schmelzen lassen."]},
+"Pellkartoffeln mit Hüttenkäse":{min:25,steps:[
+ "Kartoffeln waschen und mit Schale in Salzwasser 20–25 Minuten garen, bis sie weich sind.",
+ "Abgießen, kurz ausdampfen lassen und pellen.",
+ "Kartoffeln aufschneiden, Hüttenkäse daraufgeben, salzen und pfeffern.",
+ "Feldsalat waschen und als Beilage dazu servieren."]},
+"Seelachs mit Couscous":{min:20,steps:[
+ "Couscous mit der gleichen Menge kochendem Salzwasser übergießen und zugedeckt 5 Minuten quellen lassen, dann auflockern.",
+ "Zucchini in Scheiben schneiden und im Olivenöl 5 Minuten goldbraun braten.",
+ "Seelachs salzen, in wenig Wasser oder Brühe zugedeckt 6–8 Minuten bei schwacher Hitze gar ziehen lassen – nicht kochen, sonst zerfällt er.",
+ "Alles zusammen anrichten und mit Zitrone beträufeln."]},
+"Erdnussbutter-Banane-Toast":{min:5,steps:[
+ "Brot toasten.",
+ "Erdnussbutter daraufstreichen.",
+ "Banane in Scheiben schneiden und darauf verteilen. Kein Kochen nötig."]},
+"Tomate-Mozzarella mit Brot":{min:8,steps:[
+ "Tomaten und Mozzarella in gleichmäßige Scheiben schneiden.",
+ "Abwechselnd auf einem Teller schichten.",
+ "Mit Olivenöl beträufeln, salzen, pfeffern und mit Basilikum bestreuen.",
+ "Brot dazu reichen. Kein Kochen nötig."]},
+"Chili sin Carne":{min:30,steps:[
+ "Reis nach Packungsangabe garen.",
+ "Zwiebel würfeln und in etwas Öl glasig dünsten.",
+ "Gewürfelte Tomaten zugeben und 5 Minuten einkochen lassen.",
+ "Abgetropfte Bohnen und Mais unterrühren, mit Chili, Kreuzkümmel, Salz und Paprikapulver würzen.",
+ "15 Minuten bei schwacher Hitze köcheln lassen und zum Reis servieren."]},
+"Overnight Oats mit Himbeeren":{min:5,steps:[
+ "Haferflocken und Leinsamen in ein Glas geben.",
+ "Milch darübergießen und gut umrühren.",
+ "Zugedeckt über Nacht in den Kühlschrank stellen (mindestens 6 Stunden).",
+ "Am Morgen umrühren und die Himbeeren daraufgeben."]},
+"Steak mit Süßkartoffel":{min:35,steps:[
+ "Ofen auf 200 °C vorheizen. Süßkartoffel in Spalten schneiden, mit der Hälfte des Olivenöls und Salz mischen und 25–30 Minuten backen.",
+ "Steak 20 Minuten vor dem Braten aus dem Kühlschrank nehmen und trocken tupfen.",
+ "Restliches Öl in einer Pfanne stark erhitzen, Steak pro Seite 2–3 Minuten scharf anbraten.",
+ "Vom Herd nehmen, salzen und 5 Minuten ruhen lassen, damit der Saft im Fleisch bleibt.",
+ "Mit den Süßkartoffelspalten und dem Blattsalat anrichten."]},
+"Ofengemüse mit Feta":{min:35,steps:[
+ "Ofen auf 200 °C Umluft vorheizen.",
+ "Zucchini, Paprika und Kürbis in mundgerechte Stücke schneiden.",
+ "Auf einem Blech mit Olivenöl, Salz, Pfeffer und Kräutern der Provence mischen.",
+ "25–30 Minuten backen, nach der Hälfte einmal wenden.",
+ "Feta zerbröseln, über das heiße Gemüse streuen und kurz nachziehen lassen."]},
+"Grünkohl-Kartoffel-Pfanne":{min:25,steps:[
+ "Kartoffeln in Würfel schneiden. Zwiebel fein hacken.",
+ "Rapsöl in einer großen Pfanne erhitzen, Kartoffeln 8–10 Minuten goldbraun braten.",
+ "Zwiebel zugeben und 2 Minuten mitbraten.",
+ "Grünkohl waschen, grob schneiden und untermischen. Mit Deckel 5 Minuten schmoren, bis er zusammengefallen ist.",
+ "Mit Salz, Pfeffer und Muskat abschmecken."]},
+"Rote-Linsen-Suppe":{min:25,steps:[
+ "Zwiebel und Karotte klein würfeln und im Olivenöl 5 Minuten andünsten.",
+ "Linsen zugeben und mit etwa 500 ml Wasser oder Gemüsebrühe auffüllen.",
+ "15 Minuten köcheln lassen, bis die Linsen zerfallen.",
+ "Mit dem Stabmixer fein pürieren, mit Salz, Kreuzkümmel und Zitrone abschmecken.",
+ "Mit dem Vollkornbrot servieren."]},
+"Makrele mit Ofenkartoffeln":{min:35,steps:[
+ "Ofen auf 200 °C vorheizen. Kartoffeln vierteln, mit der Hälfte des Öls und Salz mischen und 25 Minuten backen.",
+ "Makrele innen und außen salzen und mit dem restlichen Öl einreiben.",
+ "Die letzten 12–15 Minuten mit auf das Blech legen und garen, bis sich die Rückenflosse leicht lösen lässt.",
+ "Feldsalat waschen und dazu servieren."]},
+"Sardinen auf Vollkornbrot":{min:6,steps:[
+ "Sardinen abtropfen lassen und mit einer Gabel grob zerdrücken.",
+ "Mit einem Spritzer Zitrone und Pfeffer verrühren.",
+ "Auf das Brot streichen und mit Tomatenscheiben belegen. Kein Kochen nötig."]},
+"Tempeh-Gemüse-Pfanne":{min:25,steps:[
+ "Reis nach Packungsangabe garen.",
+ "Tempeh in Scheiben schneiden und im Rapsöl bei mittlerer Hitze pro Seite 3 Minuten goldbraun braten, herausnehmen.",
+ "Brokkoliröschen und Paprikastreifen in dieselbe Pfanne geben und 5–6 Minuten bissfest braten.",
+ "Tempeh zurück in die Pfanne geben, mit Sojasauce ablöschen und zum Reis servieren."]},
+"Spinat-Kichererbsen-Wrap":{min:12,steps:[
+ "Kichererbsen abtropfen lassen und in einer Pfanne mit etwas Öl 3 Minuten erwärmen.",
+ "Spinat zugeben und zusammenfallen lassen, mit Salz und Kreuzkümmel würzen.",
+ "Wrap kurz in einer trockenen Pfanne erwärmen, damit er sich rollen lässt.",
+ "Hummus daraufstreichen, Füllung mittig verteilen, Seiten einschlagen und fest aufrollen."]},
+"Rührei mit Champignons":{min:12,steps:[
+ "Champignons in Scheiben schneiden und in der Butter 5 Minuten braten, bis die Flüssigkeit verdampft ist.",
+ "Eier verquirlen, salzen und über die Pilze gießen.",
+ "Bei mittlerer Hitze unter langsamem Rühren stocken lassen.",
+ "Toast rösten und das Rührei daraufgeben."]},
+"Joghurt mit Kürbiskernen":{min:5,steps:[
+ "Kürbiskerne in einer trockenen Pfanne 2 Minuten ohne Fett rösten – das bringt deutlich mehr Aroma – und abkühlen lassen.",
+ "Joghurt in eine Schüssel geben und die Haferflocken unterrühren.",
+ "Himbeeren und Kürbiskerne darüber verteilen."]},
+"Nudeln mit Brokkoli & Parmesan":{min:20,steps:[
+ "Nudeln in reichlich Salzwasser nach Packungsangabe garen.",
+ "Brokkoli in Röschen teilen und die letzten 5 Minuten mit ins Nudelwasser geben.",
+ "Zusammen abgießen, dabei eine Tasse Kochwasser auffangen.",
+ "Mit Olivenöl und etwas Kochwasser in der Pfanne schwenken, bis eine sämige Sauce entsteht.",
+ "Parmesan darüberreiben und mit Pfeffer abschmecken."]},
+"Süßkartoffel-Linsen-Curry":{min:30,steps:[
+ "Reis nach Packungsangabe garen.",
+ "Zwiebel würfeln und im Kokosöl glasig dünsten, Currypulver 30 Sekunden mitrösten.",
+ "Süßkartoffel schälen, würfeln und zugeben, mit 200 ml Wasser oder Kokosmilch auffüllen.",
+ "Zugedeckt 15 Minuten köcheln, bis die Würfel weich sind.",
+ "Linsen unterrühren, 5 Minuten ziehen lassen und mit Salz abschmecken."]},
+"Vollkornbrot mit Harzer Käse":{min:6,steps:[
+ "Harzer Käse in Scheiben schneiden.",
+ "Zwiebel in dünne Ringe schneiden.",
+ "Brot mit dem Öl beträufeln, Käse und Zwiebeln darauflegen.",
+ "Mit Kümmel, Salz und Pfeffer würzen. Kein Kochen nötig."]},
+"Forelle mit Mangold":{min:30,steps:[
+ "Kartoffeln schälen und in Salzwasser 20 Minuten weich kochen.",
+ "Mangold waschen, Stiele in Stücke, Blätter grob schneiden.",
+ "Die Hälfte der Butter erhitzen, zuerst die Stiele 3 Minuten dünsten, dann die Blätter zugeben und zusammenfallen lassen.",
+ "Forelle salzen, in der restlichen Butter pro Seite 4 Minuten bei mittlerer Hitze braten.",
+ "Mit Zitrone beträufelt servieren."]},
+"Bohnen-Mais-Salat":{min:10,steps:[
+ "Bohnen und Mais in ein Sieb geben, gut abspülen und abtropfen lassen.",
+ "Paprika und Zwiebel fein würfeln.",
+ "Alles in einer Schüssel mit Olivenöl, Essig, Salz und Pfeffer mischen.",
+ "10 Minuten durchziehen lassen. Kein Kochen nötig."]},
+"Haferflocken mit Skyr & Beeren":{min:5,steps:[
+ "Skyr mit den Leinsamen verrühren.",
+ "Haferflocken untermischen.",
+ "Erdbeeren halbieren und daraufgeben. Wer es weicher mag, lässt die Mischung 10 Minuten quellen."]},
+"Miesmuscheln in Tomatensud":{min:25,steps:[
+ "Muscheln unter kaltem Wasser gründlich waschen. Bereits geöffnete Muscheln, die sich beim Antippen nicht schließen, wegwerfen.",
+ "Zwiebel würfeln und in etwas Öl glasig dünsten.",
+ "Passata zugeben, aufkochen und mit Salz und Pfeffer würzen.",
+ "Muscheln hineingeben, zudecken und 5–7 Minuten dämpfen, bis sie sich geöffnet haben. Geschlossen gebliebene Muscheln aussortieren.",
+ "Mit Baguette zum Auftunken servieren."]},
+"Käse-Omelett mit Salat":{min:12,steps:[
+ "Eier mit Salz und Pfeffer verquirlen.",
+ "Die Hälfte des Öls in einer beschichteten Pfanne erhitzen, Eier hineingeben und bei mittlerer Hitze stocken lassen.",
+ "Geriebenen Gouda auf eine Hälfte streuen, Omelett zusammenklappen und 1 Minute ziehen lassen.",
+ "Rucola mit dem restlichen Öl und etwas Essig anmachen und dazu servieren."]},
+"Quinoa-Bowl mit Avocado":{min:20,steps:[
+ "Quinoa in einem Sieb heiß abspülen – das nimmt die Bitterstoffe – und nach Packungsangabe garen.",
+ "Kichererbsen abtropfen lassen, Tomate würfeln, Avocado in Spalten schneiden.",
+ "Quinoa in eine Schüssel geben und die Zutaten nebeneinander darauf anrichten.",
+ "Mit Olivenöl, Zitrone, Salz und Pfeffer abschmecken."]},
+"Putenpfanne mit Paprika":{min:25,steps:[
+ "Reis nach Packungsangabe garen.",
+ "Putenbrust in Streifen schneiden, salzen und pfeffern.",
+ "Rapsöl stark erhitzen und das Fleisch 4–5 Minuten scharf anbraten, herausnehmen.",
+ "Paprika und Zwiebel in Streifen schneiden und 5 Minuten in derselben Pfanne braten.",
+ "Fleisch zurückgeben, kurz durchschwenken und mit dem Reis servieren."]},
+"Rosenkohl mit Kartoffeln":{min:30,steps:[
+ "Kartoffeln schälen und in Salzwasser 20 Minuten garen.",
+ "Rosenkohl putzen, den Strunk kreuzweise einschneiden und 10–12 Minuten dämpfen, bis er bissfest ist.",
+ "Die Hälfte der Butter erhitzen und den Rosenkohl darin kurz schwenken, mit Muskat würzen.",
+ "In der restlichen Butter das Spiegelei braten und alles zusammen anrichten."]},
+"Thunfisch-Nudelsalat":{min:20,steps:[
+ "Nudeln in Salzwasser garen, kalt abschrecken und gut abtropfen lassen.",
+ "Thunfisch und Mais abtropfen lassen.",
+ "Alles mit dem Dressing in einer Schüssel vermengen.",
+ "Mit Salz und Pfeffer abschmecken und mindestens 15 Minuten kalt stellen."]},
+"Grießbrei mit Beeren":{min:12,steps:[
+ "Milch mit dem Honig in einem Topf aufkochen.",
+ "Haferflocken unter Rühren einrieseln lassen.",
+ "Bei schwacher Hitze 5 Minuten quellen lassen, dabei immer wieder umrühren, damit nichts ansetzt.",
+ "In eine Schüssel füllen und die Blaubeeren darauf verteilen."]},
+"Falafel mit Hummus & Salat":{min:20,steps:[
+ "Ofen auf 200 °C vorheizen und die Falafel 12–15 Minuten aufbacken (oder in wenig Öl rundum knusprig braten).",
+ "Tomaten würfeln und mit Salz, Pfeffer und etwas Öl anmachen.",
+ "Fladenbrot kurz im Ofen mit aufwärmen.",
+ "Hummus auf das Brot streichen, Falafel und Tomatensalat daraufgeben."]},
+"Ofenlachs mit Fenchel":{min:30,steps:[
+ "Ofen auf 180 °C vorheizen. Reis nach Packungsangabe garen.",
+ "Fenchel in dünne Scheiben schneiden, mit dem Olivenöl und Salz mischen und in einer Auflaufform 15 Minuten vorgaren.",
+ "Lachs salzen, auf den Fenchel legen und weitere 12–15 Minuten garen, bis er innen glasig ist.",
+ "Mit dem Fenchelgrün bestreuen und zum Reis servieren."]},
+"Hüttenkäse-Brot mit Radieschen":{min:6,steps:[
+ "Hüttenkäse mit Salz und Pfeffer verrühren.",
+ "Radieschen in dünne Scheiben schneiden.",
+ "Hüttenkäse auf das Brot streichen und die Radieschen darauf verteilen. Kein Kochen nötig."]},
+"Gemüsesuppe mit Linsen":{min:30,steps:[
+ "Karotte, Lauch und Sellerie in kleine Würfel bzw. Ringe schneiden.",
+ "Im Rapsöl 5 Minuten andünsten, ohne dass das Gemüse Farbe nimmt.",
+ "Mit etwa 700 ml Wasser oder Gemüsebrühe auffüllen und 15 Minuten köcheln lassen.",
+ "Linsen zugeben und weitere 5 Minuten ziehen lassen.",
+ "Mit Salz, Pfeffer und einem Spritzer Essig abschmecken."]},
+"Vollkornbrot mit Mandelmus & Banane":{min:5,steps:[
+ "Mandelmus gleichmäßig auf das Brot streichen.",
+ "Banane in Scheiben schneiden und darauflegen.",
+ "Nach Belieben mit Zimt bestreuen. Kein Kochen nötig."]}
+};
+SUGGESTIONS.forEach(function(r){
+  const p = PREP[r.name];
+  if(p){ r.min = p.min; r.steps = p.steps; }
+});
+
+/* ---------- Zustand ---------- */
+const DEFAULT_PROFILE = {alter:18, geschlecht:"m", groesse:190, gewicht:77, pal:1.6};
+let profile = Object.assign({}, DEFAULT_PROFILE, sget("profile", {}));
+let log = sget("log", []);          // Einträge
+let favs = sget("favs", []);        // Item-Snapshots
+let recipes = sget("recipes", []);  // eigene Rezepte
+let shuffleOffset = 0;
+
+const MEALS = [["fruehstueck","Frühstück"],["mittag","Mittagessen"],["abend","Abendessen"],["snack","Snacks"]];
+const MEAL_LABEL = Object.fromEntries(MEALS.concat([["getraenk","Getränke"]]));
+
+/* ---------- Hilfen ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+function fmt(x, d=0){ return (x==null||isNaN(x)) ? "–" : x.toLocaleString("de-DE",{minimumFractionDigits:d, maximumFractionDigits:d}); }
+function dateKey(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), t=String(d.getDate()).padStart(2,"0"); return y+"-"+m+"-"+t; }
+function todayKey(){ return dateKey(new Date()); }
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+let toastTimer=null;
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
+
+function pruneOld(){
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-6);
+  const min = dateKey(cutoff);
+  const before = log.length;
+  log = log.filter(e => e.date >= min);
+  if(log.length !== before) sset("log", log);
+}
+
+/* Item → normalisiertes Objekt {id,name,isDrink,per100:{...},portions,cf,src} */
+function dbItem(i){
+  const d = DB[i];
+  const per100 = {kcal:d.k,p:d.p,c:d.c,z:d.z,f:d.f,sf:d.sf,b:d.b};
+  MICROS.forEach(([k]) => per100[k] = (d.m && d.m[k]) || 0);
+  return {id:"L"+i, name:d.n, cat:d.cat||"sonstiges", kw:d.kw||"", isDrink:!!d.d, per100, portions:d.po||[], cf:d.cf||0, src:"lokal"};
+}
+let _localCache = null;
+function allLocalItems(){
+  if(!_localCache) _localCache = DB.map((_,i)=>dbItem(i)).sort((a,b)=>a.name.localeCompare(b.name,"de"));
+  return _localCache;
+}
+
+/* ---------- Markenprodukte (Open Food Facts, als Datei mitgeliefert) ----------
+   naehrwert-produkte.js wird vorab auf dem Rechner aus Open Food Facts erzeugt
+   und neben dieser Seite ausgeliefert. So funktioniert die Suche auch dort,
+   wo die Seite selbst keine fremden Server erreichen darf. */
+let _prodCache = null;
+function productData(){ return (window.NW_PRODUKTE && Array.isArray(window.NW_PRODUKTE.rows)) ? window.NW_PRODUKTE : null; }
+function productItems(){
+  if(_prodCache) return _prodCache;
+  _prodCache = [];
+  const P = productData();
+  if(!P) return _prodCache;
+  const seen = {};
+  P.rows.forEach(function(r, i){
+    const name = r[0], brand = r[1] || "";
+    // Marke nur anhängen, wenn sie nicht schon im Namen steckt
+    const show = brand && normalize(name).indexOf(normalize(brand)) < 0 ? name + " (" + brand + ")" : name;
+    if(seen[show]) return;
+    seen[show] = 1;
+    const per100 = {kcal:r[2]||0, p:r[3]||0, c:r[4]||0, z:r[5]||0, f:r[6]||0, sf:r[7]||0, b:r[8]||0};
+    MICROS.forEach(function(m){ per100[m[0]] = 0; });
+    per100.natrium = r[9] || 0;
+    const missing = [];
+    if(r[8] == null) missing.push("Ballaststoffe");
+    if(r[9] == null) missing.push("Natrium");
+    _prodCache.push({
+      id: "P" + (r[13] || i), name: show, brand: brand, cat: "produkt",
+      isDrink: !!r[10], per100: per100, portions: (P.portionen && P.portionen[r[12]]) || [],
+      cf: r[11] || 0, src: "Open Food Facts", isProduct: true, missing: missing,
+      code: r[13] || "", _s: normalize(name + " " + brand), rank: i
+    });
+  });
+  return _prodCache;
+}
+/* Alle Suchwörter müssen vorkommen; Namensanfang zuerst, dann nach Beliebtheit */
+function searchProducts(nq, limit, drinkOnly){
+  const terms = nq.split(/\s+/).filter(Boolean);
+  if(!terms.length) return {items:[], total:0};
+  const hits = [];
+  const all = productItems();
+  for(let i = 0; i < all.length; i++){
+    const it = all[i];
+    if(drinkOnly && !it.isDrink) continue;
+    let ok = true;
+    for(let t = 0; t < terms.length; t++){ if(it._s.indexOf(terms[t]) < 0){ ok = false; break; } }
+    if(ok) hits.push(it);
+  }
+  hits.sort(function(a, b){
+    const as = a._s.indexOf(terms[0]) === 0 ? 0 : 1, bs = b._s.indexOf(terms[0]) === 0 ? 0 : 1;
+    return as - bs || a.rank - b.rank;
+  });
+  return {items: hits.slice(0, limit || 40), total: hits.length};
+}
+/* Lebensmittel über den Namen finden – Grunddatenbank zuerst, dann Markenprodukte */
+function findItemByName(name){
+  return allLocalItems().find(function(x){ return x.name === name; })
+      || productItems().find(function(x){ return x.name === name; }) || null;
+}
+function productStand(){
+  const P = productData();
+  if(!P || !P.meta || !P.meta.stand) return "";
+  const d = new Date(P.meta.stand + "T12:00:00");
+  return isNaN(d) ? P.meta.stand : d.toLocaleDateString("de-DE", {day:"numeric", month:"long", year:"numeric"});
+}
+
+function recipeToItem(r, idPrefix){
+  const tot = {}; ALL_KEYS.forEach(k=>tot[k]=0);
+  let g=0, cf=0;
+  r.ings.forEach(ing => {
+    const it = typeof ing[0]==="string" ? findItemByName(ing[0]) : null;
+    const item = it || ing[2]; const grams = ing[1];
+    if(!item) return;
+    g += grams; cf += (item.cf||0)*grams/100;
+    ALL_KEYS.forEach(k => tot[k] += (item.per100[k]||0)*grams/100);
+  });
+  return {id:idPrefix, name:r.name, isDrink:false, isRecipe:true, totals:tot, grams:g, cf, portions:[["1 Portion",1]], src:"rezept", desc:r.desc||"", ings:r.ings};
+}
+
+/* Nährwerte eines Eintrags berechnen */
+function entryFromItem(item, amount, meal){
+  const n = {};
+  if(item.isRecipe){
+    ALL_KEYS.forEach(k => n[k] = (item.totals[k]||0)*amount); // amount = Portionen
+  } else {
+    ALL_KEYS.forEach(k => n[k] = (item.per100[k]||0)*amount/100);
+  }
+  return {
+    id: Date.now()+"_"+Math.random().toString(36).slice(2,7),
+    date: todayKey(),
+    meal: item.isDrink ? "getraenk" : meal,
+    name: item.name,
+    amount, unit: item.isRecipe ? "Portion" : (item.isDrink ? "ml" : "g"),
+    isDrink: !!item.isDrink,
+    ml: item.isDrink ? amount : 0,
+    cf: item.isDrink ? (item.cf||0)*amount/100 : (item.isRecipe ? (item.cf||0)*amount : 0),
+    n
+  };
+}
+
+function dayTotals(dk){
+  const t = {}; ALL_KEYS.forEach(k=>t[k]=0);
+  t.ml=0; t.cf=0; t.drinkKcal=0; t.drinkSugar=0;
+  log.filter(e=>e.date===dk).forEach(e => {
+    ALL_KEYS.forEach(k => t[k] += e.n[k]||0);
+    if(e.isDrink){ t.ml += e.ml||0; t.cf += e.cf||0; t.drinkKcal += e.n.kcal||0; t.drinkSugar += e.n.z||0; }
+  });
+  return t;
+}
+
+/* =====================================================================
+   RENDERING
+   ===================================================================== */
+function ringSVG(pct, size, stroke, color, center){
+  const r = (size-stroke)/2, c = 2*Math.PI*r;
+  const p = Math.max(0, Math.min(1, pct));
+  const fg = p > 0.004
+    ? '<circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="'+stroke+'" stroke-linecap="round" ' +
+      'stroke-dasharray="'+(c*p)+' '+c+'" transform="rotate(-90 '+size/2+' '+size/2+')"/>'
+    : '';
+  return '<span class="ring" style="width:'+size+'px;height:'+size+'px">' +
+    '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'">' +
+    '<circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="var(--surface2)" stroke-width="'+stroke+'"/>' +
+    fg + '</svg><span class="center" style="font-size:'+(size*0.2)+'px">'+center+'</span></span>';
+}
+
+function renderToday(){
+  const T = computeTargets(profile);
+  const t = dayTotals(todayKey());
+
+  // Kalorien-Ring
+  const pct = t.kcal / T.kcal;
+  $("#kcalRing").innerHTML = ringSVG(pct, 108, 10, "var(--accent)", Math.round(pct*100)+"%");
+  $("#kcalEaten").textContent = fmt(Math.round(t.kcal));
+  const diff = T.kcal - t.kcal;
+  $("#kcalRest").textContent = diff >= 0
+    ? "Ziel " + fmt(T.kcal) + " kcal · noch " + fmt(Math.round(diff)) + " kcal offen"
+    : "Ziel " + fmt(T.kcal) + " kcal · " + fmt(Math.round(-diff)) + " kcal darüber";
+  $("#kcalDrinkShare").textContent = t.drinkKcal > 0 ? "davon " + fmt(Math.round(t.drinkKcal)) + " kcal aus Getränken" : "";
+
+  // Makro-Ringe
+  const rings = [
+    ["Protein", t.p, T.protein, "g", null],
+    ["Kohlenhydr.", t.c, T.kh, "g", "Zucker " + fmt(Math.round(t.z)) + " / ≤" + fmt(T.zuckerMax) + " g"],
+    ["Fett", t.f, T.fett, "g", "gesättigt " + fmt(Math.round(t.sf)) + " / ≤" + fmt(T.sfMax) + " g"],
+    ["Ballaststoffe", t.b, T.ballast, "g", null]
+  ];
+  $("#macroRings").innerHTML = rings.map(([lbl,val,goal,unit,sub]) =>
+    '<div class="ringcell">' + ringSVG(val/goal, 62, 6, "var(--accent)", Math.round(val/goal*100)+"%") +
+    '<div class="lbl">'+lbl+'</div><div class="val num">'+fmt(Math.round(val))+' / '+fmt(goal)+' '+unit+'</div>' +
+    (sub ? '<div class="sub num">'+sub+'</div>' : '') + '</div>').join("");
+
+  // Getränke
+  const liter = t.ml/1000;
+  $("#fluidVal").textContent = fmt(liter,1).replace(".",",") + " l";
+  $("#fluidGoal").textContent = fmt(T.trinkziel/1000,1) + " l";
+  $("#fluidTotal").textContent = fmt(T.gesamtwasser/1000,1) + " l";
+  $("#fluidFill").style.width = Math.min(100, t.ml/T.trinkziel*100) + "%";
+  $("#cafVal").textContent = fmt(Math.round(t.cf)) + " mg";
+  $("#drinkSugar").textContent = fmt(t.drinkSugar,1) + " g";
+  $("#drinkKcal").textContent = fmt(Math.round(t.drinkKcal)) + " kcal";
+
+  const drinks = log.filter(e=>e.date===todayKey() && e.isDrink);
+  $("#drinkList").innerHTML = drinks.length ? drinks.map(entryRow).join("") : "";
+
+  // Mahlzeiten
+  let html = "";
+  MEALS.forEach(([key,label]) => {
+    const es = log.filter(e=>e.date===todayKey() && e.meal===key);
+    const sum = es.reduce((s,e)=>s+e.n.kcal,0);
+    html += '<div class="mealhead"><h3>'+label+'</h3><span class="sum num">'+(es.length?fmt(Math.round(sum))+" kcal":"")+'</span></div>';
+    html += es.length ? es.map(entryRow).join("") : '<div class="empty">Noch nichts erfasst.</div>';
+    html += '<button class="addline" data-addmeal="'+key+'">+ Hinzufügen</button>';
+  });
+  $("#mealsBox").innerHTML = html;
+
+  // Mikros
+  $("#microBox").innerHTML = MICROS.map(([k,label,unit]) => {
+    const val = t[k], ref = T.micros[k], p100 = val/ref*100;
+    let color = p100 < 70 ? "var(--warn)" : "var(--ok)";
+    if(k==="natrium") color = p100 > 100 ? "var(--over)" : "var(--ok)";
+    return '<div class="micro"><span class="lbl">'+label+'</span>' +
+      '<span class="bar"><i style="width:'+Math.min(100,p100)+'%;background:'+color+'"></i></span>' +
+      '<span class="val num">'+fmt(val, val<10?1:0)+' / '+fmt(ref)+' '+unit+'</span></div>';
+  }).join("");
+  $("#refLabel").textContent = (profile.geschlecht==="m"?"männlich":"weiblich") + ", " + (profile.alter<19 ? "15–19 Jahre" : "ab 19 Jahren");
+
+  const hd = new Date();
+  $("#hdrDate").textContent = hd.toLocaleDateString("de-DE",{weekday:"long", day:"numeric", month:"long", year:"numeric"});
+}
+
+function entryRow(e){
+  const amt = e.unit==="Portion" ? fmt(e.amount, e.amount%1?1:0)+" Portion"+(e.amount!==1?"en":"") : fmt(e.amount)+" "+e.unit;
+  return '<div class="entry"><div class="name"><b>'+esc(e.name)+'</b><span class="num">'+amt+
+    (e.isDrink&&e.cf?' · '+fmt(Math.round(e.cf))+' mg Koffein':'')+'</span></div>' +
+    '<span class="kcal num">'+fmt(Math.round(e.n.kcal))+' kcal</span>' +
+    '<button class="del" data-del="'+e.id+'" aria-label="Eintrag löschen">✕</button></div>';
+}
+
+/* ---------- Woche ---------- */
+function last7Keys(){
+  const out=[];
+  for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); out.push(dateKey(d)); }
+  return out;
+}
+function renderWeek(){
+  const T = computeTargets(profile);
+  const keys = last7Keys();
+  const days = keys.map(k => ({k, t: dayTotals(k), has: log.some(e=>e.date===k)}));
+  const maxK = Math.max(T.kcal*1.1, ...days.map(d=>d.t.kcal), 1);
+
+  $("#weekChart").innerHTML =
+    '<div class="goal" style="bottom:'+(T.kcal/maxK*100)+'%"><span>Ziel '+fmt(T.kcal)+'</span></div>' +
+    days.map(d => '<div class="col'+(d.k===todayKey()?' today':'')+'"><i style="height:'+(d.t.kcal/maxK*100)+'%"></i></div>').join("");
+  $("#weekLabels").innerHTML = keys.map(k => {
+    const d = new Date(k+"T12:00:00");
+    return '<span class="'+(k===todayKey()?'today':'')+'">'+d.toLocaleDateString("de-DE",{weekday:"short"})+'</span>';
+  }).join("");
+
+  const tracked = days.filter(d=>d.has);
+  const n = tracked.length || 1;
+  const avg = {}; ALL_KEYS.concat(["ml","cf"]).forEach(k => avg[k] = tracked.reduce((s,d)=>s+(d.t[k]||0),0)/n);
+
+  const rows = [
+    ["Kalorien", fmt(Math.round(avg.kcal))+" kcal", "Ziel "+fmt(T.kcal)],
+    ["Protein", fmt(Math.round(avg.p))+" g", "Ziel "+fmt(T.protein)+" g"],
+    ["Kohlenhydrate", fmt(Math.round(avg.c))+" g", "davon Zucker "+fmt(Math.round(avg.z))+" g"],
+    ["Fett", fmt(Math.round(avg.f))+" g", "davon gesättigt "+fmt(Math.round(avg.sf))+" g"],
+    ["Ballaststoffe", fmt(Math.round(avg.b))+" g", "Ziel "+fmt(T.ballast)+" g"],
+    ["Getränke", fmt(avg.ml/1000,1)+" l", "Koffein Ø "+fmt(Math.round(avg.cf))+" mg"]
+  ];
+  $("#avgTable").innerHTML = rows.map(r=>'<tr><td>'+r[0]+'</td><td><b>'+r[1]+'</b></td><td>'+r[2]+'</td></tr>').join("") +
+    '<tr><td colspan="3" class="small muted">'+(tracked.length? "Basis: "+tracked.length+" erfasste"+(tracked.length===1?"r Tag":" Tage") : "Noch keine erfassten Tage.")+'</td></tr>';
+
+  const gaps = weeklyGaps();
+  $("#gapList").innerHTML = gaps.length
+    ? gaps.map(g=>'<span class="tag">'+g.label+' <b class="num">'+Math.round(g.pct)+' %</b></span>').join("")
+    : '<span class="small muted" style="margin-top:8px;display:block">'+(tracked.length ? "Aktuell keine auffälligen Lücken – alle Werte über 70 % der Referenz. 🌿" : "Erfasse ein paar Tage, dann erscheint hier deine Auswertung.")+'</span>';
+}
+function weeklyGaps(){
+  const T = computeTargets(profile);
+  const keys = last7Keys();
+  const tracked = keys.map(k=>({k, t:dayTotals(k)})).filter(d=>log.some(e=>e.date===d.k));
+  if(!tracked.length) return [];
+  const out = [];
+  MICROS.forEach(([k,label]) => {
+    if(k==="natrium") return;
+    const a = tracked.reduce((s,d)=>s+d.t[k],0)/tracked.length;
+    const pct = a/T.micros[k]*100;
+    if(pct < 70) out.push({key:k, label, pct});
+  });
+  const fib = tracked.reduce((s,d)=>s+d.t.b,0)/tracked.length / T.ballast * 100;
+  if(fib < 70) out.push({key:"b", label:"Ballaststoffe", pct:fib});
+  return out.sort((a,b)=>a.pct-b.pct);
+}
+
+/* ---------- Rezepte ---------- */
+const FOCUS_LABEL = {vitA:"Vitamin A",vitC:"Vitamin C",vitD:"Vitamin D",b12:"B12",folat:"Folat",eisen:"Eisen",calcium:"Calcium",magnesium:"Magnesium",zink:"Zink",kalium:"Kalium",jod:"Jod",b:"Ballaststoffe",p:"Protein"};
+function renderRecipes(){
+  const gaps = weeklyGaps();
+  const gapKeys = gaps.map(g=>g.key);
+  const seed = parseInt(todayKey().replace(/-/g,""),10) + shuffleOffset*7;
+
+  const scored = SUGGESTIONS.map((r,i) => {
+    let score = 0;
+    r.focus.forEach(f => { const gi = gapKeys.indexOf(f); if(gi>=0) score += (gapKeys.length-gi)*10; });
+    return {r, i, score, rank: score*1000 + ((seed*31 + i*17) % 97)};
+  }).sort((a,b)=>b.rank-a.rank);
+
+  // "Neue Vorschläge" blättert durch die passenden Rezepte, ohne die Rangfolge zu verlieren
+  const pool = scored.slice(0, Math.min(scored.length, 12));
+  const off = (shuffleOffset*3) % pool.length;
+  const picks = [0,1,2].map(i => pool[(off+i) % pool.length]);
+  $("#suggestBox").innerHTML = picks.map(({r,i}) => {
+    const item = recipeToItem(r, "S"+i);
+    const matched = r.focus.filter(f=>gapKeys.includes(f)).map(f=>FOCUS_LABEL[f]);
+    const why = matched.length ? "Liefert " + matched.join(" & ") : "Ausgewogen: " + r.focus.map(f=>FOCUS_LABEL[f]).join(" & ");
+    return '<div class="recipecard"><span class="why">'+why+'</span><h4>'+esc(r.name)+'</h4>' +
+      '<div class="ing">'+r.ings.map(g=>esc(g[0])+' '+g[1]+' g').join(" · ")+'</div>' +
+      '<div class="small">'+esc(r.desc)+'</div>' +
+      '<div class="nut num">'+fmt(Math.round(item.totals.kcal))+' kcal · '+fmt(Math.round(item.totals.p))+' g Protein · '+fmt(Math.round(item.totals.b))+' g Ballaststoffe</div>' +
+      prepBlock(r) +
+      '<div class="recipefoot"><select data-sugmeal="'+i+'">'+MEALS.map(m=>'<option value="'+m[0]+'"'+(m[0]===guessMeal()?' selected':'')+'>'+m[1]+'</option>').join("")+'</select>' +
+      '<button class="primary" data-addsug="'+i+'">Eintragen</button></div></div>';
+  }).join("");
+
+  $("#ownRecipeBox").innerHTML = recipes.length ? recipes.map((r,idx) => {
+    const item = recipeToItem(r, "R"+idx);
+    return '<div class="recipecard"><h4>'+esc(r.name)+'</h4>' +
+      '<div class="ing">'+r.ings.map(g=>esc(g[0])+' '+g[1]+' g').join(" · ")+'</div>' +
+      '<div class="nut num">'+fmt(Math.round(item.totals.kcal))+' kcal · '+fmt(Math.round(item.totals.p))+' g Protein je Portion</div>' +
+      prepBlock(r) +
+      '<div class="recipefoot"><select data-ownmeal="'+idx+'">'+MEALS.map(m=>'<option value="'+m[0]+'"'+(m[0]===guessMeal()?' selected':'')+'>'+m[1]+'</option>').join("")+'</select>' +
+      '<button class="primary" data-addown="'+idx+'">Eintragen</button>' +
+      '<button class="ghost" data-delrec="'+idx+'" aria-label="Rezept löschen">🗑</button></div></div>';
+  }).join("") : '<div class="empty">Noch keine eigenen Rezepte.</div>';
+}
+/* Aufklappbare Zubereitung für ein Rezept */
+function prepBlock(r){
+  if(!r.steps || !r.steps.length) return "";
+  const kochfrei = r.steps.some(s=>s.indexOf("Kein Kochen nötig")>=0);
+  const label = "Zubereitung" + (r.min ? " · ca. "+r.min+" Min." : "") + (kochfrei ? " · ohne Kochen" : "");
+  return '<details class="prep"><summary>'+label+'</summary>' +
+    '<ol>' + r.steps.map(s=>'<li>'+esc(s)+'</li>').join("") + '</ol></details>';
+}
+function guessMeal(){
+  const h = new Date().getHours() + new Date().getMinutes()/60;
+  if(h < 10.5) return "fruehstueck";
+  if(h < 15) return "mittag";
+  if(h < 17.5) return "snack";
+  return "abend";
+}
+
+/* ---------- Profil ---------- */
+function renderProfile(){
+  $("#pAlter").value = profile.alter; $("#pSex").value = profile.geschlecht;
+  $("#pGr").value = profile.groesse; $("#pGw").value = profile.gewicht; $("#pPal").value = String(profile.pal);
+  const T = computeTargets(profile);
+  $("#targetGrid").innerHTML = [
+    [fmt(T.kcal)+" kcal","Energie (Mifflin-St-Jeor × PAL "+String(profile.pal).replace(".",",")+")"],
+    [fmt(T.protein)+" g","Protein ("+(profile.alter<19?"0,9":"0,8")+" g/kg)"],
+    [fmt(T.kh)+" g","Kohlenhydrate (Zucker ≤ "+fmt(T.zuckerMax)+" g)"],
+    [fmt(T.fett)+" g","Fett (gesättigt ≤ "+fmt(T.sfMax)+" g)"],
+    [fmt(T.ballast)+" g","Ballaststoffe"],
+    [fmt(T.trinkziel/1000,1)+" l","Trinkziel (gesamt ≈ "+fmt(T.gesamtwasser/1000,1)+" l inkl. Essen)"]
+  ].map(x=>'<div class="t"><b>'+x[0]+'</b><span>'+x[1]+'</span></div>').join("");
+}
+
+/* =====================================================================
+   HINZUFÜGEN (Suche → Menge → Mahlzeit)
+   ===================================================================== */
+let addCtx = {meal:"snack", src:"suche", sel:null, drinkOnly:false};
+let offAbort = null, offTimer = null;
+
+function openAdd(meal){
+  addCtx = {meal: meal||guessMeal(), src:"suche", sel:null, drinkOnly: meal==="getraenk", cat:null};
+  $("#addTitle").textContent = meal==="getraenk" ? "Getränk hinzufügen" : "Hinzufügen – "+(MEAL_LABEL[addCtx.meal]||"");
+  $("#searchInput").value = "";
+  $("#apiStatus").textContent = "";
+  $$(".srctabs .chip").forEach(b=>b.setAttribute("aria-pressed", b.dataset.src==="suche" ? "true":"false"));
+  showStep(1);
+  renderResults([]);
+  openSheet("addSheet");
+  setTimeout(()=>$("#searchInput").focus(), 150);
+  renderDefaultList();
+}
+function showStep(n){
+  $("#addStep1").style.display = n===1 ? "" : "none";
+  $("#addStep2").style.display = n===2 ? "" : "none";
+}
+function renderCatChips(){
+  const box = $("#catChips");
+  if(addCtx.src!=="suche" || $("#searchInput").value.trim()){ box.innerHTML=""; return; }
+  const cats = addCtx.drinkOnly ? [] : CATS.filter(c=>c[0]!=="getraenk");
+  if(!cats.length){ box.innerHTML=""; return; }
+  box.innerHTML = '<span class="hint">Oder nach Kategorie stöbern:</span>' +
+    cats.map(c=>'<button class="chip" data-cat="'+c[0]+'" aria-pressed="'+(addCtx.cat===c[0]?"true":"false")+'">'+c[1]+'</button>').join("");
+}
+/* Zuletzt verwendete Lebensmittel aus dem Tagebuch */
+function recentItems(){
+  const seen = {}, out = [];
+  for(let i=log.length-1; i>=0 && out.length<8; i--){
+    const e = log[i];
+    if(seen[e.name] || (addCtx.drinkOnly && !e.isDrink) || (!addCtx.drinkOnly && e.isDrink)) continue;
+    const it = findItemByName(e.name);
+    if(it){ seen[e.name]=1; out.push(it); }
+  }
+  return out;
+}
+function renderDefaultList(){
+  renderCatChips();
+  if(addCtx.src==="favoriten"){ renderResults(favs.filter(f=>!addCtx.drinkOnly||f.isDrink)); return; }
+  if(addCtx.src==="eigene"){ renderResults(recipes.map((r,i)=>recipeToItem(r,"R"+i)).filter(()=> !addCtx.drinkOnly)); return; }
+  if(addCtx.cat){
+    renderResults(allLocalItems().filter(it=>it.cat===addCtx.cat), CAT_LABEL[addCtx.cat]);
+    return;
+  }
+  if(addCtx.drinkOnly){ renderResults(allLocalItems().filter(it=>it.isDrink), "Alle Getränke"); return; }
+  const rec = recentItems();
+  if(rec.length){ renderResults(rec, "Zuletzt verwendet"); return; }
+  renderResults([]);
+  $("#resultBox").innerHTML = '<div class="empty">Suchbegriff eintippen oder oben eine Kategorie wählen.</div>';
+}
+function normalize(s){ return s.toLowerCase().replace(/ä/g,"a").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ß/g,"ss"); }
+
+function doSearch(q){
+  if(addCtx.src!=="suche"){ renderDefaultList(); return; }
+  q = q.trim();
+  if(q) addCtx.cat = null;
+  renderCatChips();
+  if(!q){ renderDefaultList(); $("#apiStatus").textContent=""; return; }
+  const nq = normalize(q);
+  const local = allLocalItems()
+    .filter(it=>!addCtx.drinkOnly||it.isDrink)
+    .filter(it=>normalize(it.name).includes(nq) || (it.kw && normalize(it.kw).includes(nq)))
+    .sort((a,b)=>{
+      // Namenstreffer vor reinen Schlagwort-Treffern
+      const an = normalize(a.name).includes(nq) ? 0 : 1, bn = normalize(b.name).includes(nq) ? 0 : 1;
+      return an-bn || a.name.localeCompare(b.name,"de");
+    });
+  const own = recipes.map((r,i)=>recipeToItem(r,"R"+i)).filter(it=>normalize(it.name).includes(nq) && !addCtx.drinkOnly);
+  const prod = searchProducts(nq, 40, addCtx.drinkOnly);
+  const groups = [];
+  if(own.length) groups.push({title:"Eigene Rezepte", items:own});
+  if(local.length) groups.push({title:"Grundnahrungsmittel", items:local});
+  if(prod.items.length) groups.push({title:"Markenprodukte", items:prod.items, more: prod.total > prod.items.length});
+  renderGroups(groups, "Keine Treffer – probier einen kürzeren oder anderen Begriff.");
+  const stand = productStand();
+  $("#apiStatus").textContent = productData()
+    ? (prod.total ? prod.total.toLocaleString("de-DE")+" Markenprodukte gefunden" + (prod.total > prod.items.length ? ", die beliebtesten 40 werden gezeigt" : "") + " · Open Food Facts, Stand "+stand : "")
+    : "";
+  lastGroups = groups;
+  searchOFF(q, groups);
+}
+let lastGroups = [];
+
+/* Open Food Facts live – ergänzt den mitgelieferten Bestand um neuere Produkte.
+   Funktioniert nur, wo die Seite fremde Server erreichen darf (z. B. als lokale
+   Datei); im claude.ai-Artifact blockiert die Sicherheitsrichtlinie den Abruf. */
+function searchOFF(q, groups){
+  clearTimeout(offTimer);
+  if(offAbort) offAbort.abort();
+  const offlineStatus = $("#apiStatus").textContent;
+  if(!productData()) $("#apiStatus").textContent = "Suche in Open Food Facts …";
+  offTimer = setTimeout(async () => {
+    offAbort = new AbortController();
+    const kill = setTimeout(()=>offAbort.abort(), 6000);
+    try{
+      // Open Food Facts drosselt zeitweise einzelne Instanzen (HTTP 503) –
+      // deshalb nacheinander mehrere Hosts versuchen.
+      const params = "search_terms="+encodeURIComponent(q)+
+        "&search_simple=1&action=process&json=1&page_size=8&fields=code,product_name,brands,nutriments";
+      let data = null, lastErr = null;
+      for(const host of ["world.openfoodfacts.org","de.openfoodfacts.org"]){
+        try{
+          const res = await fetch("https://"+host+"/cgi/search.pl?"+params, {signal: offAbort.signal});
+          if(!res.ok) throw new Error("HTTP "+res.status);
+          data = await res.json();
+          break;
+        }catch(e){ lastErr = e; if(e.name==="AbortError") throw e; }
+      }
+      clearTimeout(kill);
+      if(!data) throw lastErr || new Error("keine Antwort");
+      const items = (data.products||[]).map(p => {
+        const nu = p.nutriments||{};
+        if(!p.product_name || nu["energy-kcal_100g"]==null) return null;
+        const per100 = {
+          kcal:+nu["energy-kcal_100g"]||0, p:+nu.proteins_100g||0, c:+nu.carbohydrates_100g||0,
+          z:+nu.sugars_100g||0, f:+nu.fat_100g||0, sf:+nu["saturated-fat_100g"]||0, b:+nu.fiber_100g||0
+        };
+        MICROS.forEach(([k])=>per100[k]=0);
+        per100.natrium = nu.sodium_100g!=null ? +nu.sodium_100g*1000 : 0;
+        per100.calcium = nu.calcium_100g!=null ? +nu.calcium_100g*1000 : 0;
+        per100.eisen   = nu.iron_100g!=null ? +nu.iron_100g*1000 : 0;
+        per100.vitC    = nu["vitamin-c_100g"]!=null ? +nu["vitamin-c_100g"]*1000 : 0;
+        return {id:"O"+p.code, code:p.code||"", name:p.product_name+(p.brands?" ("+p.brands.split(",")[0]+")":""), isDrink:addCtx.drinkOnly, per100, portions:[], cf:0, src:"Open Food Facts", isProduct:true, missing:[]};
+      }).filter(Boolean);
+      // Nur Produkte, die noch nicht im mitgelieferten Bestand angezeigt werden
+      const known = {};
+      groups.forEach(g => g.items.forEach(it => { if(it.code) known[it.code] = 1; known[it.name] = 1; }));
+      const neu = items.filter(it => !(it.code && known[it.code]) && !known[it.name]);
+      if($("#searchInput").value.trim()===q && neu.length){
+        renderGroups(groups.concat([{title:"Neu aus Open Food Facts (live)", items:neu}]));
+        $("#apiStatus").textContent = (offlineStatus ? offlineStatus + " · " : "") + neu.length + " weitere live ergänzt";
+      } else if($("#searchInput").value.trim()===q && !productData()){
+        $("#apiStatus").textContent = "Keine passenden Online-Treffer";
+      }
+    }catch(err){
+      clearTimeout(kill);
+      // Mit mitgeliefertem Bestand ist ein fehlender Live-Abruf kein Problem – Status bleibt
+      if($("#searchInput").value.trim()===q && !productData())
+        $("#apiStatus").textContent = "Online-Datenbank nicht erreichbar – eingebaute Datenbank aktiv";
+    }
+  }, 450);
+}
+
+let currentResults = [];
+function resultRow(it, idx){
+  const isFav = favs.some(f=>f.id===it.id);
+  const sub = it.isRecipe
+    ? "Eigenes Rezept · "+fmt(Math.round(it.totals.kcal))+" kcal/Portion"
+    : fmt(Math.round(it.per100.kcal))+" kcal je 100 "+(it.isDrink?"ml":"g")+" · "+(it.isProduct ? "Markenprodukt" : it.src);
+  return '<div class="result" data-pick="'+idx+'" role="button" tabindex="0">' +
+    '<div class="name"><b>'+esc(it.name)+'</b><span>'+sub+'</span></div>' +
+    '<button class="fav'+(isFav?' on':'')+'" data-fav="'+idx+'" aria-label="Favorit">'+(isFav?"★":"☆")+'</button></div>';
+}
+function renderResults(items, heading){
+  currentResults = items;
+  const head = heading ? '<div class="reshead">'+esc(heading)+' · '+items.length+'</div>' : "";
+  if(!items.length && addCtx.src!=="suche"){
+    $("#resultBox").innerHTML = '<div class="empty">'+(addCtx.src==="favoriten" ? "Noch keine Favoriten. Tippe in den Suchergebnissen auf ★." : "Noch keine eigenen Rezepte – lege eines im Tab „Rezepte“ an.")+'</div>';
+    return;
+  }
+  $("#resultBox").innerHTML = head + items.map(resultRow).join("");
+}
+/* Mehrere Gruppen mit eigener Überschrift, z. B. Grundnahrungsmittel + Markenprodukte */
+function renderGroups(groups, emptyText){
+  const flat = [];
+  let html = "";
+  groups.forEach(function(g){
+    if(!g.items.length) return;
+    html += '<div class="reshead">'+esc(g.title)+' · '+g.items.length+(g.more ? '+' : '')+'</div>';
+    g.items.forEach(function(it){ html += resultRow(it, flat.length); flat.push(it); });
+  });
+  currentResults = flat;
+  $("#resultBox").innerHTML = html || '<div class="empty">'+esc(emptyText||"Keine Treffer.")+'</div>';
+}
+
+function pickItem(it){
+  addCtx.sel = it;
+  $("#selName").textContent = it.name;
+  $("#selInfo").textContent = it.isRecipe
+    ? "je Portion: "+fmt(Math.round(it.totals.kcal))+" kcal · "+fmt(Math.round(it.totals.p))+" g Protein"
+    : "je 100 "+(it.isDrink?"ml":"g")+": "+fmt(Math.round(it.per100.kcal))+" kcal · "+fmt(it.per100.p,1)+" g Protein" +
+      (it.isProduct
+        ? " · Nährwerte laut Etikett (Open Food Facts). Vitamine und Mineralstoffe außer Natrium stehen nicht auf dem Etikett und werden nicht mitgezählt" +
+          (it.missing && it.missing.length ? "; ohne Angabe: " + it.missing.join(", ") : "") + "."
+        : "");
+  $("#amtUnit").textContent = it.isRecipe ? "Portionen" : (it.isDrink ? "ml" : "g");
+  const def = it.isRecipe ? 1 : (it.portions.length ? it.portions[0][1] : (it.isDrink?250:100));
+  $("#amtInput").value = def;
+  $("#amtInput").step = it.isRecipe ? "0.5" : "1";
+
+  const chips = it.isRecipe
+    ? [["½ Portion",0.5],["1 Portion",1],["2 Portionen",2]]
+    : it.portions.concat(it.isDrink ? [["100 ml",100]] : [["100 g",100]]);
+  $("#portChips").innerHTML = chips.map(c=>'<button class="chip" data-amt="'+c[1]+'">'+esc(c[0])+'</button>').join("");
+
+  $("#mealPickWrap").style.display = it.isDrink ? "none" : "";
+  $("#mealChips").innerHTML = MEALS.map(m=>'<button class="chip" data-meal="'+m[0]+'" aria-pressed="'+(m[0]===addCtx.meal?"true":"false")+'">'+m[1]+'</button>').join("");
+  updatePreview();
+  showStep(2);
+}
+function updatePreview(){
+  const it = addCtx.sel; if(!it) return;
+  const a = parseFloat($("#amtInput").value)||0;
+  const kcal = it.isRecipe ? it.totals.kcal*a : it.per100.kcal*a/100;
+  const p = it.isRecipe ? it.totals.p*a : it.per100.p*a/100;
+  $("#amtPreview").textContent = "= "+fmt(Math.round(kcal))+" kcal · "+fmt(p,1)+" g Protein";
+}
+
+function confirmAdd(){
+  const it = addCtx.sel; if(!it) return;
+  const a = parseFloat($("#amtInput").value);
+  if(!a || a<=0){ toast("Bitte eine Menge angeben"); return; }
+  const e = entryFromItem(it, a, addCtx.meal);
+  log.push(e); sset("log", log);
+  closeSheets();
+  toast(it.name+" → "+MEAL_LABEL[e.meal]);
+  renderAll();
+}
+
+/* =====================================================================
+   Eigene Rezepte anlegen
+   ===================================================================== */
+let draft = {name:"", ings:[]};
+function openRecipeEditor(){
+  draft = {name:"", ings:[]};
+  $("#recName").value = ""; $("#recSearch").value = ""; $("#recResults").innerHTML = "";
+  $("#recSteps").value = ""; $("#recMin").value = "";
+  renderDraft();
+  openSheet("recipeSheet");
+}
+function renderDraft(){
+  $("#recIngs").innerHTML = draft.ings.length
+    ? draft.ings.map((g,i)=>'<div class="ingline"><span class="n">'+esc(g[0])+'</span>' +
+        '<input type="number" min="1" value="'+g[1]+'" data-ingamt="'+i+'" aria-label="Gramm"> <span class="small muted">g</span>' +
+        '<button class="del" data-ingdel="'+i+'">✕</button></div>').join("")
+    : '<div class="empty">Noch keine Zutaten.</div>';
+  const item = recipeToItem(draft, "tmp");
+  $("#recTotals").textContent = draft.ings.length
+    ? "Gesamt: "+fmt(Math.round(item.totals.kcal))+" kcal · "+fmt(Math.round(item.totals.p))+" g Protein · "+fmt(Math.round(item.totals.c))+" g KH · "+fmt(Math.round(item.totals.f))+" g Fett"
+    : "";
+}
+function recSearchRun(q){
+  q = q.trim();
+  if(!q){ $("#recResults").innerHTML=""; return; }
+  const nq = normalize(q);
+  const basis = allLocalItems().filter(it=>normalize(it.name).includes(nq) || (it.kw && normalize(it.kw).includes(nq))).slice(0,6);
+  const marken = searchProducts(nq, 6, false).items;
+  $("#recResults").innerHTML = basis.concat(marken).map(it=>'<div class="result" data-recadd="'+esc(it.name)+'" role="button" tabindex="0"><div class="name"><b>'+esc(it.name)+'</b><span>'+fmt(Math.round(it.per100.kcal))+' kcal je 100 '+(it.isDrink?"ml":"g")+(it.isProduct?' · Markenprodukt':'')+'</span></div><span class="k">+ hinzufügen</span></div>').join("") ||
+    '<div class="empty">Kein Treffer.</div>';
+}
+function saveRecipe(){
+  const name = $("#recName").value.trim();
+  if(!name){ toast("Bitte einen Namen eingeben"); return; }
+  if(!draft.ings.length){ toast("Bitte mindestens eine Zutat"); return; }
+  const steps = $("#recSteps").value.split("\n").map(s=>s.trim()).filter(Boolean);
+  const min = parseInt($("#recMin").value, 10);
+  const rec = {name, ings: draft.ings.map(g=>[g[0],g[1]])};
+  if(steps.length) rec.steps = steps;
+  if(min > 0) rec.min = min;
+  recipes.push(rec);
+  sset("recipes", recipes);
+  closeSheets(); toast("Rezept gespeichert");
+  renderRecipes();
+}
+
+/* =====================================================================
+   Sheets, Navigation, Events
+   ===================================================================== */
+function openSheet(id){ $("#overlay").classList.add("open"); $("#"+id).classList.add("open"); }
+function closeSheets(){ $("#overlay").classList.remove("open"); $$(".sheet").forEach(s=>s.classList.remove("open")); }
+
+function switchTab(tab){
+  $$("nav.tabs button").forEach(b=>b.setAttribute("aria-current", b.dataset.tab===tab ? "true":"false"));
+  $$(".view").forEach(v=>v.classList.toggle("active", v.id==="view-"+tab));
+  if(tab==="woche") renderWeek();
+  if(tab==="rezepte") renderRecipes();
+  if(tab==="profil") renderProfile();
+  window.scrollTo({top:0});
+}
+
+function renderAll(){ renderToday(); if($("#view-woche").classList.contains("active")) renderWeek(); }
+
+let confirmAction = null;
+function askConfirm(title, text, fn, yesLabel){
+  $("#confTitle").textContent = title;
+  $("#confText").textContent = text;
+  $("#confYes").textContent = yesLabel || "Ja, fortfahren";
+  confirmAction = fn;
+  openSheet("confirmSheet");
+}
+
+document.addEventListener("click", ev => {
+  const t = ev.target.closest("button, .result");
+  if(!t) return;
+
+  if(t.dataset.tab) return switchTab(t.dataset.tab);
+  if(t.hasAttribute("data-close")) return closeSheets();
+  if(t.dataset.addmeal!=null) return openAdd(t.dataset.addmeal);
+  if(t.id==="backToSearch") return showStep(1);
+
+  if(t.dataset.cat){
+    addCtx.cat = (addCtx.cat===t.dataset.cat) ? null : t.dataset.cat;
+    $("#searchInput").value = "";
+    $("#apiStatus").textContent = "";
+    renderDefaultList();
+    return;
+  }
+  if(t.dataset.src){
+    addCtx.src = t.dataset.src;
+    addCtx.cat = null;
+    $$(".srctabs .chip").forEach(b=>b.setAttribute("aria-pressed", b.dataset.src===addCtx.src ? "true":"false"));
+    $("#apiStatus").textContent = "";
+    doSearch($("#searchInput").value);
+    return;
+  }
+  if(t.dataset.fav!=null){
+    ev.stopPropagation();
+    const it = currentResults[+t.dataset.fav];
+    const i = favs.findIndex(f=>f.id===it.id);
+    if(i>=0) favs.splice(i,1); else favs.push(it);
+    sset("favs", favs);
+    renderResults(currentResults);
+    return;
+  }
+  if(t.classList.contains("result") && t.dataset.pick!=null) return pickItem(currentResults[+t.dataset.pick]);
+  if(t.classList.contains("result") && t.dataset.recadd!=null){
+    draft.ings.push([t.dataset.recadd, 100]);
+    $("#recSearch").value=""; $("#recResults").innerHTML="";
+    renderDraft(); return;
+  }
+  if(t.dataset.amt!=null){ $("#amtInput").value = t.dataset.amt; updatePreview(); return; }
+  if(t.id==="amtMinus"||t.id==="amtPlus"){
+    const inp = $("#amtInput");
+    const step = addCtx.sel && addCtx.sel.isRecipe ? 0.5 : (addCtx.sel && addCtx.sel.isDrink ? 50 : 10);
+    let v = (parseFloat(inp.value)||0) + (t.id==="amtPlus"?step:-step);
+    inp.value = Math.max(step, Math.round(v*10)/10);
+    updatePreview(); return;
+  }
+  if(t.dataset.meal){ addCtx.meal=t.dataset.meal; $$("#mealChips .chip").forEach(b=>b.setAttribute("aria-pressed", b.dataset.meal===addCtx.meal?"true":"false")); return; }
+  if(t.id==="btnConfirmAdd") return confirmAdd();
+
+  if(t.dataset.del){
+    const e = log.find(x=>x.id===t.dataset.del);
+    log = log.filter(x=>x.id!==t.dataset.del);
+    sset("log", log);
+    if(e) toast(e.name+" entfernt");
+    renderAll(); return;
+  }
+  if(t.id==="btnYesterday"){
+    const y = new Date(); y.setDate(y.getDate()-1);
+    const yk = dateKey(y);
+    const es = log.filter(e=>e.date===yk);
+    if(!es.length){ toast("Gestern wurde nichts erfasst"); return; }
+    askConfirm("Gestern wiederholen?", es.length+" Einträge von gestern werden für heute übernommen.", () => {
+      es.forEach(e => log.push(Object.assign({}, e, {id: Date.now()+"_"+Math.random().toString(36).slice(2,7), date: todayKey(), n: Object.assign({}, e.n)})));
+      sset("log", log); renderAll(); toast(es.length+" Einträge übernommen");
+    }, "Übernehmen");
+    return;
+  }
+  if(t.id==="btnShuffle"){ shuffleOffset++; renderRecipes(); return; }
+  if(t.id==="btnNewRecipe") return openRecipeEditor();
+  if(t.id==="btnSaveRecipe") return saveRecipe();
+  if(t.dataset.ingdel!=null){ draft.ings.splice(+t.dataset.ingdel,1); renderDraft(); return; }
+  if(t.dataset.addsug!=null){
+    const i = +t.dataset.addsug;
+    const meal = $("select[data-sugmeal='"+i+"']").value;
+    const item = recipeToItem(SUGGESTIONS[i], "S"+i);
+    log.push(entryFromItem(item, 1, meal)); sset("log", log);
+    toast(SUGGESTIONS[i].name+" → "+MEAL_LABEL[meal]); renderAll(); return;
+  }
+  if(t.dataset.addown!=null){
+    const i = +t.dataset.addown;
+    const meal = $("select[data-ownmeal='"+i+"']").value;
+    const item = recipeToItem(recipes[i], "R"+i);
+    log.push(entryFromItem(item, 1, meal)); sset("log", log);
+    toast(recipes[i].name+" → "+MEAL_LABEL[meal]); renderAll(); return;
+  }
+  if(t.dataset.delrec!=null){
+    const i = +t.dataset.delrec;
+    askConfirm("Rezept löschen?", "„"+recipes[i].name+"“ wird entfernt. Bereits erfasste Einträge bleiben erhalten.", () => {
+      recipes.splice(i,1); sset("recipes", recipes); renderRecipes(); toast("Rezept gelöscht");
+    }, "Löschen");
+    return;
+  }
+  if(t.id==="btnBackup" || t.id==="btnRestore") return openBackupSheet();
+  if(t.id==="btnDoExport") return exportBackup();
+  if(t.id==="btnPickFile"){ $("#fileInput").value = ""; $("#fileInput").click(); return; }
+  if(t.id==="btnRestoreText"){
+    const txt = $("#restoreText").value.trim();
+    if(!txt){ toast("Bitte zuerst den Sicherungstext einfügen"); return; }
+    closeSheets(); importFromText(txt); return;
+  }
+  if(t.id==="btnReset"){
+    askConfirm("Alles zurücksetzen?", "Tagebuch, Favoriten, eigene Rezepte und Profil werden endgültig gelöscht. Das lässt sich nicht rückgängig machen.", () => {
+      log=[]; favs=[]; recipes=[]; profile=Object.assign({},DEFAULT_PROFILE);
+      ["log","favs","recipes","profile"].forEach(k=>sset(k, k==="profile"?profile:[]));
+      renderAll(); renderProfile(); renderRecipes(); toast("Alle Daten gelöscht");
+    }, "Endgültig löschen");
+    return;
+  }
+  if(t.id==="confYes"){ closeSheets(); if(confirmAction){ const f=confirmAction; confirmAction=null; f(); } return; }
+});
+
+$("#overlay").addEventListener("click", closeSheets);
+document.addEventListener("keydown", ev => {
+  if(ev.key==="Escape") closeSheets();
+  if(ev.key==="Enter" && ev.target.classList && ev.target.classList.contains("result")) ev.target.click();
+});
+$("#fileInput").addEventListener("change", ev => {
+  const f = ev.target.files && ev.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = () => { closeSheets(); importFromText(String(r.result)); };
+  r.onerror = () => toast("Datei konnte nicht gelesen werden");
+  r.readAsText(f);
+});
+$("#searchInput").addEventListener("input", ev => doSearch(ev.target.value));
+$("#recSearch").addEventListener("input", ev => recSearchRun(ev.target.value));
+$("#amtInput").addEventListener("input", updatePreview);
+document.addEventListener("input", ev => {
+  if(ev.target.dataset && ev.target.dataset.ingamt!=null){
+    const i=+ev.target.dataset.ingamt; const v=parseFloat(ev.target.value)||0;
+    draft.ings[i][1]=v;
+    const item = recipeToItem(draft,"tmp");
+    $("#recTotals").textContent = "Gesamt: "+fmt(Math.round(item.totals.kcal))+" kcal · "+fmt(Math.round(item.totals.p))+" g Protein · "+fmt(Math.round(item.totals.c))+" g KH · "+fmt(Math.round(item.totals.f))+" g Fett";
+  }
+});
+
+/* Profil-Änderungen */
+[["pAlter","alter",v=>Math.max(15,Math.min(99,parseInt(v)||18))],
+ ["pSex","geschlecht",v=>v],
+ ["pGr","groesse",v=>Math.max(120,Math.min(230,parseFloat(v)||190))],
+ ["pGw","gewicht",v=>Math.max(35,Math.min(200,parseFloat(v)||77))],
+ ["pPal","pal",v=>parseFloat(v)]
+].forEach(([id,key,parse]) => {
+  $("#"+id).addEventListener("change", ev => {
+    profile[key] = parse(ev.target.value);
+    sset("profile", profile);
+    renderProfile(); renderToday();
+    toast("Profil aktualisiert");
+  });
+});
+
+/* =====================================================================
+   Sicherung: exportieren, wiederherstellen
+   ===================================================================== */
+function backupJSON(){
+  return JSON.stringify({
+    app:"naehrwert", version:1, exportedAt:new Date().toISOString(),
+    profile:profile, log:log, favs:favs, recipes:recipes
+  }, null, 2);
+}
+function backupName(){ return "naehrwert-sicherung-" + todayKey() + ".json"; }
+
+function exportBackup(){
+  const data = backupJSON(), name = backupName();
+  if(window.claude && window.claude.downloads){
+    window.claude.downloads.save({filename:name, data:data}).then(function(){
+      toast("Sicherung gespeichert");
+    }).catch(function(err){
+      const code = err && err.code;
+      if(code === "declined") return;
+      if(code === "rate_limited"){ toast("Bitte kurz warten und erneut versuchen"); return; }
+      if(code === "unavailable" || code === "not_granted" || code === "capability_disabled" || code === "capability_removed"){ textFallback(); return; }
+      blobDownload(name, data);
+    });
+    return;
+  }
+  blobDownload(name, data);
+}
+function blobDownload(name, data){
+  try{
+    const url = URL.createObjectURL(new Blob([data], {type:"application/json"}));
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+    toast("Sicherung gespeichert");
+  }catch(e){ textFallback(); }
+}
+/* Wenn der Browser oder die Umgebung keinen Download zulässt: Text zum Kopieren zeigen */
+function textFallback(){
+  const d = $("#backupText") && $("#backupText").closest("details");
+  if(d){ d.open = true; d.scrollIntoView({block:"center"}); }
+  toast("Download hier nicht möglich – bitte den Text kopieren");
+}
+
+function applyBackup(obj){
+  if(!obj || obj.app !== "naehrwert") { toast("Das ist keine NährWert-Sicherung"); return false; }
+  const neuLog = Array.isArray(obj.log) ? obj.log : [];
+  const neuFavs = Array.isArray(obj.favs) ? obj.favs : [];
+  const neuRec = Array.isArray(obj.recipes) ? obj.recipes : [];
+  askConfirm("Sicherung einspielen?",
+    "Die Sicherung enthält " + neuLog.length + (neuLog.length===1?" Eintrag, ":" Einträge, ") +
+    neuFavs.length + (neuFavs.length===1?" Favorit und ":" Favoriten und ") +
+    neuRec.length + (neuRec.length===1?" eigenes Rezept.":" eigene Rezepte.") +
+    " Deine aktuellen Daten werden dadurch ersetzt.",
+    function(){
+      log = neuLog; favs = neuFavs; recipes = neuRec;
+      if(obj.profile) profile = Object.assign({}, DEFAULT_PROFILE, obj.profile);
+      sset("log", log); sset("favs", favs); sset("recipes", recipes); sset("profile", profile);
+      pruneOld();
+      renderAll(); renderProfile(); renderRecipes(); renderStorageInfo();
+      toast("Sicherung wiederhergestellt");
+    }, "Einspielen");
+  return true;
+}
+function importFromText(text){
+  let obj = null;
+  try{ obj = JSON.parse(text); }catch(e){ toast("Die Sicherung ist unlesbar"); return; }
+  applyBackup(obj);
+}
+function openBackupSheet(){
+  $("#backupText").value = backupJSON();
+  $("#restoreText").value = "";
+  openSheet("backupSheet");
+}
+
+/* Quellenangabe im Profil (Open Food Facts verlangt Namensnennung, ODbL) */
+function renderSourceInfo(){
+  const box = $("#sourceInfo");
+  if(!box) return;
+  const P = productData();
+  box.innerHTML =
+    '<p style="margin:0 0 8px">Grundnahrungsmittel und Rezepte: gerundete Durchschnittswerte aus gängigen Nährwerttabellen.</p>' +
+    (P
+      ? '<p style="margin:0">Markenprodukte: <b>' + productItems().length.toLocaleString("de-DE") + '</b> in Deutschland verkaufte Produkte aus ' +
+        '<a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a>, Stand ' + esc(productStand()) + '. ' +
+        'Die Daten stehen unter der <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">Open Database License</a>. ' +
+        'Koffein und Portionsgrößen sind aus der Produktkategorie abgeleitet.</p>'
+      : '<p style="margin:0">Markenprodukte: Die Datei <code>naehrwert-produkte.js</code> wurde nicht gefunden. Lege sie in denselben Ordner wie diese Seite.</p>');
+}
+
+/* Statuszeile im Profil */
+function renderStorageInfo(){
+  const box = $("#storageInfo");
+  if(!box) return;
+  let txt, farbe;
+  if(!storageOk){
+    txt = "Speichern ist in diesem Fenster nicht möglich – die Daten gelten nur für diese Sitzung. Häufigste Ursache: privates Fenster oder blockierte Website-Daten.";
+    farbe = "var(--over)";
+  } else if(persistState === "dauerhaft"){
+    txt = "Dauerhaft gespeichert. Der Browser hat zugesagt, die Daten nicht von selbst zu löschen." + (idbOk ? " Zusätzlich liegt eine Zweitkopie in der Datenbank des Browsers." : "");
+    farbe = "var(--ok)";
+  } else if(persistState === "nicht garantiert"){
+    txt = "Gespeichert, aber ohne Garantie: Der Browser darf die Daten bei Platzmangel oder beim Aufräumen löschen." + (idbOk ? " Eine Zweitkopie liegt in der Datenbank des Browsers." : "") + " Lege dir gelegentlich eine Sicherung an.";
+    farbe = "var(--warn)";
+  } else {
+    txt = "Gespeichert auf diesem Gerät." + (idbOk ? " Eine Zweitkopie liegt in der Datenbank des Browsers." : "") + " Ob der Browser die Daten dauerhaft behält, lässt sich hier nicht abfragen – lege dir gelegentlich eine Sicherung an.";
+    farbe = "var(--muted)";
+  }
+  let stand = "";
+  try{
+    const t = JSON.parse(localStorage.getItem(LS+"savedAt") || "0");
+    if(t) stand = "Zuletzt gespeichert: " + new Date(t).toLocaleString("de-DE",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"}) + ".";
+  }catch(e){}
+  box.innerHTML = '<div class="storagestate" style="border-color:'+farbe+'"><b style="color:'+farbe+'">Speicherstatus</b>' +
+    '<div class="small" style="margin-top:3px">'+esc(txt)+'</div>' +
+    (stand ? '<div class="small muted" style="margin-top:3px">'+esc(stand)+'</div>' : '') + '</div>';
+}
+
+/* ---------- Start ---------- */
+applyKeywords();
+pruneOld();
+renderToday();
+renderProfile();
+renderStorageInfo();
+renderSourceInfo();
+
+/* Dauerhaften Speicher anfordern und ggf. aus der Zweitkopie wiederherstellen */
+requestPersistence().then(renderStorageInfo);
+restoreFromMirror().then(function(restored){
+  if(restored){
+    pruneOld();
+    renderAll(); renderProfile(); renderRecipes();
+    toast("Frühere Einträge wiederhergestellt");
+  }
+  renderStorageInfo();
+});
+
+/* Beim Verlassen der Seite den aktuellen Stand sicherheitshalber erneut schreiben */
+window.addEventListener("pagehide", function(){
+  try{ KEYS.forEach(function(k){ idbSet(k, k==="log"?log : k==="favs"?favs : k==="recipes"?recipes : profile); }); }catch(e){}
+});
+
+if(!storageOk) toast("Hinweis: Speichern nicht verfügbar – Daten gelten nur für diese Sitzung");
+</script>
