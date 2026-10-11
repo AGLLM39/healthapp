@@ -574,7 +574,8 @@ details.microfold > summary + *{margin-top:10px}
 <div class="toast" id="toast" role="status"><span id="toastMsg"></span></div>
 
 <!-- Markenprodukte aus Open Food Facts (optional – fehlt die Datei, läuft die App ohne sie) -->
-<script src="naehrwert-produkte.js"></script>
+<script src="naehrwert-bls.js" defer></script>
+<script src="naehrwert-produkte.js" defer></script>
 <script>
 "use strict";
 /* =====================================================================
@@ -684,7 +685,8 @@ const MICROS = [
   ["vitA","Vitamin A","µg"], ["vitC","Vitamin C","mg"], ["vitD","Vitamin D","µg"],
   ["b12","Vitamin B12","µg"], ["folat","Folat","µg"], ["eisen","Eisen","mg"],
   ["calcium","Calcium","mg"], ["magnesium","Magnesium","mg"], ["zink","Zink","mg"],
-  ["kalium","Kalium","mg"], ["natrium","Natrium","mg"], ["jod","Jod","µg"]
+  ["kalium","Kalium","mg"], ["natrium","Natrium","mg"], ["jod","Jod","µg"],
+  ["vitE","Vitamin E","mg"], ["o3","Omega-3","g"]
 ];
 const MACRO_KEYS = ["kcal","p","c","z","f","sf","b"];
 const ALL_KEYS = MACRO_KEYS.concat(MICROS.map(m=>m[0]));
@@ -707,6 +709,8 @@ function microRefs(p){
   r.eisen = m ? (jung ? 12 : 11) : (p.alter >= 51 ? 14 : jung ? 15 : 16);
   r.zink = m ? 14 : (jung ? 11 : 8);
   r.jod = p.alter >= 51 ? 180 : 200;
+  // Vitamin E: DGE-Schätzwerte (mg Tocopherol-Äquivalent)
+  r.vitE = m ? (jung || g === "19–24" ? 15 : g === "25–50" ? 14 : g === "51–64" ? 13 : 12) : (g === "ab 65" ? 11 : 12);
   return r;
 }
 
@@ -738,8 +742,11 @@ function computeTargets(p){
   const aktivZuschlag = p.pal >= 2.0 ? 500 : p.pal >= 1.8 ? 250 : 0;
   const gesamtwasser = Math.round((p.gewicht*mlKg + aktivZuschlag)/50)*50;
   const trinkziel = Math.round(gesamtwasser*0.6/50)*50;
+  // Omega-3: DGE-Richtwert für Alpha-Linolensäure 0,5 % der Energie (Fisch-Omega-3 zählt mit)
+  const micros = microRefs(p);
+  micros.o3 = Math.round(kcal*0.005/9*10)/10;
   return {kcal, bmr:Math.round(bmr), protein, gkg, protWeight, protBasis, kh, fett, sfMax, zuckerMax, ballast,
-          trinkziel, gesamtwasser, mlKg, aktivZuschlag, micros:microRefs(p), gruppe:ageGroup(p.alter)};
+          trinkziel, gesamtwasser, mlKg, aktivZuschlag, micros, gruppe:ageGroup(p.alter)};
 }
 
 /* =====================================================================
@@ -909,7 +916,14 @@ const KEYWORDS = [
   [/mandeln|walnüsse|haselnüsse|cashew|pistazien|paranüsse|pekan|macadamia|erdnüsse/i, "nüsse"],
   [/linsen|bohnen|kichererbsen|erbsen|edamame/i, "hülsenfrüchte"]
 ];
+/* Vitamin E (mg) und Omega-3 (g) je 100 g für die Grundnahrungsmittel – übernommen aus dem
+   Bundeslebensmittelschlüssel (BLS 4.0, Max Rubner-Institut, CC BY 4.0), jeweils vom passendsten Eintrag. */
+const VITE_O3 = {"Alkoholfreies Bier":[0,0],"Ananas":[0.02,0.013],"Apfel":[0.172,0.044],"Apfelkuchen":[0.458,0.06],"Apfelmus":[0.137,0.035],"Apfelsaft":[0.08,0],"Aprikose":[0.5,0],"Aprikosen (getrocknet)":[4.3,0],"Artischocke":[0.19,0],"Aubergine":[0.03,0.015],"Avocado":[1.7,0.104],"Banane":[0.665,0.052],"Bandnudeln / Eiernudeln (gekocht)":[0.039,0.007],"Basmatireis (gekocht)":[0.018,0.004],"Bier":[0,0],"Birne":[0.21,0.019],"Blattsalat":[0.237,0.071],"Blaubeeren":[1.2,0.184],"Blumenkohl":[0.08,0.109],"Bratkartoffeln":[0.81,0.9],"Bratkartoffeln mit Ei":[0.81,0.9],"Bratwurst":[0.5,0.16],"Brokkoli":[2.2,0.177],"Brombeeren":[1.4,0],"Brötchen":[0.544,0.097],"Bulgur (gekocht)":[0.06,0.02],"Butter":[2.2,0.709],"Butterkekse":[0.57,0.094],"Butterkäse":[1.0,0],"Buttermilch":[0.022,0.005],"Camembert":[0.58,0.197],"Cashewkerne":[0.29,0.08],"Champignons":[0.01,0],"Cheeseburger":[0.6,0.14],"Chiasamen":[0.29,19.4],"Chili con Carne":[1.3,0.14],"Chinakohl":[0,0.022],"Cola":[0,0],"Cornflakes":[0.066,0.01],"Couscous (gekocht)":[0.108,0.019],"Croissant":[1.5,0.27],"Crème fraîche":[0.745,0.198],"Datteln (getrocknet)":[0.77,0],"Dinkelvollkornbrot":[0.44,0.07],"Döner Kebab":[0.61,0.15],"Edamame (Sojabohnen)":[0,0.376],"Ei":[1.2,0.126],"Eiklar":[0,0],"Eisbergsalat":[0.22,0.03],"Eistee":[0,0],"Emmentaler":[0.67,0.179],"Ente (gebraten)":[1.9,0.44],"Erbsen":[0.063,0.05],"Erbsen (tiefgekühlt)":[0.063,0.05],"Erdbeeren":[0.275,0.104],"Erdnussbutter":[6.8,0],"Erdnussflips":[6.5,0],"Erdnüsse":[8.0,0.025],"Espresso":[0.006,0],"Feige (frisch)":[0,0],"Feldsalat":[0.458,0.145],"Fenchel":[0.06,0.003],"Feta":[0.795,0.244],"Fettarme Milch 1,5 %":[0.044,0.01],"Fischstäbchen":[4.5,0.54],"Fleischwurst":[0.764,0.297],"Forelle":[1.7,3.0],"Frikadelle":[0.64,0.17],"Frischkäse":[0.437,0.091],"Fruchtjoghurt":[0.08,0.014],"Fusilli (gekocht)":[0.2,0.017],"Garnelen":[1.5,0.393],"Gemischtes Hackfleisch":[0.6,0.063],"Gemüsesuppe":[0.3,0.03],"Getrocknete Tomaten":[11.4,0.105],"Glasnudeln (gekocht)":[0,0],"Gnocchi (gekocht)":[0.099,0.01],"Gouda":[0.84,0.181],"Granatapfel":[0,0],"Grapefruit":[0.22,0.012],"Griechischer Joghurt 10 %":[0.26,0.1],"Griechischer Salat":[1.3,0.42],"Grüner Tee":[0,0],"Grünkohl":[1.9,0.3],"Gulasch":[1.3,0.24],"Gummibärchen":[0.048,0],"Gurke":[0.03,0.042],"Gurkensalat":[0.266,0.14],"Haferdrink (ungesüßt)":[0.33,0.007],"Haferflocken":[0.8,0.112],"Hamburger":[0.6,0.14],"Haselnüsse":[22.2,0.057],"Hering":[1.7,2.4],"Himbeeren":[0.79,0.065],"Hirse (gekocht)":[0.042,0.035],"Honig":[0,0],"Hummus":[8.3,0.1],"Hähnchenbrust":[0.58,0.035],"Hähnchenschenkel":[0.74,0.26],"Hüttenkäse":[0.07,0.04],"Ingwer":[0.88,0.034],"Jodsalz":[0,0],"Joghurt-Dressing":[1.7,0.7],"Kabeljau":[0.32,0.364],"Kaffee (schwarz)":[0.02,0],"Karotte":[0.787,0.005],"Kartoffelchips":[3.4,0.11],"Kartoffeln (gekocht)":[0.071,0.003],"Kartoffelpüree":[0.111,0.012],"Kartoffelsalat":[2.3,0.93],"Kefir":[0.091,0.016],"Ketchup":[1.7,0.003],"Kichererbsen (gekocht)":[1.1,0.26],"Kidneybohnen (Dose)":[0.27,0],"Kirschen":[0.08,0.046],"Kiwi":[1.7,0.1],"Knoblauch":[0.01,0.013],"Knäckebrot":[0.763,0.08],"Kochschinken":[0.3,0.042],"Kohlrabi":[0.062,0.047],"Kokosöl":[0.05,0],"Kräutertee":[0,0],"Kürbis (Hokkaido)":[1.0,0.061],"Kürbiskerne":[2.2,0.222],"Kürbissuppe":[0.586,0.16],"Lachs":[1.9,2.6],"Lammkotelett":[0.33,0.197],"Lasagne":[1.8,0.46],"Latte Macchiato":[0.077,0.018],"Lauch / Porree":[0.35,0.013],"Laugenbrezel":[0.81,0.15],"Leberwurst":[0.382,0.56],"Leinsamen (geschrotet)":[0,20.0],"Leinöl":[0.54,52.8],"Limonade":[0,0],"Linsen (gekocht)":[0.26,0.06],"Linsensuppe":[0.4,0.16],"Macadamia":[0.57,0.23],"Magerquark":[0.012,0.001],"Mais (Dose)":[0.13,0.016],"Makkaroni (gekocht)":[0.2,0.017],"Makrele":[1.2,1.9],"Mandarine":[0.15,0.038],"Mandeldrink (ungesüßt)":[0.572,0.001],"Mandelmus":[24.2,0.042],"Mandeln":[23.9,0.04],"Mango":[0.82,0.067],"Mangold":[0.716,0.125],"Margarine":[8.7,3.9],"Marmelade":[0.362,0.013],"Marmorkuchen":[1.6,0.1],"Matjes":[0.575,5.1],"Maultaschen":[0.68,0.13],"Mayonnaise":[15.4,6.4],"Mehrkornbrötchen":[1.7,0.76],"Miesmuscheln":[0.938,0.503],"Milchbrötchen":[0.55,0.07],"Milchschokolade":[0.38,0.12],"Mineralwasser":[0,0],"Mozzarella":[0.456,0.149],"Müsli (ungesüßt)":[2.5,1.9],"Naturjoghurt 3,5 %":[0.091,0.02],"Nektarine":[0.54,0],"Nudeln (gekocht)":[0.2,0.017],"Nudeln, roh (Hartweizen)":[0.46,0.038],"Nuss-Nougat-Creme":[8.2,0.24],"Oliven (grün)":[0,0.095],"Olivenöl":[20.2,0.7],"Orange":[0.725,0.025],"Orangenlimonade":[0,0],"Orangensaft":[0.08,0],"Papaya":[0.28,0.016],"Paprika (rot)":[3.9,0.024],"Paranüsse":[5.7,0.075],"Parmesan":[0.398,0.138],"Pastinake":[0.88,0.021],"Pekannüsse":[1.3,0.757],"Penne (gekocht)":[0.2,0.017],"Pesto (Basilikum)":[12.5,0.3],"Pfefferminztee":[0,0],"Pfirsich":[0.425,0.001],"Pflaume":[0.283,0.031],"Pflaumen (getrocknet)":[2.1,0],"Pistazien":[5.2,0.195],"Pizza Hawaii":[1.4,0.53],"Pizza Margherita":[1.8,0.72],"Polenta (gekocht)":[1.3,0],"Pommes frites":[2.9,1.8],"Popcorn (gesalzen)":[3.2,0.092],"Pudding (Vanille)":[0.11,0.069],"Pumpernickel":[0.467,0.03],"Putenbrust":[0,0.027],"Quinoa (gekocht)":[0.806,0.106],"Radieschen":[0.062,0.046],"Radler":[0,0],"Rapsöl":[19.8,8.5],"Reis (gekocht)":[0.018,0.004],"Reisnudeln (gekocht)":[0.014,0],"Reiswaffel":[0.74,0.029],"Rinderhackfleisch":[0.52,0.021],"Rinderleber":[0.75,0.103],"Rindersteak":[0.8,0.038],"Roggenbrot":[0.7,0.04],"Rosenkohl":[0.83,0.156],"Rosinen":[0.29,0.1],"Rote Bete":[0.043,0.004],"Rote Linsen (gekocht)":[0.6,0.09],"Rotkohl":[0.07,0.043],"Rucola":[2.9,0.136],"Räucherlachs":[3.0,1.5],"Räuchertofu":[0.765,0.478],"Rührei (zubereitet)":[1.5,0.78],"Sahne 30 %":[1.0,0.245],"Salami":[1.0,0.293],"Salzstangen":[2.4,0.137],"Sardinen (Dose)":[5.5,0.732],"Sauerkraut":[0.029,0.011],"Saure Sahne / Schmand":[0.66,0.02],"Schmelzkäse":[0.64,0.112],"Schokoladeneis":[0.74,0.394],"Scholle":[0.85,0.2],"Schwarze Johannisbeeren":[1.8,0.041],"Schwarzer Tee":[0,0],"Schweinebraten":[0.913,0.11],"Schweinefilet":[0.597,0.02],"Schweineschnitzel (natur)":[0.442,0.028],"Seelachs":[1.2,0.755],"Seitan":[2.5,0],"Sellerie (Knolle)":[0.5,0.017],"Semmelknödel":[0.537,0.08],"Senf":[0.705,0.904],"Sesam":[0.25,0.67],"Skyr":[0.024,0],"Sojadrink (ungesüßt)":[0.147,0.088],"Sojasauce":[0,0.017],"Sonnenblumenkerne":[37.2,0.055],"Sonnenblumenöl":[59.0,0.1],"Spaghetti (gekocht)":[0.2,0.017],"Spargel":[1.1,0.026],"Speck / Bacon":[0.559,0.181],"Speisequark 20 %":[0.12,0.029],"Spiegelei":[1.6,0.79],"Spinat":[3.0,0.134],"Spätzle (gekocht)":[0.625,0.06],"Studentenfutter":[8.0,0.5],"Süßkartoffel":[0.26,0],"Thunfisch (Dose, Wasser)":[0.517,0.14],"Thunfisch (Dose, Öl)":[6.2,0.442],"Toastbrot":[0.4,0.09],"Tofu":[0.765,0.478],"Tomate":[0.89,0.008],"Tomatensauce (Passata)":[10.9,0.02],"Tomatensuppe":[0.619,0.16],"Traubensaft":[0.08,0],"Vanilleeis":[0.97,0.029],"Vollkornbrot":[0.433,0.042],"Vollkornnudeln (gekocht)":[0.17,0.03],"Vollkornnudeln, roh":[0.46,0.07],"Vollkornreis (gekocht)":[0.018,0.004],"Vollkorntoast":[0.56,0.111],"Vollmilch 3,5 %":[0.095,0.023],"Walnüsse":[1.1,10.1],"Wasser (Leitungswasser)":[0,0],"Wassermelone":[0.038,0.017],"Weintrauben":[0.38,0.035],"Weizenkleie":[0.944,0.148],"Weißbrot":[0.585,0.059],"Weißkohl":[0.293,0.087],"Wiener Würstchen":[0.85,0.232],"Zartbitterschokolade":[0.377,0.111],"Zitrone":[0.725,0.09],"Zucchini":[0.31,0.087],"Zucker":[0,0],"Zwiebel":[0.04,0.003]};
 function applyKeywords(){
+  DB.forEach(function(d){
+    const x = VITE_O3[d.n];
+    if(x){ d.m = d.m || {}; if(d.m.vitE == null) d.m.vitE = x[0]; if(d.m.o3 == null) d.m.o3 = x[1]; }
+  });
   DB.forEach(function(d){
     KEYWORDS.forEach(function(kw){
       if(kw[0].test(d.n)) d.kw = (d.kw ? d.kw+" " : "") + kw[1];
@@ -1207,6 +1221,7 @@ add("getraenk",1,"Kombucha",25,0,6,5,0,0,0,{kalium:30},[["1 Glas",250]],5);
 add("getraenk",1,"Radler",50,0.3,6,3,0,0,0,{kalium:35,magnesium:6},[["0,5 l",500]]);
 add("getraenk",1,"Weißwein",70,0.1,2.5,1,0,0,0,{kalium:80,magnesium:10},[["1 Glas",200]]);
 add("getraenk",1,"Rotwein",75,0.2,2.5,0.6,0,0,0,{kalium:130,eisen:0.5,magnesium:12},[["1 Glas",200]]);
+add("fett",0,"Schwarzkümmelöl",884,0,0,0,100,16,0,{vitE:4,o3:0.3},[["1 TL",5],["1 EL",10]]);
 add("getraenk",1,"Weizenbier",45,0.5,3.5,0.3,0,0,0,{kalium:50,magnesium:10,folat:8},[["0,5 l",500]]);
 
 /* ---------- Rezeptvorschläge (eingebaut, rotierend) ---------- */
@@ -1504,6 +1519,8 @@ const MEAL_LABEL = Object.fromEntries(MEALS.concat([["getraenk","Getränke"]]));
 /* ---------- Hilfen ---------- */
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
+/* Referenzwerte: kleine Werte mit einer Nachkommastelle (z. B. 1,7 g Omega-3) */
+function fmtRef(x){ return fmt(x, x < 10 && x % 1 ? 1 : 0); }
 function fmt(x, d=0){ return (x==null||isNaN(x)) ? "–" : x.toLocaleString("de-DE",{minimumFractionDigits:d, maximumFractionDigits:d}); }
 function dateKey(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), t=String(d.getDate()).padStart(2,"0"); return y+"-"+m+"-"+t; }
 function todayKey(){ return dateKey(new Date()); }
@@ -1559,13 +1576,41 @@ function allLocalItems(){
    naehrwert-produkte.js wird vorab auf dem Rechner aus Open Food Facts erzeugt
    und neben dieser Seite ausgeliefert. So funktioniert die Suche auch dort,
    wo die Seite selbst keine fremden Server erreichen darf. */
+/* ---------- Bundeslebensmittelschlüssel (BLS 4.0) ----------
+   naehrwert-bls.js: rund 7.100 Lebensmittel mit vollständigen Nährwerten,
+   aufbereitet aus der Nährstoffdatenbank des Max Rubner-Instituts (CC BY 4.0). */
+let _blsCache = null;
+function blsData(){ return (window.NW_BLS && Array.isArray(window.NW_BLS.rows)) ? window.NW_BLS : null; }
+function blsItems(){
+  if(_blsCache) return _blsCache;
+  const B = blsData();
+  if(!B) return [];
+  const F = B.meta.felder, iD = F.indexOf("getraenk"), iC = F.indexOf("koffein_mg_100ml"), iP = F.indexOf("portion_index");
+  const keys = ALL_KEYS.map(k => [k, F.indexOf(k)]).filter(x => x[1] >= 0);
+  _blsCache = B.rows.map(function(r, i){
+    const per100 = {};
+    keys.forEach(([k, j]) => per100[k] = r[j] || 0);
+    return {id:"B"+r[1], name:r[0], cat:"bls", isDrink:!!r[iD], per100, portions:(B.portionen[r[iP]] || []).map(x=>x.slice()),
+            cf:r[iC] || 0, src:"BLS", isBLS:true, blsGroup:r[1][0], _s:normalize(r[0]), rank:i};
+  });
+  return _blsCache;
+}
+function searchBLS(nq, limit, drinkOnly){
+  const terms = nq.split(/\s+/).filter(Boolean);
+  if(!terms.length) return {items:[], total:0};
+  const hits = blsItems().filter(it => (!drinkOnly || it.isDrink) && terms.every(t => it._s.indexOf(t) >= 0));
+  // Namensanfang zuerst, dann kurze (meist allgemeinere) Namen
+  hits.sort((a, b) => (a._s.indexOf(terms[0])===0 ? 0 : 1) - (b._s.indexOf(terms[0])===0 ? 0 : 1) || a.name.length - b.name.length);
+  return {items: hits.slice(0, limit || 30), total: hits.length};
+}
+
 let _prodCache = null;
 function productData(){ return (window.NW_PRODUKTE && Array.isArray(window.NW_PRODUKTE.rows)) ? window.NW_PRODUKTE : null; }
 function productItems(){
   if(_prodCache) return _prodCache;
-  _prodCache = [];
   const P = productData();
-  if(!P) return _prodCache;
+  if(!P) return [];
+  _prodCache = [];
   const seen = {};
   P.rows.forEach(function(r, i){
     const name = r[0], brand = r[1] || "";
@@ -1576,6 +1621,8 @@ function productItems(){
     const per100 = {kcal:r[2]||0, p:r[3]||0, c:r[4]||0, z:r[5]||0, f:r[6]||0, sf:r[7]||0, b:r[8]||0};
     MICROS.forEach(function(m){ per100[m[0]] = 0; });
     per100.natrium = r[9] || 0;
+    const labelMicros = r[14] || null;            // Vitamine/Mineralstoffe, falls auf dem Etikett
+    if(labelMicros) Object.keys(labelMicros).forEach(function(k){ if(k in per100) per100[k] = labelMicros[k]; });
     const missing = [];
     if(r[8] == null) missing.push("Ballaststoffe");
     if(r[9] == null) missing.push("Natrium");
@@ -1583,7 +1630,8 @@ function productItems(){
       id: "P" + (r[13] || i), name: show, brand: brand, cat: "produkt",
       isDrink: !!r[10], per100: per100, portions: (P.portionen && P.portionen[r[12]]) || [],
       cf: r[11] || 0, src: "Open Food Facts", isProduct: true, missing: missing,
-      code: r[13] || "", _s: normalize(name + " " + brand), rank: i
+      code: r[13] || "", _s: normalize(name + " " + brand), rank: i,
+      labelMicros: labelMicros ? Object.keys(labelMicros).length : 0
     });
   });
   return _prodCache;
@@ -1610,6 +1658,7 @@ function searchProducts(nq, limit, drinkOnly){
 /* Lebensmittel über den Namen finden – Grunddatenbank zuerst, dann Markenprodukte */
 function findItemByName(name){
   return allLocalItems().find(function(x){ return x.name === name; })
+      || blsItems().find(function(x){ return x.name === name; })
       || productItems().find(function(x){ return x.name === name; }) || null;
 }
 function productStand(){
@@ -1668,7 +1717,7 @@ function entryFromItem(item, amount, meal){
     isDrink: !!item.isDrink,
     ml: item.isDrink ? amount : 0,
     cf: item.isDrink ? (item.cf||0)*amount/100 : (item.isRecipe ? (item.cf||0)*amount : 0),
-    noMicro: !!item.isProduct || (item.isRecipe && recipeHasProducts(item)),
+    noMicro: (!!item.isProduct && !(item.labelMicros >= 3)) || (item.isRecipe && recipeHasProducts(item)),
     n
   };
 }
@@ -1790,7 +1839,7 @@ function renderToday(){
     if(k==="natrium" ? p100 <= 100 : p100 >= 70) inTarget++;
     return '<div class="micro" data-nutr="'+k+'" role="button" tabindex="0"><span class="lbl">'+label+'</span>' +
       '<span class="bar"><i style="width:'+Math.min(100,p100)+'%;background:'+color+'"></i></span>' +
-      '<span class="val num">'+fmt(val, val<10?1:0)+' / '+fmt(ref)+' '+unit+'</span></div>';
+      '<span class="val num">'+fmt(val, val<10?1:0)+' / '+fmtRef(ref)+' '+unit+'</span></div>';
   }).join("");
   $("#microState").textContent = dayLog.length ? inTarget+" von "+MICROS.length+" im Ziel" : "noch nichts erfasst";
   const noData = dayLog.filter(e=>!e.isDrink && entryNoMicro(e)).length;
@@ -1871,7 +1920,7 @@ function weeklyGaps(){
 }
 
 /* ---------- Rezepte ---------- */
-const FOCUS_LABEL = {vitA:"Vitamin A",vitC:"Vitamin C",vitD:"Vitamin D",b12:"B12",folat:"Folat",eisen:"Eisen",calcium:"Calcium",magnesium:"Magnesium",zink:"Zink",kalium:"Kalium",jod:"Jod",b:"Ballaststoffe",p:"Protein"};
+const FOCUS_LABEL = {vitE:"Vitamin E",o3:"Omega-3",vitA:"Vitamin A",vitC:"Vitamin C",vitD:"Vitamin D",b12:"B12",folat:"Folat",eisen:"Eisen",calcium:"Calcium",magnesium:"Magnesium",zink:"Zink",kalium:"Kalium",jod:"Jod",b:"Ballaststoffe",p:"Protein"};
 function renderRecipes(){
   const gaps = weeklyGaps();
   const gapKeys = gaps.map(g=>g.key);
@@ -1953,7 +2002,7 @@ function renderProfile(prev){
   ].map(x=>cell(x[0],x[1],x[2])).join("");
   $("#microTargetGrid").innerHTML = MICROS.map(([k,label,unit]) => {
     const v = T.micros[k], o = P.micros[k];
-    return cell(fmt(v)+" "+unit, label+(k==="natrium"?" (Richtwert, nicht mehr)":"")+was(v,o,unit), v!==o);
+    return cell(fmtRef(v)+" "+unit, label+(k==="natrium"?" (Richtwert, nicht mehr)":"")+was(v,o,unit,v%1?1:0), v!==o);
   }).join("");
   const sex = profile.geschlecht==="m" ? "männlich" : "weiblich";
   $("#targetExplain").innerHTML = [
@@ -1962,7 +2011,8 @@ function renderProfile(prev){
     "<b>Fett und Kohlenhydrate:</b> Fett 30 % der Energie (gesättigt höchstens 10 %), Zucker höchstens 10 %, Kohlenhydrate decken den Rest.",
     "<b>Ballaststoffe:</b> mindestens 30 g, bei höherem Energiebedarf 12,5 g je 1000 kcal.",
     "<b>Wasser:</b> "+T.mlKg+" ml je kg Körpergewicht"+(T.aktivZuschlag?" plus "+fmt(T.aktivZuschlag)+" ml für Aktivität":"")+". Etwa 60 % davon aus Getränken, der Rest steckt im Essen.",
-    "<b>Vitamine und Mineralstoffe:</b> DGE-Referenzwerte für "+sex+", "+T.gruppe+" Jahre. Sie hängen von Alter und Geschlecht ab, nicht vom Gewicht."
+    "<b>Vitamine und Mineralstoffe:</b> DGE-Referenzwerte für "+sex+", "+T.gruppe+" Jahre. Sie hängen von Alter und Geschlecht ab, nicht vom Gewicht.",
+    "<b>Omega-3:</b> 0,5 % der Energie als Omega-3-Fettsäuren ("+fmt(T.micros.o3,1)+" g) – DGE-Richtwert für Alpha-Linolensäure. Gute Quellen: Lein-, Raps- und Walnussöl, Walnüsse, Leinsamen, fetter Seefisch."
   ].map(x=>"<li>"+x+"</li>").join("");
   lastTargets = T;
 }
@@ -2041,9 +2091,11 @@ function doSearch(q){
     });
   const own = recipes.map((r,i)=>recipeToItem(r,"R"+i)).filter(it=>normalize(it.name).includes(nq) && !addCtx.drinkOnly);
   const prod = searchProducts(nq, 40, addCtx.drinkOnly);
+  const bls = searchBLS(nq, 30, addCtx.drinkOnly);
   const groups = [];
   if(own.length) groups.push({title:"Eigene Rezepte", items:own});
   if(local.length) groups.push({title:"Grundnahrungsmittel", items:local});
+  if(bls.items.length) groups.push({title:"Lebensmittel-Datenbank (BLS)", items:bls.items, more: bls.total > bls.items.length});
   if(prod.items.length) groups.push({title:"Markenprodukte", items:prod.items, more: prod.total > prod.items.length});
   renderGroups(groups, "Keine Treffer – probier einen kürzeren oder anderen Begriff.");
   const stand = productStand();
@@ -2051,9 +2103,23 @@ function doSearch(q){
     ? (prod.total ? prod.total.toLocaleString("de-DE")+" Markenprodukte gefunden" + (prod.total > prod.items.length ? ", die beliebtesten 40 werden gezeigt" : "") + " · Open Food Facts, Stand "+stand : "")
     : "";
   lastGroups = groups;
+  offPage = 1; offLive = []; offBaseStatus = $("#apiStatus").textContent;
   searchOFF(q, groups);
 }
 let lastGroups = [];
+let offPage = 1, offMore = false, offLive = [], offBaseStatus = "";
+/* Vitamine/Mineralstoffe aus Open-Food-Facts-Nährwerten (in Gramm je 100 g gespeichert) */
+const OFF_MICROS = {vitA:["vitamin-a_100g",1e6], vitC:["vitamin-c_100g",1e3], vitD:["vitamin-d_100g",1e6], b12:["vitamin-b12_100g",1e6],
+  folat:["folates_100g",1e6], eisen:["iron_100g",1e3], calcium:["calcium_100g",1e3], magnesium:["magnesium_100g",1e3], zink:["zinc_100g",1e3],
+  kalium:["potassium_100g",1e3], jod:["iodine_100g",1e6], vitE:["vitamin-e_100g",1e3], o3:["omega-3-fat_100g",1]};
+function offMicros(nu, per100){
+  let n = 0;
+  Object.keys(OFF_MICROS).forEach(function(k){
+    const v = +nu[OFF_MICROS[k][0]];
+    if(v > 0){ per100[k] = v*OFF_MICROS[k][1]; n++; }
+  });
+  return n;
+}
 
 /* Open Food Facts live – ergänzt den mitgelieferten Bestand um neuere Produkte.
    Funktioniert nur, wo die Seite fremde Server erreichen darf (z. B. als lokale
@@ -2061,16 +2127,16 @@ let lastGroups = [];
 function searchOFF(q, groups){
   clearTimeout(offTimer);
   if(offAbort) offAbort.abort();
-  const offlineStatus = $("#apiStatus").textContent;
+  const offlineStatus = offBaseStatus;
   if(!productData()) $("#apiStatus").textContent = "Suche in Open Food Facts …";
   offTimer = setTimeout(async () => {
     offAbort = new AbortController();
-    const kill = setTimeout(()=>offAbort.abort(), 6000);
+    const kill = setTimeout(()=>offAbort.abort(), offPage > 1 ? 15000 : 8000);
     try{
       // Open Food Facts drosselt zeitweise einzelne Instanzen (HTTP 503) –
       // deshalb nacheinander mehrere Hosts versuchen.
       const params = "search_terms="+encodeURIComponent(q)+
-        "&search_simple=1&action=process&json=1&page_size=8&fields=code,product_name,brands,nutriments";
+        "&search_simple=1&action=process&json=1&page_size=24&page="+(offPage||1)+"&fields=code,product_name,product_name_de,brands,nutriments,categories_tags";
       let data = null, lastErr = null;
       for(const host of ["world.openfoodfacts.org","de.openfoodfacts.org"]){
         try{
@@ -2084,31 +2150,38 @@ function searchOFF(q, groups){
       if(!data) throw lastErr || new Error("keine Antwort");
       const items = (data.products||[]).map(p => {
         const nu = p.nutriments||{};
-        if(!p.product_name || nu["energy-kcal_100g"]==null) return null;
+        if(!(p.product_name_de || p.product_name) || nu["energy-kcal_100g"]==null) return null;
         const per100 = {
           kcal:+nu["energy-kcal_100g"]||0, p:+nu.proteins_100g||0, c:+nu.carbohydrates_100g||0,
           z:+nu.sugars_100g||0, f:+nu.fat_100g||0, sf:+nu["saturated-fat_100g"]||0, b:+nu.fiber_100g||0
         };
         MICROS.forEach(([k])=>per100[k]=0);
         per100.natrium = nu.sodium_100g!=null ? +nu.sodium_100g*1000 : 0;
-        per100.calcium = nu.calcium_100g!=null ? +nu.calcium_100g*1000 : 0;
-        per100.eisen   = nu.iron_100g!=null ? +nu.iron_100g*1000 : 0;
-        per100.vitC    = nu["vitamin-c_100g"]!=null ? +nu["vitamin-c_100g"]*1000 : 0;
-        return {id:"O"+p.code, code:p.code||"", name:p.product_name+(p.brands?" ("+p.brands.split(",")[0]+")":""), isDrink:addCtx.drinkOnly, per100, portions:[], cf:0, src:"Open Food Facts", isProduct:true, missing:[]};
+        const lm = offMicros(nu, per100);
+        const tags = p.categories_tags||[];
+        const drink = tags.indexOf("en:beverages")>=0 || tags.indexOf("en:waters")>=0;
+        const nm = p.product_name_de || p.product_name;
+        return {id:"O"+p.code, code:p.code||"", name:nm+(p.brands?" ("+p.brands.split(",")[0].trim()+")":""), isDrink:drink, per100, portions:[], cf:0, src:"Open Food Facts", isProduct:true, missing:[], labelMicros:lm};
       }).filter(Boolean);
       // Nur Produkte, die noch nicht im mitgelieferten Bestand angezeigt werden
       const known = {};
       groups.forEach(g => g.items.forEach(it => { if(it.code) known[it.code] = 1; known[it.name] = 1; }));
-      const neu = items.filter(it => !(it.code && known[it.code]) && !known[it.name]);
-      if($("#searchInput").value.trim()===q && neu.length){
-        renderGroups(groups.concat([{title:"Neu aus Open Food Facts (live)", items:neu}]));
-        $("#apiStatus").textContent = (offlineStatus ? offlineStatus + " · " : "") + neu.length + " weitere live ergänzt";
+      const neu = items.filter(it => !(it.code && known[it.code]) && !known[it.name] && (!addCtx.drinkOnly || it.isDrink));
+      const total = +data.count || 0;
+      offMore = total > (offPage||1)*24;
+      if($("#searchInput").value.trim()===q && (neu.length || offMore)){
+        offLive = (offPage > 1 ? offLive : []).concat(neu);
+        renderGroups(groups.concat([{title:"Neu aus Open Food Facts (live)", items:offLive, more:offMore}]));
+        if(offMore) $("#resultBox").insertAdjacentHTML("beforeend", '<button class="ghost" id="btnOffMore" style="width:100%;margin-top:10px">Weitere Produkte live laden</button>');
+        $("#apiStatus").textContent = (offlineStatus ? offlineStatus + " · " : "") + offLive.length + " weitere live ergänzt" + (total ? " (Open Food Facts kennt " + total.toLocaleString("de-DE") + " Treffer)" : "");
       } else if($("#searchInput").value.trim()===q && !productData()){
         $("#apiStatus").textContent = "Keine passenden Online-Treffer";
       }
     }catch(err){
       clearTimeout(kill);
       // Mit mitgeliefertem Bestand ist ein fehlender Live-Abruf kein Problem – Status bleibt
+      const mb = $("#btnOffMore");
+      if(mb && offPage > 1){ offPage--; mb.disabled = false; mb.textContent = "Open Food Facts antwortet gerade nicht – erneut versuchen"; }
       if($("#searchInput").value.trim()===q && !productData())
         $("#apiStatus").textContent = "Online-Datenbank nicht erreichbar – eingebaute Datenbank aktiv";
     }
@@ -2120,7 +2193,7 @@ function resultRow(it, idx){
   const isFav = favs.some(f=>f.id===it.id);
   const sub = it.isRecipe
     ? "Eigenes Rezept · "+fmt(Math.round(it.totals.kcal))+" kcal/Portion"
-    : fmt(Math.round(it.per100.kcal))+" kcal je 100 "+(it.isDrink?"ml":"g")+" · "+(it.isProduct ? "Markenprodukt" : it.src);
+    : fmt(Math.round(it.per100.kcal))+" kcal je 100 "+(it.isDrink?"ml":"g")+" · "+(it.isProduct ? "Markenprodukt" : it.isBLS ? "BLS · alle Nährstoffe" : it.src);
   return '<div class="result" data-pick="'+idx+'" role="button" tabindex="0">' +
     '<div class="name"><b>'+esc(it.name)+'</b><span>'+sub+'</span></div>' +
     '<button class="fav'+(isFav?' on':'')+'" data-fav="'+idx+'" aria-label="Favorit">'+(isFav?"★":"☆")+'</button></div>';
@@ -2158,9 +2231,11 @@ function pickItem(it){
     ? "je Portion: "+fmt(Math.round(it.totals.kcal))+" kcal · "+fmt(Math.round(it.totals.p))+" g Protein"
     : "je 100 "+(it.isDrink?"ml":"g")+": "+fmt(Math.round(it.per100.kcal))+" kcal · "+fmt(it.per100.p,1)+" g Protein" +
       (it.isProduct
-        ? " · Nährwerte laut Etikett (Open Food Facts). Vitamine und Mineralstoffe außer Natrium stehen nicht auf dem Etikett und werden nicht mitgezählt" +
-          (it.missing && it.missing.length ? "; ohne Angabe: " + it.missing.join(", ") : "") + "."
-        : "");
+        ? (it.labelMicros >= 3
+            ? " · Nährwerte laut Etikett (Open Food Facts), inklusive " + it.labelMicros + " Vitamin- und Mineralstoffangaben."
+            : " · Nährwerte laut Etikett (Open Food Facts). Vitamine und Mineralstoffe außer Natrium stehen nicht auf dem Etikett und werden nicht mitgezählt" +
+              (it.missing && it.missing.length ? "; ohne Angabe: " + it.missing.join(", ") : "") + ".")
+        : it.isBLS ? " · Werte aus dem Bundeslebensmittelschlüssel (BLS 4.0) mit allen Vitaminen und Mineralstoffen." : "");
   $("#amtUnit").textContent = it.isRecipe ? "Portionen" : (it.isDrink ? "ml" : "g");
   const def = it.isRecipe ? 1 : (it.portions.length ? it.portions[0][1] : (it.isDrink?250:100));
   $("#amtInput").value = def;
@@ -2299,8 +2374,8 @@ function openSources(k, scope){
   const top = Object.entries(agg).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const d = v => fmt(v, v<10?1:0);
   let html = '<div class="small muted" style="margin-bottom:6px">' + (week
-    ? "Letzte 7 Tage · Ø " + d(total) + " von " + fmt(ref) + " " + unit + " pro erfasstem Tag"
-    : dayName(curDay()) + " · " + d(total) + " von " + fmt(ref) + " " + unit + " (" + Math.round(total/ref*100) + " %)") + '</div>';
+    ? "Letzte 7 Tage · Ø " + d(total) + " von " + fmtRef(ref) + " " + unit + " pro erfasstem Tag"
+    : dayName(curDay()) + " · " + d(total) + " von " + fmtRef(ref) + " " + unit + " (" + Math.round(total/ref*100) + " %)") + '</div>';
   html += '<div class="small" style="font-weight:600;margin:10px 0 2px">' + (week ? "Deine Hauptquellen diese Woche" : "Deine Quellen") + '</div>';
   html += top.length
     ? top.map(([n,v]) => '<div class="srcrow" style="display:block"><div style="display:flex;justify-content:space-between;gap:10px"><span>' + esc(n) + '</span>' +
@@ -2311,11 +2386,14 @@ function openSources(k, scope){
     html += '<div class="small muted" style="margin-top:12px">Natrium steckt vor allem in Salz, Brot, Käse, Wurst und Fertiggerichten. Der Referenzwert ist eine Obergrenze, kein Ziel.</div>';
   } else {
     // Lebensmittel aus der Grunddatenbank, die je üblicher Portion viel liefern
-    const foods = allLocalItems().filter(it => !it.isDrink && it.cat!=="gericht" && (it.per100[k]||0) > 0).map(it => {
+    const seenF = {};
+    const pool = allLocalItems().filter(it => it.cat!=="gericht")
+      .concat(blsItems().filter(it => "XYR".indexOf(it.blsGroup) < 0 && !/pulver|getrocknet|mehl|extrakt|lecithin|kaviar|rogen|öl\b/i.test(it.name) || /öl$/i.test(it.name)));
+    const foods = pool.filter(it => !it.isDrink && (it.per100[k]||0) > 0 && !seenF[it.name] && (seenF[it.name] = 1)).map(it => {
       const g = it.portions.length ? it.portions[0][1] : 100;
       const pl = it.portions.length ? it.portions[0][0] + " (" + g + " g)" : "100 g";
       return {it, v:(it.per100[k]||0)*g/100, pl};
-    }).sort((a,b)=>b.v-a.v).slice(0,6);
+    }).sort((a,b)=>b.v-a.v).filter((f,i,arr)=>arr.findIndex(g=>g.it.name.split(/[ ,(]/)[0]===f.it.name.split(/[ ,(]/)[0])===i).slice(0,8);
     html += '<div class="small" style="font-weight:600;margin:14px 0 2px">Liefert viel ' + esc(name) + '</div>';
     html += foods.map(f => '<div class="result" data-srcpick="' + esc(f.it.name) + '" role="button" tabindex="0"><div class="name"><b>' + esc(f.it.name) + '</b>' +
       '<span class="num">' + esc(f.pl) + ' → ' + d(f.v) + ' ' + unit + ' · ' + Math.round(f.v/ref*100) + ' % des Tagesbedarfs</span></div><span class="k">+ eintragen</span></div>').join("");
@@ -2419,10 +2497,11 @@ async function onCode(code){
         const per100 = {kcal:+nu["energy-kcal_100g"]||0, p:+nu.proteins_100g||0, c:+nu.carbohydrates_100g||0, z:+nu.sugars_100g||0, f:+nu.fat_100g||0, sf:+nu["saturated-fat_100g"]||0, b:+nu.fiber_100g||0};
         MICROS.forEach(([k])=>per100[k]=0);
         per100.natrium = nu.sodium_100g!=null ? +nu.sodium_100g*1000 : 0;
+        const lm = offMicros(nu, per100);
         const nm = pr.product_name_de || pr.product_name || ("Produkt " + code);
         const tags = pr.categories_tags||[];
         const drink = tags.indexOf("en:beverages")>=0 || tags.indexOf("en:waters")>=0 || tags.indexOf("en:drinks")>=0;
-        it = {id:"O"+code, code, name:nm + (pr.brands ? " (" + pr.brands.split(",")[0].trim() + ")" : ""), isDrink:drink, per100, portions:[], cf:0, src:"Open Food Facts", isProduct:true, missing:[]};
+        it = {id:"O"+code, code, name:nm + (pr.brands ? " (" + pr.brands.split(",")[0].trim() + ")" : ""), isDrink:drink, per100, portions:[], cf:0, src:"Open Food Facts", isProduct:true, missing:[], labelMicros:lm};
       }
     }catch(e){}
   }
@@ -2491,7 +2570,8 @@ function recSearchRun(q){
   const nq = normalize(q);
   const basis = allLocalItems().filter(it=>normalize(it.name).includes(nq) || (it.kw && normalize(it.kw).includes(nq))).slice(0,6);
   const marken = searchProducts(nq, 6, false).items;
-  $("#recResults").innerHTML = basis.concat(marken).map(it=>'<div class="result" data-recadd="'+esc(it.name)+'" role="button" tabindex="0"><div class="name"><b>'+esc(it.name)+'</b><span>'+fmt(Math.round(it.per100.kcal))+' kcal je 100 '+(it.isDrink?"ml":"g")+(it.isProduct?' · Markenprodukt':'')+'</span></div><span class="k">+ hinzufügen</span></div>').join("") ||
+  const blsTreffer = searchBLS(nq, 6, false).items;
+  $("#recResults").innerHTML = basis.concat(blsTreffer, marken).map(it=>'<div class="result" data-recadd="'+esc(it.name)+'" role="button" tabindex="0"><div class="name"><b>'+esc(it.name)+'</b><span>'+fmt(Math.round(it.per100.kcal))+' kcal je 100 '+(it.isDrink?"ml":"g")+(it.isProduct?' · Markenprodukt':'')+'</span></div><span class="k">+ hinzufügen</span></div>').join("") ||
     '<div class="empty">Kein Treffer.</div>';
 }
 function saveRecipe(){
@@ -2555,6 +2635,7 @@ document.addEventListener("click", ev => {
   }
   if(t.id==="btnToToday"){ viewDate = null; renderToday(); return; }
   if(t.id==="btnScan") return openScanner();
+  if(t.id==="btnOffMore"){ t.disabled = true; t.textContent = "Lade …"; offPage++; searchOFF($("#searchInput").value.trim(), lastGroups); return; }
   if(t.id==="btnDeleteEntry"){ const id = addCtx.editId; closeSheets(); return deleteEntry(id); }
   if(t.dataset.editrec!=null) return openRecipeEditor(+t.dataset.editrec);
   if(t.id==="btnInstall"){ if(installEvt){ installEvt.prompt(); installEvt.userChoice.finally(()=>{ installEvt=null; renderInstallInfo(); }); } return; }
@@ -2816,7 +2897,14 @@ function renderSourceInfo(){
   if(!box) return;
   const P = productData();
   box.innerHTML =
-    '<p style="margin:0 0 8px">Grundnahrungsmittel und Rezepte: gerundete Durchschnittswerte aus gängigen Nährwerttabellen.</p>' +
+    '<p style="margin:0 0 8px">Grundnahrungsmittel und Rezepte: gerundete Durchschnittswerte aus gängigen Nährwerttabellen; Vitamin E und Omega-3 aus dem BLS.</p>' +
+    (blsData()
+      ? '<p style="margin:0 0 8px">Lebensmittel-Datenbank: <b>' + blsItems().length.toLocaleString("de-DE") + '</b> Lebensmittel aus dem ' +
+        '<a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel (BLS) 4.0</a>, Max Rubner-Institut (2025), ' +
+        'DOI <a href="https://doi.org/10.25826/Data20251217-134202-0" target="_blank" rel="noopener">10.25826/Data20251217-134202-0</a>, ' +
+        'Lizenz <a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>. ' +
+        'Für NährWert auf 21 Nährstoffe reduziert, Portionsgrößen und Koffein ergänzt.</p>'
+      : '') +
     (P
       ? '<p style="margin:0">Markenprodukte: <b>' + productItems().length.toLocaleString("de-DE") + '</b> in Deutschland verkaufte Produkte aus ' +
         '<a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a>, Stand ' + esc(productStand()) + '. ' +
@@ -2861,6 +2949,14 @@ renderProfile();
 renderStorageInfo();
 renderSourceInfo();
 renderInstallInfo();
+
+/* Datendateien werden mit „defer“ geladen – danach Caches neu aufbauen */
+window.addEventListener("DOMContentLoaded", function(){
+  _prodCache = null; _blsCache = null; _codeIndex = null;
+  log.forEach(function(e){ if(e.noMicro === false && e.unit !== "Portion") delete e.noMicro; });
+  renderSourceInfo(); renderToday();
+  if($("#addSheet").classList.contains("open") && $("#searchInput").value.trim()) doSearch($("#searchInput").value);
+});
 
 /* Dauerhaften Speicher anfordern und ggf. aus der Zweitkopie wiederherstellen */
 requestPersistence().then(renderStorageInfo);
