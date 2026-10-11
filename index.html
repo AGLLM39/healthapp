@@ -229,6 +229,30 @@ nav.tabs button[aria-current="true"]{color:var(--accent); font-weight:650}
 .pastnote button{background:transparent; color:inherit; font-weight:650; padding:2px 4px; font-size:12.5px}
 /* ---------- Einträge antippbar ---------- */
 .entry .name{cursor:pointer}
+/* Aufklappbare Nährwerte je Eintrag */
+.entrywrap{border-bottom:1px solid var(--line)}
+.entrywrap:last-child{border-bottom:none}
+.entrywrap .entry{border-bottom:none}
+.entry .chev{color:var(--muted); font-size:15px; line-height:1; transition:transform .15s; display:inline-block}
+.entrywrap.open .entry .chev{transform:rotate(90deg)}
+.entrydetail{background:var(--surface2); border-radius:10px; padding:8px 10px 10px; margin:0 0 10px}
+.entrydetail .dhead{display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:12px; color:var(--muted); padding:2px 0 4px}
+.entrydetail .dhead b{color:var(--ink); font-size:13px; font-weight:650}
+.entrydetail .grp{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:10px 0 2px}
+.nrow{border-bottom:1px solid var(--line)}
+.nrow:last-of-type{border-bottom:none}
+.nrow summary{display:grid; grid-template-columns:1fr auto 52px; gap:8px; align-items:baseline; padding:6px 0; font-size:13px; cursor:pointer; list-style:none}
+.nrow summary::-webkit-details-marker{display:none}
+.nrow summary .nl::after{content:" ⓘ"; color:var(--muted); font-size:11px}
+.nrow summary .nv{text-align:right}
+.nrow summary .np{text-align:right; color:var(--muted); font-size:12px}
+.nrow.sub summary .nl{padding-left:12px; color:var(--muted)}
+.nrow .np.over{color:var(--over-ink)}
+.nrow .na{color:var(--muted); font-style:italic}
+.nrow ul{margin:0 0 8px; padding-left:18px; font-size:12.5px; line-height:1.5}
+.nrow li{margin-bottom:3px}
+.nrow li.goal{list-style:none; margin-left:-18px; color:var(--muted)}
+.entrydetail .dfoot{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap}
 .mealline{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 0; border-bottom:1px solid var(--line)}
 .mealline:last-child{border-bottom:none}
 .mealline h3{font-size:14px; margin:0; font-weight:650}
@@ -749,6 +773,80 @@ const MICROS = [
   ["vitE","Vitamin E","mg"], ["o3","Omega-3","g"]
 ];
 const MACRO_KEYS = ["kcal","p","c","z","f","sf","b"];
+
+/* ---------- Warum wichtig? Kurzinfos je Nährstoff (aufklappbar) ---------- */
+const NUTRIENT_INFO = {
+  kcal: ["Energie für Grundumsatz (Herz, Gehirn, Organe, Körperwärme) und jede Bewegung.",
+         "Über Wochen mehr als der Bedarf → Gewichtszunahme, weniger → Abnahme; rund 7.000 kcal entsprechen etwa 1 kg Körperfett.",
+         "Einzelne Tage über oder unter dem Ziel gleichen sich aus – entscheidend ist der Wochenschnitt."],
+  p:    ["Baustoff für Muskeln, Enzyme, Hormone und Antikörper.",
+         "Der Körper kann Eiweiß kaum speichern – deshalb täglich und am besten über die Mahlzeiten verteilt.",
+         "Sättigt gut. Bei regelmäßigem Training steigt der Bedarf für Muskelaufbau und -reparatur."],
+  c:    ["Hauptenergiequelle für Gehirn und Muskeln – das Gehirn allein braucht täglich rund 100–130 g Glukose.",
+         "Vollkorn, Hülsenfrüchte, Obst und Gemüse liefern zusätzlich Ballaststoffe, Vitamine und Mineralstoffe und lassen den Blutzucker langsamer steigen.",
+         "Decken etwa die Hälfte der Energie – den Teil, der nach Protein und Fett übrig bleibt."],
+  z:    ["Liefert schnelle Energie, aber kaum Vitamine oder Ballaststoffe.",
+         "Obergrenze 10 % der Energie (WHO/DGE): darunter weniger Karies und leichter, das Gewicht zu halten.",
+         "Gezählt wird der gesamte Zucker, also auch Frucht- und Milchzucker aus Obst und Milch – diese sind weniger kritisch als zugesetzter Zucker."],
+  f:    ["Energiereichster Nährstoff (9 kcal je g) und Träger der fettlöslichen Vitamine A, D, E und K.",
+         "Liefert lebensnotwendige Fettsäuren, die der Körper nicht selbst bilden kann.",
+         "Etwa 30 % der Energie – entscheidend ist vor allem die Art des Fetts."],
+  sf:   ["Steckt vor allem in Butter, Sahne, Käse, Wurst, Fleisch, Kokos- und Palmfett.",
+         "Erhöht das LDL-Cholesterin im Blut, das mit Herz-Kreislauf-Erkrankungen zusammenhängt.",
+         "Obergrenze 10 % der Energie – am besten ersetzt durch ungesättigte Fette."],
+  uf:   ["Einfach ungesättigt (Oliven-, Rapsöl, Nüsse, Avocado) und mehrfach ungesättigt (Lein-, Sonnenblumenöl, Walnüsse, Fisch).",
+         "Senken das LDL-Cholesterin, wenn sie gesättigte Fette ersetzen.",
+         "Enthalten die lebensnotwendigen Omega-3- und Omega-6-Fettsäuren."],
+  b:    ["Sättigen lange und lassen den Blutzucker langsamer steigen.",
+         "Fördern die Verdauung und sind Futter für die Darmbakterien.",
+         "Mindestens 30 g täglich – in Deutschland erreichen das die meisten nicht. Gute Quellen: Vollkorn, Hülsenfrüchte, Gemüse, Obst, Nüsse."],
+  vitA: ["Wichtig für das Sehen (vor allem in der Dämmerung), Haut, Schleimhäute und das Immunsystem.",
+         "Fettlöslich und in der Leber gespeichert – Schwankungen von Tag zu Tag gleichen sich aus.",
+         "Quellen: Leber, Karotten, Süßkartoffeln, Spinat, Grünkohl (als Beta-Carotin, mit etwas Fett besser aufgenommen)."],
+  vitC: ["Stärkt die Immunabwehr und wird für Bindegewebe, Knochen und Zähne (Kollagen) gebraucht.",
+         "Verbessert die Aufnahme von Eisen aus pflanzlichen Lebensmitteln.",
+         "Wasserlöslich und kaum speicherbar – daher täglich. Hitzeempfindlich: Rohkost und kurz Gegartes liefern mehr."],
+  vitD: ["Sorgt dafür, dass Calcium in die Knochen kommt; wichtig auch für Muskeln und Immunsystem.",
+         "Wird zum größten Teil in der Haut durch Sonnenlicht gebildet – über das Essen kommen meist nur 2–4 µg am Tag.",
+         "Der Referenzwert gilt für den Fall ohne Sonne. Ein niedriger Balken hier ist daher normal; im Winter reicht die Sonne in Deutschland kaum."],
+  b12:  ["Nötig für Blutbildung, Nervensystem und Zellteilung.",
+         "Kommt fast nur in tierischen Lebensmitteln vor (Fleisch, Fisch, Eier, Milchprodukte).",
+         "Die Leber speichert Vorrat für Jahre – ein einzelner Tag ohne B12 spielt keine Rolle."],
+  folat:["Wichtig für Zellteilung, Blutbildung und die Erbsubstanz (DNA).",
+         "Der Name kommt von „folium“ (Blatt): viel in grünem Blattgemüse, Hülsenfrüchten, Kohl und Vollkorn.",
+         "Hitze- und lichtempfindlich – lange Garzeiten zerstören einen Teil."],
+  eisen:["Teil des roten Blutfarbstoffs (Hämoglobin), der Sauerstoff im Körper verteilt.",
+         "Aus Fleisch wird Eisen deutlich besser aufgenommen als aus Pflanzen; Vitamin C zur Mahlzeit verbessert die Aufnahme, Kaffee und Tee hemmen sie.",
+         "Frauen brauchen wegen der Menstruation mehr als Männer."],
+  calcium:["Baustoff für Knochen und Zähne – 99 % des Calciums im Körper stecken dort.",
+         "Auch nötig für Muskeln, Nerven und Blutgerinnung.",
+         "Bis etwa 25 Jahre wird Knochenmasse aufgebaut – was bis dahin angelegt ist, schützt später. Quellen: Milchprodukte, Käse, Grünkohl, Brokkoli, calciumreiches Mineralwasser."],
+  magnesium:["An über 300 Enzymen beteiligt, z. B. im Energiestoffwechsel.",
+         "Wichtig für die Arbeit von Muskeln und Nerven.",
+         "Geht auch über Schweiß verloren. Quellen: Vollkorn, Haferflocken, Nüsse, Kerne, Hülsenfrüchte."],
+  zink: ["Wichtig für Immunsystem, Wundheilung, Wachstum, Haut und Haare.",
+         "Phytat aus Vollkorn und Hülsenfrüchten hemmt die Aufnahme – der Referenzwert berücksichtigt eine durchschnittliche Phytatzufuhr.",
+         "Quellen: Fleisch, Käse, Haferflocken, Kerne, Linsen."],
+  kalium:["Steuert Flüssigkeitshaushalt, Nerven und Muskeln – auch den Herzmuskel.",
+         "Gegenspieler von Natrium: Viel Kalium hilft, den Blutdruck niedrig zu halten.",
+         "Quellen: Gemüse, Kartoffeln, Hülsenfrüchte, Bananen, Trockenobst, Nüsse."],
+  natrium:["Regelt zusammen mit Kalium den Wasserhaushalt und die Weiterleitung von Nervensignalen.",
+         "1 g Salz enthält etwa 400 mg Natrium; der Wert hier entspricht rund 3,8 g Salz.",
+         "Ist eine Obergrenze, kein Ziel: Mehr erhöht bei vielen Menschen den Blutdruck. Das meiste Salz steckt in Brot, Käse, Wurst und Fertiggerichten."],
+  jod:  ["Baustein der Schilddrüsenhormone, die Stoffwechsel, Wachstum und Energieverbrauch steuern.",
+         "Deutschlands Böden sind jodarm – wichtig sind jodiertes Speisesalz, Seefisch und Milchprodukte.",
+         "Jodsalz aus dem eigenen Kochen erfasst die App meist nicht – der tatsächliche Wert ist oft höher."],
+  vitE: ["Antioxidans: schützt Zellwände und Fette im Körper vor Schäden durch Oxidation.",
+         "Der Bedarf steigt mit der Menge an mehrfach ungesättigten Fettsäuren.",
+         "Quellen: Pflanzenöle (vor allem Weizenkeim-, Sonnenblumen- und Rapsöl), Nüsse, Samen."],
+  o3:   ["Lebensnotwendige Fettsäuren, die der Körper nicht selbst bilden kann.",
+         "Alpha-Linolensäure aus Lein-, Raps- und Walnussöl; EPA und DHA aus fettem Seefisch sind wichtig für Herz, Gehirn und Augen.",
+         "Der Richtwert ist 0,5 % der Energie – mit einem Esslöffel Rapsöl kommt man schon weit."]
+};
+/* Liste der Kurzinfos; optional mit einer Zeile zum persönlichen Ziel vorweg */
+function infoList(k, goal){
+  return '<ul>' + (goal ? '<li class="goal">'+goal+'</li>' : '') + (NUTRIENT_INFO[k]||[]).map(x=>'<li>'+esc(x)+'</li>').join("") + '</ul>';
+}
 const ALL_KEYS = MACRO_KEYS.concat(MICROS.map(m=>m[0]));
 
 /* ---------- DGE-Referenzwerte (Mikros) nach Geschlecht und Altersgruppe ---------- */
@@ -1943,12 +2041,51 @@ function renderToday(){
   $("#hdrDate").textContent = hd.toLocaleDateString("de-DE",{weekday:"long", day:"numeric", month:"long", year:"numeric"});
 }
 
+const openEntries = new Set();   // aufgeklappte Einträge (nur für diese Sitzung)
+function entryAmt(e){ return e.unit==="Portion" ? fmt(e.amount, e.amount%1?1:0)+" Portion"+(e.amount!==1?"en":"") : fmt(e.amount)+" "+e.unit; }
 function entryRow(e){
-  const amt = e.unit==="Portion" ? fmt(e.amount, e.amount%1?1:0)+" Portion"+(e.amount!==1?"en":"") : fmt(e.amount)+" "+e.unit;
-  return '<div class="entry"><div class="name" data-edit="'+e.id+'" role="button" tabindex="0" aria-label="'+esc(e.name)+' bearbeiten"><b>'+esc(e.name)+'</b><span class="num">'+amt+
+  const open = openEntries.has(e.id);
+  return '<div class="entrywrap'+(open?' open':'')+'" data-entry="'+e.id+'"><div class="entry">' +
+    '<div class="name" data-expand="'+e.id+'" role="button" tabindex="0" aria-expanded="'+open+'" aria-label="Nährwerte von '+esc(e.name)+' '+(open?'zuklappen':'anzeigen')+'"><b>'+esc(e.name)+'</b><span class="num">'+entryAmt(e)+
     (e.isDrink&&e.cf?' · '+fmt(Math.round(e.cf))+' mg Koffein':'')+(entryNoMicro(e)?' · ohne Vitamine':'')+'</span></div>' +
-    '<span class="kcal num">'+fmt(Math.round(e.n.kcal))+' kcal</span>' +
-    '<button class="del" data-del="'+e.id+'" aria-label="Eintrag löschen">✕</button></div>';
+    '<span class="kcal num">'+fmt(Math.round(e.n.kcal))+' kcal</span><span class="chev" aria-hidden="true">›</span>' +
+    '<button class="del" data-del="'+e.id+'" aria-label="Eintrag löschen">✕</button></div>' +
+    (open ? entryDetail(e) : '') + '</div>';
+}
+/* Alle Nährstoffe eines Eintrags für die eingetragene Menge, mit Anteil am Tagesziel */
+function nVal(v){ return !v ? "0" : v < 1 ? fmt(v, 2) : v < 10 ? fmt(v, 1) : fmt(Math.round(v)); }
+function entryDetail(e){
+  const T = computeTargets(profile), n = e.n, nm = entryNoMicro(e);
+  const sex = profile.geschlecht==="m" ? "männlich" : "weiblich";
+  const row = (k, label, v, unit, ref, isMax, sub, na, goal) => {
+    const pct = ref ? Math.round(v/ref*100) : 0;
+    return '<details class="nrow'+(sub?' sub':'')+'"><summary><span class="nl">'+label+'</span>' +
+      (na ? '<span class="nv na">keine Angabe</span><span class="np"></span>'
+          : '<span class="nv num">'+nVal(v)+' '+unit+'</span><span class="np num'+(isMax && pct>100?' over':'')+'">'+(v>0 && pct<1 ? '&lt;1' : pct)+' %</span>') +
+      '</summary>'+infoList(k, goal)+'</details>';
+  };
+  const g = (ref, unit, txt, isMax) => (isMax ? "Deine Obergrenze: höchstens " : "Dein Tagesziel: ") + fmtRef(ref) + " " + unit + (txt ? " – " + txt : "");
+  let h = '<div class="entrydetail"><div class="dhead"><b>Nährwerte für '+entryAmt(e)+'</b><span>% deines Tagesziels</span></div>';
+  if(nm) h += '<div class="nodata">Markenprodukt ohne Vitamindaten – auf dem Etikett stehen nur Nährwerte und Salz.</div>';
+  h += '<div class="grp">Energie und Makronährstoffe</div>';
+  h += row("kcal","Energie",n.kcal,"kcal",T.kcal,false,false,false, g(T.kcal,"kcal","Grundumsatz × Aktivität"+(ZIEL_KCAL[profile.ziel] ? (profile.ziel==="abnehmen"?" − 400":" + 300") : "")));
+  h += row("p","Protein",n.p,"g",T.protein,false,false,false, g(T.protein,"g",fmt(T.gkg,1)+" g je kg Körpergewicht"));
+  h += row("c","Kohlenhydrate",n.c,"g",T.kh,false,false,false, g(T.kh,"g","der Rest der Energie nach Protein und Fett"));
+  h += row("z","davon Zucker",n.z,"g",T.zuckerMax,true,true,false, g(T.zuckerMax,"g","10 % der Energie",true));
+  h += row("f","Fett",n.f,"g",T.fett,false,false,false, g(T.fett,"g","30 % der Energie"));
+  h += row("sf","davon gesättigt",n.sf,"g",T.sfMax,true,true,false, g(T.sfMax,"g","10 % der Energie",true));
+  h += row("uf","davon ungesättigt",Math.max(0,(n.f||0)-(n.sf||0)),"g",T.fett-T.sfMax,false,true,false, g(T.fett-T.sfMax,"g","rund 20 % der Energie"));
+  h += row("b","Ballaststoffe",n.b,"g",T.ballast,false,false,false, g(T.ballast,"g"));
+  h += '<div class="grp">Vitamine und Mineralstoffe</div>';
+  MICROS.forEach(([k,label,unit]) => {
+    const isMax = k==="natrium";
+    const txt = k==="o3" ? "0,5 % der Energie" : "DGE-Referenzwert für "+sex+", "+T.gruppe+" Jahre";
+    h += row(k, label, n[k]||0, unit, T.micros[k], isMax, false, nm && !isMax && !n[k], g(T.micros[k], unit, txt, isMax));
+  });
+  if(e.isDrink) h += '<div class="small muted" style="margin-top:6px">'+fmt(e.ml||0)+' ml Flüssigkeit'+(e.cf?' · '+fmt(Math.round(e.cf))+' mg Koffein':'')+'</div>';
+  h += '<div class="dfoot"><span class="small muted">Tippe auf einen Nährstoff für Hintergründe.</span>' +
+    '<button class="chip" data-edit="'+e.id+'">✎ Menge oder Mahlzeit ändern</button></div></div>';
+  return h;
 }
 
 /* ---------- Woche ---------- */
@@ -2532,6 +2669,7 @@ function openSources(k, scope){
   let html = '<div class="small muted" style="margin-bottom:6px">' + (week
     ? "Letzte 7 Tage · Ø " + d(total) + " von " + fmtRef(ref) + " " + unit + " pro erfasstem Tag"
     : dayName(curDay()) + " · " + d(total) + " von " + fmtRef(ref) + " " + unit + " (" + Math.round(total/ref*100) + " %)") + '</div>';
+  html += '<details class="prep"><summary>Warum ist ' + esc(name) + ' wichtig?</summary>' + infoList(k) + '</details>';
   html += '<div class="small" style="font-weight:600;margin:10px 0 2px">' + (week ? "Deine Hauptquellen diese Woche" : "Deine Quellen") + '</div>';
   html += top.length
     ? top.map(([n,v]) => '<div class="srcrow" style="display:block"><div style="display:flex;justify-content:space-between;gap:10px"><span>' + esc(n) + '</span>' +
@@ -2774,8 +2912,18 @@ function askConfirm(title, text, fn, yesLabel){
 }
 
 document.addEventListener("click", ev => {
-  const t = ev.target.closest("button, .result, [data-edit], .micro");
+  const t = ev.target.closest("button, .result, [data-edit], [data-expand], .micro");
   if(!t) return;
+  if(t.dataset.expand){
+    const id = t.dataset.expand, e = log.find(x=>x.id===id);
+    const w = t.closest(".entrywrap");
+    if(!e || !w) return;
+    if(openEntries.has(id)) openEntries.delete(id); else openEntries.add(id);
+    w.outerHTML = entryRow(e);
+    const nw = document.querySelector('.entrywrap[data-entry="'+id+'"] [data-expand]');
+    if(nw) nw.focus({preventScroll:true});
+    return;
+  }
 
   if(t.id==="toastBtn"){ const a = toastAction; $("#toast").classList.remove("show","act"); toastAction=null; if(a) a.fn(); return; }
   if(t.dataset.edit) return openEdit(t.dataset.edit);
@@ -2916,7 +3064,7 @@ document.addEventListener("click", ev => {
 $("#overlay").addEventListener("click", closeSheets);
 document.addEventListener("keydown", ev => {
   if(ev.key==="Escape") closeSheets();
-  if(ev.key==="Enter" && ev.target.classList && (ev.target.classList.contains("result") || ev.target.classList.contains("micro") || ev.target.dataset.edit)) ev.target.click();
+  if(ev.key==="Enter" && ev.target.classList && (ev.target.classList.contains("result") || ev.target.classList.contains("micro") || ev.target.dataset.edit || ev.target.dataset.expand)) ev.target.click();
 });
 $("#fileInput").addEventListener("change", ev => {
   const f = ev.target.files && ev.target.files[0];
