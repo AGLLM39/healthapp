@@ -9,6 +9,15 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>
+/* Vor dem ersten Zeichnen: gewähltes Farbschema setzen und Seite sperren, bis das Passwort stimmt */
+(function(){
+  try{ var th = localStorage.getItem("nw1.ui.theme"); if(th === "light" || th === "dark") document.documentElement.setAttribute("data-theme", th); }catch(e){}
+  var ok = false;
+  try{ ok = localStorage.getItem("nw1.ui.unlocked") === "1" || sessionStorage.getItem("nw1.ui.unlocked") === "1"; }catch(e){}
+  if(!ok) document.documentElement.classList.add("locked");
+})();
+</script>
 <style>
 :root{
   --bg:#F6F7F3; --surface:#FFFFFF; --surface2:#EEF1E9; --ink:#232B21; --muted:#6B7466;
@@ -62,7 +71,7 @@ button.danger{background:var(--over); color:var(--on-over); font-weight:600}
 button:disabled{opacity:.35; cursor:default}
 button.chip{padding:6px 11px; border-radius:999px; font-size:13px; border:1px solid var(--line); background:var(--surface)}
 button.chip[aria-pressed="true"]{background:var(--accent-soft); border-color:var(--accent); color:var(--accent); font-weight:600}
-input[type=text],input[type=number],input[type=search],select,textarea{
+input[type=text],input[type=number],input[type=search],input[type=password],select,textarea{
   font:inherit; color:inherit; background:var(--surface); border:1px solid var(--line);
   border-radius:10px; padding:9px 11px; width:100%;
 }
@@ -74,7 +83,7 @@ textarea:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 .kcalstats{flex:1}
 .kcalstats .v{font-size:26px; font-weight:700; letter-spacing:-.02em}
 .kcalstats .v small{font-size:14px; font-weight:500; color:var(--muted)}
-.ringrow{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:14px}
+.ringrow{display:grid; grid-template-columns:repeat(3,1fr); gap:14px 6px; margin-top:14px}
 .ringcell{text-align:center}
 .ringcell .lbl{font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-top:4px}
 .ringcell .val{font-size:12.5px; margin-top:1px}
@@ -260,14 +269,46 @@ details.microfold > summary + *{margin-top:10px}
 /* ---------- Profil: Änderungen ---------- */
 .targetgrid .t.changed{outline:2px solid var(--accent); outline-offset:-2px}
 .targetgrid .t em{font-style:normal; font-size:11.5px; color:var(--accent); display:block}
+/* ---------- Hell/Dunkel-Schalter ---------- */
+header.app{display:flex; align-items:flex-start; justify-content:space-between; gap:10px}
+.themebtn{flex:0 0 auto; width:38px; height:38px; border-radius:999px; border:1px solid var(--line); background:var(--surface); display:flex; align-items:center; justify-content:center; padding:0; margin-top:2px; color:var(--ink)}
+.themebtn svg{width:19px; height:19px}
+/* ---------- Ring-Zusatz ---------- */
+.ringcell .lim{font-size:11px; color:var(--muted)}
+/* ---------- Passwortsperre ---------- */
+#lockScreen{display:none}
+html.locked #lockScreen{display:flex}
+html.locked .wrap, html.locked nav.tabs, html.locked .sheet, html.locked .overlay, html.locked .toast{display:none !important}
+#lockScreen{position:fixed; inset:0; z-index:100; background:var(--bg); align-items:center; justify-content:center; padding:24px 16px}
+#lockScreen .box{width:100%; max-width:340px; background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:22px 18px; box-shadow:var(--shadow)}
+#lockScreen h1{font-size:22px; margin:0 0 4px}
+#lockScreen h1 span{color:var(--accent)}
+#lockScreen p{margin:0 0 14px; color:var(--muted); font-size:13.5px}
+#lockScreen input[type=password]{margin-bottom:10px; font-size:16px}
+#lockScreen label.remember{display:flex; gap:8px; align-items:center; font-size:13px; color:var(--muted); margin:2px 0 14px}
+#lockScreen .err{color:var(--over); font-size:13px; min-height:18px; margin:-4px 0 8px}
 @media (prefers-reduced-motion: reduce){ *{transition:none !important} }
 @media (min-width:520px){ .ringrow{gap:12px} }
 </style>
 
+<div id="lockScreen" role="dialog" aria-label="Passwort eingeben">
+  <form class="box" id="lockForm" autocomplete="off">
+    <h1>Nähr<span>Wert</span></h1>
+    <p>Bitte gib das Passwort ein.</p>
+    <input type="password" id="lockInput" placeholder="Passwort" aria-label="Passwort" autocomplete="current-password">
+    <div class="err" id="lockErr" role="alert"></div>
+    <label class="remember"><input type="checkbox" id="lockRemember"> Auf diesem Gerät angemeldet bleiben</label>
+    <button class="primary" type="submit" style="width:100%">Öffnen</button>
+  </form>
+</div>
+
 <div class="wrap">
   <header class="app">
-    <h1>Nähr<span>Wert</span></h1>
-    <div class="date" id="hdrDate"></div>
+    <div>
+      <h1>Nähr<span>Wert</span></h1>
+      <div class="date" id="hdrDate"></div>
+    </div>
+    <button class="themebtn" id="btnTheme" aria-label="Hell/Dunkel umschalten" title="Hell/Dunkel umschalten"></button>
   </header>
 
   <!-- ================= HEUTE ================= -->
@@ -419,6 +460,7 @@ details.microfold > summary + *{margin-top:10px}
           <li>Lege dir nach größeren Einträgen eine Sicherung an – die Datei überlebt jede Browser-Reinigung.</li>
         </ul>
       </details>
+      <button class="ghost" id="btnLock" style="width:100%;margin-bottom:8px">Sperren (Passwort beim nächsten Öffnen)</button>
       <button class="danger" id="btnReset" style="width:100%">Alles zurücksetzen …</button>
     </div>
     <div class="card">
@@ -1781,16 +1823,23 @@ function renderToday(){
   $("#kcalDrinkShare").textContent = t.drinkKcal > 0 ? "davon " + fmt(Math.round(t.drinkKcal)) + " kcal aus Getränken" : "";
 
   // Makro-Ringe
+  // Zucker und gesättigte Fette sind Obergrenzen (rot erst, wenn überschritten – wie bei Natrium)
+  const unsat = Math.max(0, t.f - t.sf);
   const rings = [
-    ["Protein", t.p, T.protein, "g", null],
-    ["Kohlenhydr.", t.c, T.kh, "g", "Zucker " + fmt(Math.round(t.z)) + " / ≤" + fmt(T.zuckerMax) + " g"],
-    ["Fett", t.f, T.fett, "g", "gesättigt " + fmt(Math.round(t.sf)) + " / ≤" + fmt(T.sfMax) + " g"],
-    ["Ballastst.", t.b, T.ballast, "g", null]
+    ["Protein", t.p, T.protein, false],
+    ["Kohlenhydr.", t.c, T.kh, false],
+    ["Zucker", t.z, T.zuckerMax, true],
+    ["Fett unges.", unsat, T.fett - T.sfMax, false],
+    ["Fett gesätt.", t.sf, T.sfMax, true],
+    ["Ballastst.", t.b, T.ballast, false]
   ];
-  $("#macroRings").innerHTML = rings.map(([lbl,val,goal,unit,sub]) =>
-    '<div class="ringcell">' + ringSVG(val/goal, 62, 6, "var(--accent)", Math.round(val/goal*100)+"%") +
-    '<div class="lbl">'+lbl+'</div><div class="val num">'+fmt(Math.round(val))+' / '+fmt(goal)+' '+unit+'</div>' +
-    (sub ? '<div class="sub num">'+sub+'</div>' : '') + '</div>').join("");
+  $("#macroRings").innerHTML = rings.map(([lbl,val,goal,isMax]) => {
+    const pct = val/goal;
+    const color = isMax && pct > 1 ? "var(--over)" : "var(--accent)";
+    return '<div class="ringcell">' + ringSVG(pct, 62, 6, color, Math.round(pct*100)+"%") +
+      '<div class="lbl">'+lbl+'</div><div class="val num">'+fmt(Math.round(val))+' / '+(isMax?'≤':'')+fmt(goal)+' g</div>' +
+      (isMax ? '<div class="lim">Obergrenze</div>' : '') + '</div>';
+  }).join("");
 
   // Getränke
   const liter = t.ml/1000;
@@ -1889,8 +1938,10 @@ function renderWeek(){
   const rows = [
     ["Kalorien", fmt(Math.round(avg.kcal))+" kcal", "Ziel "+fmt(T.kcal)],
     ["Protein", fmt(Math.round(avg.p))+" g", "Ziel "+fmt(T.protein)+" g"],
-    ["Kohlenhydrate", fmt(Math.round(avg.c))+" g", "davon Zucker "+fmt(Math.round(avg.z))+" g"],
-    ["Fett", fmt(Math.round(avg.f))+" g", "davon gesättigt "+fmt(Math.round(avg.sf))+" g"],
+    ["Kohlenhydrate", fmt(Math.round(avg.c))+" g", "Ziel "+fmt(T.kh)+" g"],
+    ["Zucker", fmt(Math.round(avg.z))+" g", "höchstens "+fmt(T.zuckerMax)+" g"],
+    ["Fett ungesättigt", fmt(Math.round(Math.max(0, avg.f-avg.sf)))+" g", "Ziel "+fmt(T.fett-T.sfMax)+" g"],
+    ["Fett gesättigt", fmt(Math.round(avg.sf))+" g", "höchstens "+fmt(T.sfMax)+" g"],
     ["Ballaststoffe", fmt(Math.round(avg.b))+" g", "Ziel "+fmt(T.ballast)+" g"],
     ["Getränke", fmt(avg.ml/1000,1)+" l", "Koffein Ø "+fmt(Math.round(avg.cf))+" mg"]
   ];
@@ -1996,7 +2047,7 @@ function renderProfile(prev){
     [fmt(T.kcal)+" kcal","Energie (Grundumsatz "+fmt(T.bmr)+" × PAL "+fmt(profile.pal,1)+")"+was(T.kcal,P.kcal,"kcal"), T.kcal!==P.kcal],
     [fmt(T.protein)+" g","Protein ("+fmt(T.gkg,1)+" g je kg"+(T.protWeight!==profile.gewicht?" Normalgewicht":"")+")"+was(T.protein,P.protein,"g"), T.protein!==P.protein],
     [fmt(T.kh)+" g","Kohlenhydrate (Zucker ≤ "+fmt(T.zuckerMax)+" g)"+was(T.kh,P.kh,"g"), T.kh!==P.kh],
-    [fmt(T.fett)+" g","Fett (gesättigt ≤ "+fmt(T.sfMax)+" g)"+was(T.fett,P.fett,"g"), T.fett!==P.fett],
+    [fmt(T.fett)+" g","Fett: davon ungesättigt "+fmt(T.fett-T.sfMax)+" g, gesättigt ≤ "+fmt(T.sfMax)+" g"+was(T.fett,P.fett,"g"), T.fett!==P.fett],
     [fmt(T.ballast)+" g","Ballaststoffe"+was(T.ballast,P.ballast,"g"), T.ballast!==P.ballast],
     [fmt(T.trinkziel/1000,1)+" l","Trinkziel (gesamt ≈ "+fmt(T.gesamtwasser/1000,1)+" l inkl. Essen)"+was(T.trinkziel/1000,P.trinkziel/1000,"l",1), T.trinkziel!==P.trinkziel]
   ].map(x=>cell(x[0],x[1],x[2])).join("");
@@ -2008,7 +2059,7 @@ function renderProfile(prev){
   $("#targetExplain").innerHTML = [
     "<b>Energie:</b> Grundumsatz nach Mifflin-St Jeor aus Gewicht, Größe, Alter und Geschlecht ("+fmt(T.bmr)+" kcal), mal Aktivitätsfaktor PAL "+fmt(profile.pal,1)+" ("+(PAL_TEXT[profile.pal.toFixed(1)]||"")+"). Ziel: Gewicht halten.",
     "<b>Protein:</b> "+fmt(T.gkg,1)+" g je kg Körpergewicht – "+T.protBasis+"."+(T.protWeight!==profile.gewicht ? " Gerechnet mit "+fmt(T.protWeight,1)+" kg (Gewicht bei BMI 25 für deine Größe), weil sich der Bedarf auf die fettfreie Masse bezieht." : "")+" Ab PAL 1,8 steigt der Wert, weil Training mehr Eiweiß für Muskelaufbau und -reparatur braucht.",
-    "<b>Fett und Kohlenhydrate:</b> Fett 30 % der Energie (gesättigt höchstens 10 %), Zucker höchstens 10 %, Kohlenhydrate decken den Rest.",
+    "<b>Fett und Kohlenhydrate:</b> Fett 30 % der Energie, davon gesättigte Fettsäuren höchstens 10 % – der Rest (ca. 20 %) aus ungesättigten Fettsäuren. Zucker höchstens 10 %, Kohlenhydrate decken den Rest.",
     "<b>Ballaststoffe:</b> mindestens 30 g, bei höherem Energiebedarf 12,5 g je 1000 kcal.",
     "<b>Wasser:</b> "+T.mlKg+" ml je kg Körpergewicht"+(T.aktivZuschlag?" plus "+fmt(T.aktivZuschlag)+" ml für Aktivität":"")+". Etwa 60 % davon aus Getränken, der Rest steckt im Essen.",
     "<b>Vitamine und Mineralstoffe:</b> DGE-Referenzwerte für "+sex+", "+T.gruppe+" Jahre. Sie hängen von Alter und Geschlecht ab, nicht vom Gewicht.",
@@ -2635,6 +2686,10 @@ document.addEventListener("click", ev => {
   }
   if(t.id==="btnToToday"){ viewDate = null; renderToday(); return; }
   if(t.id==="btnScan") return openScanner();
+  if(t.id==="btnLock"){
+    try{ localStorage.removeItem(LS+"ui.unlocked"); sessionStorage.removeItem(LS+"ui.unlocked"); }catch(e){}
+    document.documentElement.classList.add("locked"); setTimeout(()=>$("#lockInput").focus(), 50); return;
+  }
   if(t.id==="btnOffMore"){ t.disabled = true; t.textContent = "Lade …"; offPage++; searchOFF($("#searchInput").value.trim(), lastGroups); return; }
   if(t.id==="btnDeleteEntry"){ const id = addCtx.editId; closeSheets(); return deleteEntry(id); }
   if(t.dataset.editrec!=null) return openRecipeEditor(+t.dataset.editrec);
@@ -2940,6 +2995,84 @@ function renderStorageInfo(){
     '<div class="small" style="margin-top:3px">'+esc(txt)+'</div>' +
     (stand ? '<div class="small muted" style="margin-top:3px">'+esc(stand)+'</div>' : '') + '</div>';
 }
+
+/* ---------- Hell/Dunkel ---------- */
+const ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/></svg>';
+const ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
+function currentTheme(){
+  const set = document.documentElement.getAttribute("data-theme");
+  if(set === "light" || set === "dark") return set;
+  return window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+function renderThemeBtn(){
+  const dark = currentTheme() === "dark";
+  $("#btnTheme").innerHTML = dark ? ICON_SUN : ICON_MOON;
+  $("#btnTheme").setAttribute("aria-label", dark ? "Zu hellem Design wechseln" : "Zu dunklem Design wechseln");
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute("content", dark ? "#151813" : "#3F7A4F");
+}
+function toggleTheme(){
+  const next = currentTheme() === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try{ localStorage.setItem(LS+"ui.theme", next); }catch(e){}
+  renderThemeBtn();
+}
+$("#btnTheme").addEventListener("click", toggleTheme);
+if(window.matchMedia) try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderThemeBtn); }catch(e){}
+renderThemeBtn();
+
+/* ---------- Passwortsperre ----------
+   Hinweis: Das ist ein Sichtschutz, kein echter Zugriffsschutz – eine statische
+   Seite kann ihren Inhalt nicht vor jemandem verbergen, der den Quelltext liest.
+   Gespeichert ist nur der SHA-256-Hash des Passworts, nicht das Passwort selbst. */
+const PASS_HASH = "3c7ee095c25ab8053e56a060e102d0bc391d0e24ed3ef4972f0b77abc700facb"; // sha256("vitalität")
+function sha256hex(str){
+  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  const bytes = Array.from(new TextEncoder().encode(str));
+  const bitLen = bytes.length * 8;
+  bytes.push(0x80);
+  while(bytes.length % 64 !== 56) bytes.push(0);
+  for(let i = 7; i >= 0; i--) bytes.push(i >= 4 ? 0 : (bitLen >>> (i*8)) & 0xff);
+  let h = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const w = new Array(64);
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  for(let o = 0; o < bytes.length; o += 64){
+    for(let i = 0; i < 16; i++) w[i] = (bytes[o+i*4]<<24) | (bytes[o+i*4+1]<<16) | (bytes[o+i*4+2]<<8) | bytes[o+i*4+3];
+    for(let i = 16; i < 64; i++){
+      const s0 = rotr(w[i-15],7) ^ rotr(w[i-15],18) ^ (w[i-15]>>>3);
+      const s1 = rotr(w[i-2],17) ^ rotr(w[i-2],19) ^ (w[i-2]>>>10);
+      w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0;
+    }
+    let [a,b,c,d,e,f,g,hh] = h;
+    for(let i = 0; i < 64; i++){
+      const t1 = (hh + (rotr(e,6) ^ rotr(e,11) ^ rotr(e,25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
+      const t2 = ((rotr(a,2) ^ rotr(a,13) ^ rotr(a,22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+      hh = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    h = [h[0]+a, h[1]+b, h[2]+c, h[3]+d, h[4]+e, h[5]+f, h[6]+g, h[7]+hh].map(x => x | 0);
+  }
+  return h.map(x => (x >>> 0).toString(16).padStart(8, "0")).join("");
+}
+/* Groß-/Kleinschreibung egal; „ae“ statt „ä“ wird ebenfalls akzeptiert */
+function passOk(input){
+  const v = String(input || "").trim().normalize("NFC").toLowerCase();
+  return sha256hex(v) === PASS_HASH || sha256hex(v.replace(/ae/g, "ä")) === PASS_HASH;
+}
+$("#lockForm").addEventListener("submit", function(ev){
+  ev.preventDefault();
+  if(passOk($("#lockInput").value)){
+    try{
+      sessionStorage.setItem(LS+"ui.unlocked", "1");
+      if($("#lockRemember").checked) localStorage.setItem(LS+"ui.unlocked", "1");
+    }catch(e){}
+    document.documentElement.classList.remove("locked");
+    $("#lockInput").value = ""; $("#lockErr").textContent = "";
+  } else {
+    $("#lockErr").textContent = "Das Passwort stimmt nicht.";
+    $("#lockInput").select();
+  }
+});
+if(document.documentElement.classList.contains("locked")) setTimeout(()=>{ try{ $("#lockInput").focus(); }catch(e){} }, 50);
 
 /* ---------- Start ---------- */
 applyKeywords();
