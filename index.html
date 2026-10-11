@@ -24,6 +24,7 @@
   --accent:#3F7A4F; --accent-soft:#E3EEE5; --drink:#3E7E9B; --drink-soft:#E2EEF3;
   --ok:#44935B; --warn:#D9A13B; --over:#C25B4E; --line:#E0E4DA; --shadow:0 1px 3px rgba(35,43,33,.07);
   --on-accent:#FFFFFF; --on-over:#FFFFFF;
+  --warn-ink:#875C0E; --over-ink:#A8463A; --prot:#2F6FB0; --carb:#B5651D; --fat:#7A4FA0;
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -31,6 +32,7 @@
     --accent:#7FB98D; --accent-soft:#28362B; --drink:#6FAEC9; --drink-soft:#22323B;
     --ok:#6FBE85; --warn:#E0B15C; --over:#D97F73; --line:#313830; --shadow:0 1px 3px rgba(0,0,0,.3);
     --on-accent:#10210F; --on-over:#2B0E0A;
+    --warn-ink:var(--warn); --over-ink:var(--over); --prot:#6FAEC9; --carb:#E0B15C; --fat:#B08ADB;
   }
 }
 :root[data-theme="light"]{
@@ -38,12 +40,14 @@
   --accent:#3F7A4F; --accent-soft:#E3EEE5; --drink:#3E7E9B; --drink-soft:#E2EEF3;
   --ok:#44935B; --warn:#D9A13B; --over:#C25B4E; --line:#E0E4DA; --shadow:0 1px 3px rgba(35,43,33,.07);
   --on-accent:#FFFFFF; --on-over:#FFFFFF;
+  --warn-ink:#875C0E; --over-ink:#A8463A; --prot:#2F6FB0; --carb:#B5651D; --fat:#7A4FA0;
 }
 :root[data-theme="dark"]{
   --bg:#151813; --surface:#1E231C; --surface2:#262C24; --ink:#E9ECE4; --muted:#9AA394;
   --accent:#7FB98D; --accent-soft:#28362B; --drink:#6FAEC9; --drink-soft:#22323B;
   --ok:#6FBE85; --warn:#E0B15C; --over:#D97F73; --line:#313830; --shadow:0 1px 3px rgba(0,0,0,.3);
     --on-accent:#10210F; --on-over:#2B0E0A;
+    --warn-ink:var(--warn); --over-ink:var(--over); --prot:#6FAEC9; --carb:#E0B15C; --fat:#B08ADB;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -98,6 +102,8 @@ textarea:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 .drinkstats .pill{flex:1; background:var(--drink-soft); border-radius:10px; padding:8px 10px; text-align:center}
 .drinkstats .pill b{display:block; font-size:15px}
 .drinkstats .pill span{font-size:11.5px; color:var(--muted)}
+.drinkstats .pill b.caf-warn{color:var(--warn-ink)}
+.drinkstats .pill b.caf-over{color:var(--over-ink)}
 /* ---------- Listen ---------- */
 .mealhead{display:flex; align-items:baseline; justify-content:space-between; margin:14px 0 4px}
 .mealhead h3{font-size:14px; margin:0; font-weight:650}
@@ -135,7 +141,9 @@ table.avg tr:last-child td{border-bottom:none}
 table.avg td:last-child{text-align:right; color:var(--muted)}
 .gaplist{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
 .gaplist .tag{background:var(--surface2); border-radius:999px; padding:4px 10px; font-size:12.5px}
-.gaplist .tag b{color:var(--warn)}
+.gaplist .tag b{color:var(--warn-ink)}
+.gaplist .tag .unsure{color:var(--muted); font-weight:400}
+.gapnote{font-size:12px; color:var(--muted); margin-top:8px}
 /* ---------- Rezepte ---------- */
 .recipecard{border:1px solid var(--line); border-radius:12px; padding:12px; margin:10px 0; background:var(--surface)}
 .recipecard h4{margin:0 0 2px; font-size:14.5px}
@@ -183,7 +191,7 @@ nav.tabs button[aria-current="true"]{color:var(--accent); font-weight:650}
 .result .name span{font-size:11.5px; color:var(--muted)}
 .result .k{font-size:12.5px; color:var(--muted); white-space:nowrap}
 .result .fav{background:transparent; padding:4px 6px; font-size:17px; color:var(--muted)}
-.result .fav.on{color:var(--warn)}
+.result .fav.on{color:var(--warn-ink)}
 .apistatus{font-size:11.5px; color:var(--muted); padding:6px 0}
 .portchips{display:flex; flex-wrap:wrap; gap:7px; margin:10px 0}
 .amountrow{display:flex; gap:8px; align-items:center; margin:6px 0 12px}
@@ -245,6 +253,8 @@ details.microfold[open] > summary .state::after{content:" ▾"}
 details.microfold > summary + *{margin-top:10px}
 .micro{cursor:pointer; border-radius:8px}
 .micro:hover .lbl{color:var(--accent)}
+.althint{margin-top:8px}
+.althint .chip{margin-top:6px; text-align:left}
 .nodata{font-size:12px; color:var(--muted); background:var(--surface2); border-radius:8px; padding:6px 10px; margin-bottom:6px}
 .gaplist .tag{cursor:pointer; border:none; font:inherit; color:inherit}
 /* ---------- Woher kommt's ---------- */
@@ -337,7 +347,7 @@ html.locked .wrap, html.locked nav.tabs, html.locked .sheet, html.locked .overla
       <div class="fluidbar"><i id="fluidFill" style="width:0%"></i></div>
       <div class="small muted">Gesamtbedarf ≈ <span id="fluidTotal"></span>/Tag inkl. Flüssigkeit aus fester Nahrung</div>
       <div class="drinkstats num">
-        <div class="pill"><b id="cafVal">0 mg</b><span>Koffein</span></div>
+        <div class="pill" title="Richtwert: bis 400 mg pro Tag (EFSA)" aria-label="Koffein – Richtwert: bis 400 mg pro Tag (EFSA)"><b id="cafVal">0 mg</b><span>Koffein</span></div>
         <div class="pill"><b id="drinkSugar">0 g</b><span>Zucker aus Getränken</span></div>
         <div class="pill"><b id="drinkKcal">0 kcal</b><span>fließen in die Bilanz ein</span></div>
       </div>
@@ -385,6 +395,7 @@ html.locked .wrap, html.locked nav.tabs, html.locked .sheet, html.locked .overla
       <h2>Kommt über die Woche zu kurz</h2>
       <div class="small muted">Nährstoffe, die im 7-Tage-Schnitt unter 70 % der Referenz liegen. Tipp zeigt passende Lebensmittel.</div>
       <div class="gaplist" id="gapList"></div>
+      <div id="gapNote"></div>
     </div>
   </section>
 
@@ -423,6 +434,12 @@ html.locked .wrap, html.locked nav.tabs, html.locked .sheet, html.locked .overla
           <option value="1.6">1,6 – moderat aktiv</option>
           <option value="1.8">1,8 – aktiv</option>
           <option value="2.0">2,0 – sehr aktiv</option>
+        </select></div>
+      <div class="settingrow"><label for="pZiel">Ziel</label>
+        <select id="pZiel">
+          <option value="abnehmen">Abnehmen (−400 kcal)</option>
+          <option value="halten">Gewicht halten</option>
+          <option value="zunehmen">Zunehmen (+300 kcal)</option>
         </select></div>
     </div>
     <div class="card">
@@ -511,6 +528,7 @@ html.locked .wrap, html.locked nav.tabs, html.locked .sheet, html.locked .overla
       <button class="ghost" id="backToSearch" style="margin-bottom:6px">← Zurück zur Suche</button>
       <h3 id="selName" style="margin:4px 0 0"></h3>
       <div class="small muted" id="selInfo"></div>
+      <div id="altHint"></div>
       <div class="portchips" id="portChips"></div>
       <div class="amountrow">
         <button class="chip" id="amtMinus" aria-label="weniger">−</button>
@@ -765,9 +783,12 @@ function microRefs(p){
    Ballaststoffe: mindestens 30 g, bei hohem Energiebedarf 12,5 g je 1000 kcal.
    Wasser: 35 ml/kg (15–50 J.), 30 ml/kg (ab 51 J.) plus Zuschlag für Aktivität;
            davon ca. 60 % aus Getränken, der Rest steckt im Essen. */
+const ZIEL_KCAL = {abnehmen: -400, halten: 0, zunehmen: 300};
+const ZIEL_TEXT = {abnehmen: "Abnehmen – 400 kcal unter dem Bedarf zum Halten des Gewichts", halten: "Gewicht halten", zunehmen: "Zunehmen – 300 kcal über dem Bedarf zum Halten des Gewichts"};
 function computeTargets(p){
   const bmr = 10*p.gewicht + 6.25*p.groesse - 5*p.alter + (p.geschlecht==="m" ? 5 : -161);
-  const kcal = Math.round(bmr * p.pal);
+  // Ernährungsziel verschiebt nur die Energie; nie unter den Grundumsatz
+  const kcal = Math.max(Math.round(bmr), Math.round(bmr * p.pal + (ZIEL_KCAL[p.ziel] || 0)));
   const hm = p.groesse/100, bmi = p.gewicht/(hm*hm);
   const protWeight = bmi > 25 ? Math.round(25*hm*hm*10)/10 : p.gewicht;
   let gkg = p.alter >= 65 ? 1.0 : (p.alter < 19 && p.geschlecht === "m" ? 0.9 : 0.8);
@@ -1547,7 +1568,7 @@ SUGGESTIONS.forEach(function(r){
 });
 
 /* ---------- Zustand ---------- */
-const DEFAULT_PROFILE = {alter:18, geschlecht:"m", groesse:190, gewicht:77, pal:1.6};
+const DEFAULT_PROFILE = {alter:18, geschlecht:"m", groesse:190, gewicht:77, pal:1.6, ziel:"halten"};
 let profile = Object.assign({}, DEFAULT_PROFILE, sget("profile", {}));
 let log = sget("log", []);          // Einträge
 let favs = sget("favs", []);        // Item-Snapshots
@@ -1633,17 +1654,28 @@ function blsItems(){
     const per100 = {};
     keys.forEach(([k, j]) => per100[k] = r[j] || 0);
     return {id:"B"+r[1], name:r[0], cat:"bls", isDrink:!!r[iD], per100, portions:(B.portionen[r[iP]] || []).map(x=>x.slice()),
-            cf:r[iC] || 0, src:"BLS", isBLS:true, blsGroup:r[1][0], _s:normalize(r[0]), rank:i};
+            cf:r[iC] || 0, src:"BLS", isBLS:true, blsGroup:r[1][0], _s:normalize(r[0]), _c:compact(r[0]), _w:normalize(r[0]).split(/[^a-z0-9]+/).filter(w=>w.length>=5), rank:i};
   });
   return _blsCache;
 }
 function searchBLS(nq, limit, drinkOnly){
   const terms = nq.split(/\s+/).filter(Boolean);
   if(!terms.length) return {items:[], total:0};
-  const hits = blsItems().filter(it => (!drinkOnly || it.isDrink) && terms.every(t => it._s.indexOf(t) >= 0));
-  // Namensanfang zuerst, dann kurze (meist allgemeinere) Namen
-  hits.sort((a, b) => (a._s.indexOf(terms[0])===0 ? 0 : 1) - (b._s.indexOf(terms[0])===0 ? 0 : 1) || a.name.length - b.name.length);
-  return {items: hits.slice(0, limit || 30), total: hits.length};
+  const hits = [], near = [];
+  blsItems().forEach(it => {
+    if(drinkOnly && !it.isDrink) return;
+    if(terms.every(t => termHit(it, t))) hits.push(it);
+    else if(terms.every(t => termHit(it, t) || stemHit(it, t))) near.push(it);
+  });
+  // Wortstamm-Treffer ergänzen: „Endiviensalat“ findet auch „Endivie, roh“.
+  // Reihenfolge: Grundlebensmittel vor Zubereitungen („… mit …“), dann genaue Treffer,
+  // Namensanfang, kurze (meist allgemeinere) Namen
+  const exact = new Set(hits);
+  const key = it => (/\bmit\b/.test(it._s) ? 2 : 0) + (exact.has(it) ? 0 : 1);
+  const t0 = terms[0].replace(/[^a-z0-9]/g, "");
+  const all = hits.concat(near).sort((a, b) => key(a) - key(b) ||
+    (a._c.indexOf(t0)===0 ? 0 : 1) - (b._c.indexOf(t0)===0 ? 0 : 1) || a.name.length - b.name.length);
+  return {items: all.slice(0, limit || 30), total: all.length};
 }
 
 let _prodCache = null;
@@ -1672,12 +1704,17 @@ function productItems(){
       id: "P" + (r[13] || i), name: show, brand: brand, cat: "produkt",
       isDrink: !!r[10], per100: per100, portions: (P.portionen && P.portionen[r[12]]) || [],
       cf: r[11] || 0, src: "Open Food Facts", isProduct: true, missing: missing,
-      code: r[13] || "", _s: normalize(name + " " + brand), rank: i,
+      code: r[13] || "", _s: normalize(name + " " + brand), _c: compact(name), rank: i,
       labelMicros: labelMicros ? Object.keys(labelMicros).length : 0
     });
   });
   return _prodCache;
 }
+/* Vergleich ohne Leer- und Satzzeichen: „Endivien-Salat“ = „Endiviensalat“ */
+function compact(s){ return normalize(s).replace(/[^a-z0-9]/g, ""); }
+function termHit(it, t){ return it._s.indexOf(t) >= 0 || (it._c && it._c.indexOf(t.replace(/[^a-z0-9]/g, "")) >= 0); }
+/* Suchwort beginnt mit einem Wort des Lebensmittels (mind. 5 Buchstaben), z. B. „endiviensalat“ → „endivie“ */
+function stemHit(it, t){ return t.length >= 6 && !!it._w && it._w.some(w => t.indexOf(w) === 0); }
 /* Alle Suchwörter müssen vorkommen; Namensanfang zuerst, dann nach Beliebtheit */
 function searchProducts(nq, limit, drinkOnly){
   const terms = nq.split(/\s+/).filter(Boolean);
@@ -1688,7 +1725,7 @@ function searchProducts(nq, limit, drinkOnly){
     const it = all[i];
     if(drinkOnly && !it.isDrink) continue;
     let ok = true;
-    for(let t = 0; t < terms.length; t++){ if(it._s.indexOf(terms[t]) < 0){ ok = false; break; } }
+    for(let t = 0; t < terms.length; t++){ if(!termHit(it, terms[t])){ ok = false; break; } }
     if(ok) hits.push(it);
   }
   hits.sort(function(a, b){
@@ -1814,7 +1851,8 @@ function renderToday(){
 
   // Kalorien-Ring
   const pct = t.kcal / T.kcal;
-  $("#kcalRing").innerHTML = ringSVG(pct, 108, 10, "var(--accent)", Math.round(pct*100)+"%");
+  const kcalColor = pct > 1.15 ? "var(--over)" : pct > 1 ? "var(--warn)" : "var(--accent)";
+  $("#kcalRing").innerHTML = ringSVG(pct, 108, 10, kcalColor, Math.round(pct*100)+"%");
   $("#kcalEaten").textContent = fmt(Math.round(t.kcal));
   const diff = T.kcal - t.kcal;
   $("#kcalRest").textContent = diff >= 0
@@ -1826,16 +1864,16 @@ function renderToday(){
   // Zucker und gesättigte Fette sind Obergrenzen (rot erst, wenn überschritten – wie bei Natrium)
   const unsat = Math.max(0, t.f - t.sf);
   const rings = [
-    ["Protein", t.p, T.protein, false],
-    ["Kohlenhydr.", t.c, T.kh, false],
-    ["Zucker", t.z, T.zuckerMax, true],
-    ["Fett unges.", unsat, T.fett - T.sfMax, false],
-    ["Fett gesätt.", t.sf, T.sfMax, true],
-    ["Ballastst.", t.b, T.ballast, false]
+    ["Protein", t.p, T.protein, false, "var(--prot)"],
+    ["Kohlenhydr.", t.c, T.kh, false, "var(--carb)"],
+    ["Zucker", t.z, T.zuckerMax, true, "var(--carb)"],
+    ["Fett unges.", unsat, T.fett - T.sfMax, false, "var(--fat)"],
+    ["Fett gesätt.", t.sf, T.sfMax, true, "var(--fat)"],
+    ["Ballastst.", t.b, T.ballast, false, "var(--accent)"]
   ];
-  $("#macroRings").innerHTML = rings.map(([lbl,val,goal,isMax]) => {
+  $("#macroRings").innerHTML = rings.map(([lbl,val,goal,isMax,base]) => {
     const pct = val/goal;
-    const color = isMax && pct > 1 ? "var(--over)" : "var(--accent)";
+    const color = isMax && pct > 1 ? "var(--over)" : base;
     return '<div class="ringcell">' + ringSVG(pct, 62, 6, color, Math.round(pct*100)+"%") +
       '<div class="lbl">'+lbl+'</div><div class="val num">'+fmt(Math.round(val))+' / '+(isMax?'≤':'')+fmt(goal)+' g</div>' +
       (isMax ? '<div class="lim">Obergrenze</div>' : '') + '</div>';
@@ -1848,6 +1886,9 @@ function renderToday(){
   $("#fluidTotal").textContent = fmt(T.gesamtwasser/1000,1) + " l";
   $("#fluidFill").style.width = Math.min(100, t.ml/T.trinkziel*100) + "%";
   $("#cafVal").textContent = fmt(Math.round(t.cf)) + " mg";
+  // EFSA: bis 400 mg pro Tag für gesunde Erwachsene
+  $("#cafVal").classList.toggle("caf-warn", t.cf >= 300 && t.cf < 400);
+  $("#cafVal").classList.toggle("caf-over", t.cf >= 400);
   $("#drinkSugar").textContent = fmt(t.drinkSugar,1) + " g";
   $("#drinkKcal").textContent = fmt(Math.round(t.drinkKcal)) + " kcal";
   $("#quickDrinks").innerHTML = QUICK_DRINKS.map((q,i)=>'<button data-quick="'+i+'">+ '+esc(q[0])+'<span class="muted num">'+q[2]+' ml</span></button>').join("");
@@ -1905,7 +1946,7 @@ function renderToday(){
 function entryRow(e){
   const amt = e.unit==="Portion" ? fmt(e.amount, e.amount%1?1:0)+" Portion"+(e.amount!==1?"en":"") : fmt(e.amount)+" "+e.unit;
   return '<div class="entry"><div class="name" data-edit="'+e.id+'" role="button" tabindex="0" aria-label="'+esc(e.name)+' bearbeiten"><b>'+esc(e.name)+'</b><span class="num">'+amt+
-    (e.isDrink&&e.cf?' · '+fmt(Math.round(e.cf))+' mg Koffein':'')+'</span></div>' +
+    (e.isDrink&&e.cf?' · '+fmt(Math.round(e.cf))+' mg Koffein':'')+(entryNoMicro(e)?' · ohne Vitamine':'')+'</span></div>' +
     '<span class="kcal num">'+fmt(Math.round(e.n.kcal))+' kcal</span>' +
     '<button class="del" data-del="'+e.id+'" aria-label="Eintrag löschen">✕</button></div>';
 }
@@ -1950,30 +1991,43 @@ function renderWeek(){
 
   const gaps = weeklyGaps();
   $("#gapList").innerHTML = gaps.length
-    ? gaps.map(g=>'<button class="tag" data-nutr="'+g.key+'" data-scope="woche">'+g.label+' <b class="num">'+Math.round(g.pct)+' %</b></button>').join("")
+    ? gaps.map(g=>'<button class="tag" data-nutr="'+g.key+'" data-scope="woche">'+g.label+' <b class="num">'+Math.round(g.pct)+' %</b>'+(g.unsure?' <span class="unsure">unsicher</span>':'')+'</button>').join("")
     : '<span class="small muted" style="margin-top:8px;display:block">'+(tracked.length ? "Aktuell keine auffälligen Lücken – alle Werte über 70 % der Referenz. 🌿" : "Erfasse ein paar Tage, dann erscheint hier deine Auswertung.")+'</span>';
+  $("#gapNote").innerHTML = gaps.some(g=>g.unsure)
+    ? '<div class="gapnote">Ein Teil deiner Einträge hat keine Vitamindaten – diese Lücken sind möglicherweise keine.</div>' : "";
 }
 function weeklyGaps(){
   const T = computeTargets(profile);
   const keys = last7Keys();
   const tracked = keys.map(k=>({k, t:dayTotals(k)})).filter(d=>log.some(e=>e.date===d.k));
   if(!tracked.length) return [];
+  // Anteil der Energie aus Einträgen ohne Vitamindaten (Getränke ausgenommen)
+  const noMicroShare = tracked.reduce((s, d) => {
+    const es = log.filter(e => e.date === d.k && !e.isDrink);
+    const all = es.reduce((a, e) => a + e.n.kcal, 0) || 1;
+    const miss = es.filter(entryNoMicro).reduce((a, e) => a + e.n.kcal, 0);
+    return s + miss / all;
+  }, 0) / tracked.length;
+  const unsure = noMicroShare > 0.3;
   const out = [];
   MICROS.forEach(([k,label]) => {
     if(k==="natrium") return;
     const a = tracked.reduce((s,d)=>s+d.t[k],0)/tracked.length;
     const pct = a/T.micros[k]*100;
-    if(pct < 70) out.push({key:k, label, pct});
+    if(pct < 70) out.push({key:k, label, pct, unsure});
   });
   const fib = tracked.reduce((s,d)=>s+d.t.b,0)/tracked.length / T.ballast * 100;
-  if(fib < 70) out.push({key:"b", label:"Ballaststoffe", pct:fib});
+  if(fib < 70) out.push({key:"b", label:"Ballaststoffe", pct:fib, unsure:false});   // steht auf jedem Etikett
   return out.sort((a,b)=>a.pct-b.pct);
 }
 
 /* ---------- Rezepte ---------- */
 const FOCUS_LABEL = {vitE:"Vitamin E",o3:"Omega-3",vitA:"Vitamin A",vitC:"Vitamin C",vitD:"Vitamin D",b12:"B12",folat:"Folat",eisen:"Eisen",calcium:"Calcium",magnesium:"Magnesium",zink:"Zink",kalium:"Kalium",jod:"Jod",b:"Ballaststoffe",p:"Protein"};
 function renderRecipes(){
-  const gaps = weeklyGaps();
+  // Vorrang für sichere Lücken; unsichere nur, wenn es keine sicheren gibt
+  const allGaps = weeklyGaps();
+  const sure = allGaps.filter(g=>!g.unsure);
+  const gaps = sure.length ? sure : allGaps;
   const gapKeys = gaps.map(g=>g.key);
   const seed = parseInt(todayKey().replace(/-/g,""),10) + shuffleOffset*7;
 
@@ -2035,7 +2089,7 @@ const PAL_TEXT = {"1.4":"überwiegend sitzend","1.6":"moderat aktiv","1.8":"akti
 let lastTargets = null;   // für die Vorher-/Nachher-Anzeige nach einer Profiländerung
 function renderProfile(prev){
   const ae = document.activeElement;
-  [["pAlter","alter"],["pSex","geschlecht"],["pGr","groesse"],["pGw","gewicht"],["pPal","pal"]].forEach(([id,key])=>{
+  [["pAlter","alter"],["pSex","geschlecht"],["pGr","groesse"],["pGw","gewicht"],["pPal","pal"],["pZiel","ziel"]].forEach(([id,key])=>{
     if(ae && ae.id===id) return;   // nicht ins Feld schreiben, während getippt wird
     $("#"+id).value = key==="pal" ? profile.pal.toFixed(1) : profile[key];
   });
@@ -2057,7 +2111,7 @@ function renderProfile(prev){
   }).join("");
   const sex = profile.geschlecht==="m" ? "männlich" : "weiblich";
   $("#targetExplain").innerHTML = [
-    "<b>Energie:</b> Grundumsatz nach Mifflin-St Jeor aus Gewicht, Größe, Alter und Geschlecht ("+fmt(T.bmr)+" kcal), mal Aktivitätsfaktor PAL "+fmt(profile.pal,1)+" ("+(PAL_TEXT[profile.pal.toFixed(1)]||"")+"). Ziel: Gewicht halten.",
+    "<b>Energie:</b> Grundumsatz nach Mifflin-St Jeor aus Gewicht, Größe, Alter und Geschlecht ("+fmt(T.bmr)+" kcal), mal Aktivitätsfaktor PAL "+fmt(profile.pal,1)+" ("+(PAL_TEXT[profile.pal.toFixed(1)]||"")+")"+(ZIEL_KCAL[profile.ziel] ? (profile.ziel==="abnehmen"?" − ":" + ")+fmt(Math.abs(ZIEL_KCAL[profile.ziel]))+" kcal" : "")+". Ziel: "+(ZIEL_TEXT[profile.ziel]||ZIEL_TEXT.halten)+"."+(T.kcal===T.bmr && ZIEL_KCAL[profile.ziel]<0 ? " Begrenzt auf den Grundumsatz." : ""),
     "<b>Protein:</b> "+fmt(T.gkg,1)+" g je kg Körpergewicht – "+T.protBasis+"."+(T.protWeight!==profile.gewicht ? " Gerechnet mit "+fmt(T.protWeight,1)+" kg (Gewicht bei BMI 25 für deine Größe), weil sich der Bedarf auf die fettfreie Masse bezieht." : "")+" Ab PAL 1,8 steigt der Wert, weil Training mehr Eiweiß für Muskelaufbau und -reparatur braucht.",
     "<b>Fett und Kohlenhydrate:</b> Fett 30 % der Energie, davon gesättigte Fettsäuren höchstens 10 % – der Rest (ca. 20 %) aus ungesättigten Fettsäuren. Zucker höchstens 10 %, Kohlenhydrate decken den Rest.",
     "<b>Ballaststoffe:</b> mindestens 30 g, bei höherem Energiebedarf 12,5 g je 1000 kcal.",
@@ -2134,7 +2188,7 @@ function doSearch(q){
   const nq = normalize(q);
   const local = allLocalItems()
     .filter(it=>!addCtx.drinkOnly||it.isDrink)
-    .filter(it=>normalize(it.name).includes(nq) || (it.kw && normalize(it.kw).includes(nq)))
+    .filter(it=>normalize(it.name).includes(nq) || compact(it.name).includes(compact(q)) || (it.kw && normalize(it.kw).includes(nq)))
     .sort((a,b)=>{
       // Namenstreffer vor reinen Schlagwort-Treffern
       const an = normalize(a.name).includes(nq) ? 0 : 1, bn = normalize(b.name).includes(nq) ? 0 : 1;
@@ -2242,9 +2296,11 @@ function searchOFF(q, groups){
 let currentResults = [];
 function resultRow(it, idx){
   const isFav = favs.some(f=>f.id===it.id);
+  const po = !it.isRecipe && it.portions && it.portions.length ? it.portions[0] : null;
+  const poTxt = po ? " · " + po[0] + " ≈ " + fmt(Math.round(it.per100.kcal * po[1] / 100)) + " kcal" : "";
   const sub = it.isRecipe
     ? "Eigenes Rezept · "+fmt(Math.round(it.totals.kcal))+" kcal/Portion"
-    : fmt(Math.round(it.per100.kcal))+" kcal je 100 "+(it.isDrink?"ml":"g")+" · "+(it.isProduct ? "Markenprodukt" : it.isBLS ? "BLS · alle Nährstoffe" : it.src);
+    : fmt(Math.round(it.per100.kcal))+" kcal je 100 "+(it.isDrink?"ml":"g")+poTxt+" · "+(it.isProduct ? (it.labelMicros >= 3 ? "Markenprodukt" : "Markenprodukt · ohne Vitamine") : it.isBLS ? "BLS · alle Nährstoffe" : it.src);
   return '<div class="result" data-pick="'+idx+'" role="button" tabindex="0">' +
     '<div class="name"><b>'+esc(it.name)+'</b><span>'+sub+'</span></div>' +
     '<button class="fav'+(isFav?' on':'')+'" data-fav="'+idx+'" aria-label="Favorit">'+(isFav?"★":"☆")+'</button></div>';
@@ -2298,9 +2354,47 @@ function pickItem(it){
   $("#portChips").innerHTML = chips.map(c=>'<button class="chip" data-amt="'+c[1]+'">'+esc(c[0])+'</button>').join("");
 
   $("#mealPickWrap").style.display = it.isDrink ? "none" : "";
+  addCtx.swap = false;
+  renderAltHint(it.name, it.isRecipe ? 0 : it.per100.kcal, it.isDrink, !!it.isProduct && !(it.labelMicros >= 3));
   $("#mealChips").innerHTML = MEALS.map(m=>'<button class="chip" data-meal="'+m[0]+'" aria-pressed="'+(m[0]===addCtx.meal?"true":"false")+'">'+m[1]+'</button>').join("");
   updatePreview();
   showStep(2);
+}
+/* Markenprodukte ohne Vitamindaten: passendes BLS-Lebensmittel mit allen Nährstoffen suchen.
+   Nur bei ähnlicher Energie, damit z. B. ein Fertiggericht nicht auf eine Zutat zeigt. */
+function blsAlternative(name, kcal, isDrink){
+  const words = normalize(name.replace(/\s*\([^)]*\)\s*$/, "")).split(/[^a-z0-9]+/).filter(w => w.length >= 4);
+  if(!words.length || !blsItems().length) return null;
+  const close = it => it.isDrink === !!isDrink && (Math.abs(it.per100.kcal - kcal) <= 15 || Math.abs(it.per100.kcal - kcal) <= kcal*0.3);
+  const cand = searchBLS(words[0], 60).items.filter(close);
+  if(!cand.length) return null;
+  const score = it => (/\broh\b/.test(it._s) ? 0 : 1)*1000 + (it._s.indexOf(words[0].slice(0, 5)) === 0 ? 0 : 500) + it.name.length;
+  return cand.sort((a, b) => score(a) - score(b))[0];
+}
+function renderAltHint(name, kcal, isDrink, noMicro){
+  const alt = noMicro ? blsAlternative(name, kcal, isDrink) : null;
+  addCtx.alt = alt;
+  $("#altHint").innerHTML = alt
+    ? '<div class="nodata althint">Für dieses Produkt gibt es keine Vitamindaten – sie würden heute nicht mitgezählt. Gleichwertig mit allen Vitaminen und Mineralstoffen:<br>' +
+      '<button class="chip" id="btnAlt">'+esc(alt.name)+' · BLS · '+fmt(Math.round(alt.per100.kcal))+' kcal je 100 '+(alt.isDrink?"ml":"g")+'</button></div>'
+    : "";
+}
+/* Vorgeschlagenes BLS-Lebensmittel übernehmen – Menge, Mahlzeit und ggf. Bearbeiten-Modus bleiben */
+function useAlternative(){
+  const alt = addCtx.alt; if(!alt) return;
+  const amt = $("#amtInput").value, meal = addCtx.meal, editId = addCtx.editId;
+  pickItem(alt);
+  $("#amtInput").value = amt;
+  addCtx.meal = meal;
+  $$("#mealChips .chip").forEach(b=>b.setAttribute("aria-pressed", b.dataset.meal===meal?"true":"false"));
+  if(editId){
+    addCtx.editId = editId; addCtx.swap = true;
+    $("#addTitle").textContent = "Eintrag bearbeiten";
+    $("#backToSearch").style.display = "none";
+    $("#btnConfirmAdd").textContent = "Ersetzen und speichern";
+    $("#btnDeleteEntry").style.display = "";
+  }
+  updatePreview();
 }
 function updatePreview(){
   const it = addCtx.sel; if(!it) return;
@@ -2318,9 +2412,11 @@ function confirmAdd(){
   const e = entryFromItem(it, a, addCtx.meal);
   log.push(e); sset("log", log);
   closeSheets();
-  toast(it.name+" → "+MEAL_LABEL[e.meal]+(e.date!==todayKey()?" ("+dayName(e.date)+")":""), undoAdd(e.id));
+  toast(it.name+" → "+MEAL_LABEL[e.meal]+(e.date!==todayKey()?" ("+dayName(e.date)+")":"")+cafNote(e), undoAdd(e.id));
   renderAll();
 }
+/* EFSA: bis 200 mg Koffein auf einmal */
+function cafNote(e){ return (e.cf||0) > 200 ? " · viel Koffein auf einmal" : ""; }
 function undoAdd(id){ return {label:"Rückgängig", fn:()=>{ log = log.filter(x=>x.id!==id); sset("log", log); renderAll(); toast("Eintrag entfernt"); }}; }
 
 /* ---------- Eintrag bearbeiten: Menge und Mahlzeit ändern ---------- */
@@ -2343,10 +2439,19 @@ function openEdit(id){
   $("#backToSearch").style.display = "none";
   $("#btnConfirmAdd").textContent = "Änderung speichern";
   $("#btnDeleteEntry").style.display = "";
+  if(e.unit !== "Portion") renderAltHint(e.name, it.per100.kcal, e.isDrink, entryNoMicro(e));
   updatePreview();
 }
 function saveEdit(a){
   const e = log.find(x=>x.id===addCtx.editId); if(!e) return closeSheets();
+  if(addCtx.swap){
+    const ne = entryFromItem(addCtx.sel, a, addCtx.meal);
+    Object.assign(e, ne, {id:e.id, date:e.date});
+    sset("log", log);
+    closeSheets(); renderAll();
+    toast("Ersetzt durch "+addCtx.sel.name+" – jetzt mit Vitaminen");
+    return;
+  }
   const f = a / e.amount;
   ALL_KEYS.forEach(k => e.n[k] = (e.n[k]||0)*f);
   e.cf = (e.cf||0)*f;
@@ -2371,7 +2476,7 @@ function quickDrink(i){
   const it = findItemByName(q[1]); if(!it) return;
   const e = entryFromItem(it, q[2], "getraenk");
   log.push(e); sset("log", log); renderAll();
-  toast("+ "+q[2]+" ml "+q[0].replace(/^(Glas|Flasche) /,""), undoAdd(e.id));
+  toast("+ "+q[2]+" ml "+q[0].replace(/^(Glas|Flasche) /,"")+cafNote(e), undoAdd(e.id));
 }
 
 /* ---------- Mahlzeit vom Vortag wiederholen / als Kombi speichern ---------- */
@@ -2841,7 +2946,8 @@ const PROFILE_FIELDS = [
   ["pSex","geschlecht",null,null,v=>v],
   ["pGr","groesse",120,230,v=>parseFloat(v)],
   ["pGw","gewicht",35,200,v=>parseFloat(String(v).replace(",","."))],
-  ["pPal","pal",null,null,v=>parseFloat(v)]
+  ["pPal","pal",null,null,v=>parseFloat(v)],
+  ["pZiel","ziel",null,null,v=>v]
 ];
 let profileToastTimer = null;
 function applyProfileField(id, key, min, max, parse, final){
@@ -2866,6 +2972,7 @@ function applyProfileField(id, key, min, max, parse, final){
     toast(parts.length ? "Neue Ziele: "+parts.join(" · ") : "Profil gespeichert");
   }, 600);
 }
+$("#altHint").addEventListener("click", ev => { if(ev.target.closest("#btnAlt")) useAlternative(); });
 PROFILE_FIELDS.forEach(([id,key,min,max,parse]) => {
   $("#"+id).addEventListener("input", () => applyProfileField(id,key,min,max,parse,false));
   $("#"+id).addEventListener("change", () => applyProfileField(id,key,min,max,parse,true));
