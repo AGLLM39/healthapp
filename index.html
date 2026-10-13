@@ -16,6 +16,11 @@
   var ok = false;
   try{ ok = localStorage.getItem("nw1.ui.unlocked") === "1" || sessionStorage.getItem("nw1.ui.unlocked") === "1"; }catch(e){}
   if(!ok) document.documentElement.classList.add("locked");
+  // Vom Homescreen gestartet (installierte App)? Dann App-Darstellung fürs Smartphone.
+  // ?app=1 erzwingt sie zum Ausprobieren im Browser.
+  var app = false;
+  try{ app = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true || /[?&]app=1\b/.test(location.search); }catch(e){}
+  if(app) document.documentElement.classList.add("app");
 })();
 </script>
 <style>
@@ -321,6 +326,52 @@ html.locked .wrap, html.locked nav.tabs, html.locked .sheet, html.locked .overla
 #lockScreen input[type=password]{margin-bottom:10px; font-size:16px}
 #lockScreen label.remember{display:flex; gap:8px; align-items:center; font-size:13px; color:var(--muted); margin:2px 0 14px}
 #lockScreen .err{color:var(--over); font-size:13px; min-height:18px; margin:-4px 0 8px}
+/* ---------- Kleine Bildschirme / Touch ---------- */
+/* 16 px in Eingabefeldern verhindert, dass iOS beim Antippen hineinzoomt */
+@media (pointer:coarse){ input, select, textarea{font-size:16px} }
+html.app input, html.app select, html.app textarea{font-size:16px}
+.toast{max-width:calc(100vw - 24px)}
+@media (max-width:520px){ .toast{white-space:normal; text-align:left} }
+/* ---------- App-Modus: vom Homescreen gestartet ---------- */
+html.app, html.app body{overscroll-behavior-y:none}
+html.app body{-webkit-tap-highlight-color:transparent; padding-bottom:calc(66px + env(safe-area-inset-bottom))}
+html.app button, html.app nav.tabs, html.app .ringcell, html.app .micro, html.app .result, html.app .entry .name, html.app summary{
+  -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:manipulation}
+html.app .wrap{padding-left:calc(12px + env(safe-area-inset-left)); padding-right:calc(12px + env(safe-area-inset-right))}
+/* Kopfzeile bleibt oben stehen wie eine App-Leiste */
+html.app header.app{position:sticky; top:0; z-index:30; background:var(--bg); align-items:center;
+  margin:0 calc(-12px - env(safe-area-inset-right)) 0 calc(-12px - env(safe-area-inset-left));
+  padding:calc(env(safe-area-inset-top) + 8px) calc(12px + env(safe-area-inset-right)) 8px calc(12px + env(safe-area-inset-left));
+  height:calc(env(safe-area-inset-top) + 62px); border-bottom:1px solid transparent; transition:border-color .2s}
+html.app.scrolled header.app{border-bottom-color:var(--line)}
+html.app header.app h1{font-size:19px}
+html.app header.app .date{font-size:12px; margin-top:0}
+html.app .themebtn{width:36px; height:36px; margin-top:0}
+html.app .daynav{position:sticky; top:calc(env(safe-area-inset-top) + 62px); z-index:29; background:var(--bg); margin:0 -12px; padding:2px 12px 4px}
+html.app .card{margin:10px 0; padding:14px 12px; border-radius:16px}
+/* Größere Tippflächen (mind. ca. 40 px) */
+html.app button.chip{min-height:36px; padding:7px 13px}
+html.app .daynav button{min-width:44px; min-height:40px}
+html.app .entry{min-height:52px; padding:9px 0}
+html.app .entry .del{min-width:40px; min-height:40px; font-size:17px}
+html.app .result{min-height:52px; padding:10px 0}
+html.app .result .fav{min-width:40px; min-height:40px}
+html.app .micro{padding:7px 0}
+html.app .mini{padding:8px 4px}
+html.app .nrow summary{padding:9px 0}
+html.app .quickdrinks button{min-height:48px}
+/* Navigationsleiste wie in nativen Apps */
+html.app nav.tabs .inner{max-width:none}
+html.app nav.tabs button{padding:8px 0 6px; min-height:54px; font-size:11px}
+html.app nav.tabs button svg{width:24px; height:24px}
+/* Fenster füllen fast den ganzen Bildschirm und respektieren Notch und Home-Leiste */
+html.app .sheet{max-width:none; max-height:calc(100vh - env(safe-area-inset-top) - 12px); max-height:calc(100dvh - env(safe-area-inset-top) - 12px); border-radius:20px 20px 0 0}
+html.app #addSheet{height:calc(100vh - env(safe-area-inset-top) - 12px); height:calc(100dvh - env(safe-area-inset-top) - 12px)}
+html.app .sheet .head{padding:8px 14px 6px}
+html.app .sheet .body{padding:0 14px calc(20px + env(safe-area-inset-bottom)); overscroll-behavior:contain}
+html.app .toast{bottom:calc(74px + env(safe-area-inset-bottom))}
+/* Auf größeren Geräten (Tablet) bleibt der Inhalt mittig */
+@media (min-width:700px){ html.app .sheet{max-width:640px} html.app nav.tabs .inner{max-width:640px} }
 @media (prefers-reduced-motion: reduce){ *{transition:none !important} }
 @media (min-width:520px){ .ringrow{gap:12px} }
 </style>
@@ -1849,7 +1900,7 @@ function recipeToItem(r, idPrefix){
   const tot = {}; ALL_KEYS.forEach(k=>tot[k]=0);
   let g=0, cf=0;
   r.ings.forEach(ing => {
-    const it = typeof ing[0]==="string" ? findItemByName(ing[0]) : null;
+    const it = typeof ing[0]==="string" ? withEstimate(findItemByName(ing[0])) : null;
     const item = it || ing[2]; const grams = ing[1];
     if(!item) return;
     g += grams; cf += (item.cf||0)*grams/100;
@@ -1865,11 +1916,12 @@ function recipeHasProducts(item){
   return (item.ings||[]).some(function(ing){
     if(ing[2] && ing[2].noMicro) return true;
     const it = typeof ing[0]==="string" ? findItemByName(ing[0]) : null;
-    return !!(it && it.isProduct);
+    return !!(it && it.isProduct && !withEstimate(it).est && !(it.labelMicros >= 3));
   });
 }
 /* Für ältere Einträge ohne Vermerk einmalig nachschlagen */
 function entryNoMicro(e){
+  if(e.est) return false;
   if(e.noMicro === undefined){
     if(e.unit === "Portion"){ e.noMicro = false; }
     else { const it = findItemByName(e.name); e.noMicro = !!(it && it.isProduct); }
@@ -1879,6 +1931,7 @@ function entryNoMicro(e){
 
 /* Nährwerte eines Eintrags berechnen */
 function entryFromItem(item, amount, meal){
+  item = withEstimate(item);
   const n = {};
   if(item.isRecipe){
     ALL_KEYS.forEach(k => n[k] = (item.totals[k]||0)*amount); // amount = Portionen
@@ -1894,7 +1947,10 @@ function entryFromItem(item, amount, meal){
     isDrink: !!item.isDrink,
     ml: item.isDrink ? amount : 0,
     cf: item.isDrink ? (item.cf||0)*amount/100 : (item.isRecipe ? (item.cf||0)*amount : 0),
-    noMicro: (!!item.isProduct && !(item.labelMicros >= 3)) || (item.isRecipe && recipeHasProducts(item)),
+    noMicro: (!!item.isProduct && !(item.labelMicros >= 3) && !item.est) || (item.isRecipe && recipeHasProducts(item)),
+    noEst: item.noEst || undefined,
+    est: item.est || undefined,
+    estKeys: item.est ? item.estKeys : undefined,
     n
   };
 }
@@ -2047,7 +2103,7 @@ function entryRow(e){
   const open = openEntries.has(e.id);
   return '<div class="entrywrap'+(open?' open':'')+'" data-entry="'+e.id+'"><div class="entry">' +
     '<div class="name" data-expand="'+e.id+'" role="button" tabindex="0" aria-expanded="'+open+'" aria-label="Nährwerte von '+esc(e.name)+' '+(open?'zuklappen':'anzeigen')+'"><b>'+esc(e.name)+'</b><span class="num">'+entryAmt(e)+
-    (e.isDrink&&e.cf?' · '+fmt(Math.round(e.cf))+' mg Koffein':'')+(entryNoMicro(e)?' · ohne Vitamine':'')+'</span></div>' +
+    (e.isDrink&&e.cf?' · '+fmt(Math.round(e.cf))+' mg Koffein':'')+(entryNoMicro(e)?' · ohne Vitamine':e.est?' · Vitamine geschätzt':'')+'</span></div>' +
     '<span class="kcal num">'+fmt(Math.round(e.n.kcal))+' kcal</span><span class="chev" aria-hidden="true">›</span>' +
     '<button class="del" data-del="'+e.id+'" aria-label="Eintrag löschen">✕</button></div>' +
     (open ? entryDetail(e) : '') + '</div>';
@@ -2057,16 +2113,17 @@ function nVal(v){ return !v ? "0" : v < 1 ? fmt(v, 2) : v < 10 ? fmt(v, 1) : fmt
 function entryDetail(e){
   const T = computeTargets(profile), n = e.n, nm = entryNoMicro(e);
   const sex = profile.geschlecht==="m" ? "männlich" : "weiblich";
-  const row = (k, label, v, unit, ref, isMax, sub, na, goal) => {
+  const row = (k, label, v, unit, ref, isMax, sub, na, goal, approx) => {
     const pct = ref ? Math.round(v/ref*100) : 0;
     return '<details class="nrow'+(sub?' sub':'')+'"><summary><span class="nl">'+label+'</span>' +
       (na ? '<span class="nv na">keine Angabe</span><span class="np"></span>'
-          : '<span class="nv num">'+nVal(v)+' '+unit+'</span><span class="np num'+(isMax && pct>100?' over':'')+'">'+(v>0 && pct<1 ? '&lt;1' : pct)+' %</span>') +
+          : '<span class="nv num">'+(approx?'≈ ':'')+nVal(v)+' '+unit+'</span><span class="np num'+(isMax && pct>100?' over':'')+'">'+(v>0 && pct<1 ? '&lt;1' : pct)+' %</span>') +
       '</summary>'+infoList(k, goal)+'</details>';
   };
   const g = (ref, unit, txt, isMax) => (isMax ? "Deine Obergrenze: höchstens " : "Dein Tagesziel: ") + fmtRef(ref) + " " + unit + (txt ? " – " + txt : "");
   let h = '<div class="entrydetail"><div class="dhead"><b>Nährwerte für '+entryAmt(e)+'</b><span>% deines Tagesziels</span></div>';
   if(nm) h += '<div class="nodata">Markenprodukt ohne Vitamindaten – auf dem Etikett stehen nur Nährwerte und Salz.</div>';
+  if(e.est) h += '<div class="nodata">Vitamine und Mineralstoffe geschätzt anhand von „'+esc(e.est)+'“ (Bundeslebensmittelschlüssel); Energie, Makros und Salz vom Etikett. Geschätzte Werte sind mit ≈ markiert. <button class="mini" data-unest="'+e.id+'">Passt nicht – Schätzung entfernen</button></div>';
   h += '<div class="grp">Energie und Makronährstoffe</div>';
   h += row("kcal","Energie",n.kcal,"kcal",T.kcal,false,false,false, g(T.kcal,"kcal","Grundumsatz × Aktivität"+(ZIEL_KCAL[profile.ziel] ? (profile.ziel==="abnehmen"?" − 400":" + 300") : "")));
   h += row("p","Protein",n.p,"g",T.protein,false,false,false, g(T.protein,"g",fmt(T.gkg,1)+" g je kg Körpergewicht"));
@@ -2080,7 +2137,7 @@ function entryDetail(e){
   MICROS.forEach(([k,label,unit]) => {
     const isMax = k==="natrium";
     const txt = k==="o3" ? "0,5 % der Energie" : "DGE-Referenzwert für "+sex+", "+T.gruppe+" Jahre";
-    h += row(k, label, n[k]||0, unit, T.micros[k], isMax, false, nm && !isMax && !n[k], g(T.micros[k], unit, txt, isMax));
+    h += row(k, label, n[k]||0, unit, T.micros[k], isMax, false, nm && !isMax && !n[k], g(T.micros[k], unit, txt, isMax), !!e.est && (e.estKeys ? e.estKeys.indexOf(k) >= 0 : k !== "natrium"));
   });
   if(e.isDrink) h += '<div class="small muted" style="margin-top:6px">'+fmt(e.ml||0)+' ml Flüssigkeit'+(e.cf?' · '+fmt(Math.round(e.cf))+' mg Koffein':'')+'</div>';
   h += '<div class="dfoot"><span class="small muted">Tippe auf einen Nährstoff für Hintergründe.</span>' +
@@ -2437,7 +2494,7 @@ function resultRow(it, idx){
   const poTxt = po ? " · " + po[0] + " ≈ " + fmt(Math.round(it.per100.kcal * po[1] / 100)) + " kcal" : "";
   const sub = it.isRecipe
     ? "Eigenes Rezept · "+fmt(Math.round(it.totals.kcal))+" kcal/Portion"
-    : fmt(Math.round(it.per100.kcal))+" kcal je 100 "+(it.isDrink?"ml":"g")+poTxt+" · "+(it.isProduct ? (it.labelMicros >= 3 ? "Markenprodukt" : "Markenprodukt · ohne Vitamine") : it.isBLS ? "BLS · alle Nährstoffe" : it.src);
+    : fmt(Math.round(it.per100.kcal))+" kcal je 100 "+(it.isDrink?"ml":"g")+poTxt+" · "+(it.isProduct ? (it.labelMicros >= 3 ? "Markenprodukt" : "Markenprodukt · Vitamine geschätzt") : it.isBLS ? "BLS · alle Nährstoffe" : it.src);
   return '<div class="result" data-pick="'+idx+'" role="button" tabindex="0">' +
     '<div class="name"><b>'+esc(it.name)+'</b><span>'+sub+'</span></div>' +
     '<button class="fav'+(isFav?' on':'')+'" data-fav="'+idx+'" aria-label="Favorit">'+(isFav?"★":"☆")+'</button></div>';
@@ -2465,6 +2522,7 @@ function renderGroups(groups, emptyText){
 }
 
 function pickItem(it){
+  it = withEstimate(it);
   addCtx.sel = it;
   addCtx.editId = null;
   $("#btnConfirmAdd").textContent = curDay()===todayKey() ? "Hinzufügen" : "Für "+dayWord(curDay())+" hinzufügen";
@@ -2477,8 +2535,7 @@ function pickItem(it){
       (it.isProduct
         ? (it.labelMicros >= 3
             ? " · Nährwerte laut Etikett (Open Food Facts), inklusive " + it.labelMicros + " Vitamin- und Mineralstoffangaben."
-            : " · Nährwerte laut Etikett (Open Food Facts). Vitamine und Mineralstoffe außer Natrium stehen nicht auf dem Etikett und werden nicht mitgezählt" +
-              (it.missing && it.missing.length ? "; ohne Angabe: " + it.missing.join(", ") : "") + ".")
+            : " · Nährwerte laut Etikett (Open Food Facts)" + (it.missing && it.missing.length ? "; ohne Angabe: " + it.missing.join(", ") : "") + ".")
         : it.isBLS ? " · Werte aus dem Bundeslebensmittelschlüssel (BLS 4.0) mit allen Vitaminen und Mineralstoffen." : "");
   $("#amtUnit").textContent = it.isRecipe ? "Portionen" : (it.isDrink ? "ml" : "g");
   const def = it.isRecipe ? 1 : (it.portions.length ? it.portions[0][1] : (it.isDrink?250:100));
@@ -2492,29 +2549,89 @@ function pickItem(it){
 
   $("#mealPickWrap").style.display = it.isDrink ? "none" : "";
   addCtx.swap = false;
-  renderAltHint(it.name, it.isRecipe ? 0 : it.per100.kcal, it.isDrink, !!it.isProduct && !(it.labelMicros >= 3));
+  renderAltHint(it);
   $("#mealChips").innerHTML = MEALS.map(m=>'<button class="chip" data-meal="'+m[0]+'" aria-pressed="'+(m[0]===addCtx.meal?"true":"false")+'">'+m[1]+'</button>').join("");
   updatePreview();
   showStep(2);
 }
-/* Markenprodukte ohne Vitamindaten: passendes BLS-Lebensmittel mit allen Nährstoffen suchen.
-   Nur bei ähnlicher Energie, damit z. B. ein Fertiggericht nicht auf eine Zutat zeigt. */
-function blsAlternative(name, kcal, isDrink){
-  const words = normalize(name.replace(/\s*\([^)]*\)\s*$/, "")).split(/[^a-z0-9]+/).filter(w => w.length >= 4);
-  if(!words.length || !blsItems().length) return null;
-  const close = it => it.isDrink === !!isDrink && (Math.abs(it.per100.kcal - kcal) <= 15 || Math.abs(it.per100.kcal - kcal) <= kcal*0.3);
-  const cand = searchBLS(words[0], 60).items.filter(close);
-  if(!cand.length) return null;
-  const score = it => (/\broh\b/.test(it._s) ? 0 : 1)*1000 + (it._s.indexOf(words[0].slice(0, 5)) === 0 ? 0 : 500) + it.name.length;
-  return cand.sort((a, b) => score(a) - score(b))[0];
+/* ---------- Mikronährstoffe für Markenprodukte schätzen ----------
+   Auf Etiketten stehen meist nur Makros und Salz. Für Vitamine und Mineralstoffe
+   wird das passende Lebensmittel aus dem BLS gesucht: Das Hauptwort muss im
+   Produktnamen vorkommen und Energie, Protein, Kohlenhydrate und Fett müssen
+   ähnlich sein – sonst wird nichts geschätzt. */
+const MATCH_STOP = new Set("bio,natur,naturel,classic,klassisch,original,fein,feine,feiner,zart,extra,mini,light,leicht,frisch,frische,premium,gutes,gunstig,beste,lecker,spezial,deluxe,family,jumbo,maxi,pack,packung,stuck,scheiben,sorte,nature,with,the,from,style,vegan,vegane,veganer,glutenfrei,laktosefrei,high,fettarm,ohne,mild,milde,kraftig,herzhaft,aus,und,mit,der,die,das,von,fur,auf,nach,art,wahl,land,cremig,cremiger,cremige,knusprig,knusprige,lose,ganze,ganz,halbe,gerieben,geriebener,gemahlen,zucker,protein,instant,flavour,geschmack,sorten,stucke,touch,alkoholfrei,sauce,sosse,drink,vollkorn,kernig,kernige,knusper".split(","));
+/* Limonaden, Wasser & Co. haben praktisch keine Vitamine – hier wird nicht geschätzt */
+const MATCH_SKIP = /\b(fanta|sprite|mirinda|mezzo|schweppes|limo|limonade|eistee|ice ?tea|energy|red ?bull|monster|wasser|water|mineralwasser|sprudel)\b/;
+const MATCH_SYN = {spaghetti:"teigwaren",spaghettini:"teigwaren",penne:"teigwaren",fusilli:"teigwaren",farfalle:"teigwaren",makkaroni:"teigwaren",
+  maccheroni:"teigwaren",rigatoni:"teigwaren",tagliatelle:"teigwaren",linguine:"teigwaren",nudeln:"teigwaren",bandnudeln:"teigwaren",pasta:"teigwaren",
+  spirelli:"teigwaren",hornchen:"teigwaren",naturjoghurt:"joghurt",jogurt:"joghurt",yoghurt:"joghurt",speisequark:"quark",magerquark:"quark",
+  basmati:"reis",jasmin:"reis",basmatireis:"reis",langkornreis:"reis",cola:"colagetrank",haferflocken:"hafer"};
+const MATCH_PREP = /\b(paniert|frittiert|gebacken|gebraten|uberbacken)\b/;
+function blsHead(it){ return it._hd || (it._hd = normalize(it.name).split(/[^a-z0-9]+/)[0]); }
+/* Wie eng hängt ein Wort aus dem Produktnamen mit dem BLS-Lebensmittel zusammen?
+   0 = gleiches Hauptwort („Champignons“ ↔ „Champignon“, „Haferflocken“ ↔ „Hafer Flocken“),
+   0.6 = Grundwort eines zusammengesetzten Worts („Wasser“ ↔ „Kokoswasser“),
+   1 = nur Bestimmungswort oder erwähnt („Orange“ ↔ „Orangensaft“), -1 = gar nicht */
+function matchRel(w, it){
+  const h = blsHead(it);
+  let best = -1;
+  for(const x of [w, MATCH_SYN[w]]){
+    if(!x) continue;
+    if(x === h || (h.length >= 4 && x.indexOf(h) === 0)) return 0;
+    if(x.length >= 5 && h.length > x.length && h.slice(-x.length) === x) best = 0.6;
+    else if(x.length >= 5 && (h.indexOf(x) >= 0 || it._c.indexOf(x) >= 0) && best < 0) best = 1;
+  }
+  return best;
 }
-function renderAltHint(name, kcal, isDrink, noMicro){
-  const alt = noMicro ? blsAlternative(name, kcal, isDrink) : null;
+const _matchCache = {};
+function blsMatch(name, per, isDrink){
+  if(!blsItems().length || !per) return null;
+  const key = name + "|" + Math.round(per.kcal) + "|" + Math.round(per.p) + "|" + Math.round(per.c) + "|" + Math.round(per.f);
+  if(key in _matchCache) return _matchCache[key];
+  if(MATCH_SKIP.test(normalize(name))) return (_matchCache[key] = null);
+  const raw = normalize(name.replace(/\s*\([^)]*\)\s*$/, "")).split(/[^a-z0-9]+/).filter(w => w && !/\d/.test(w));
+  const words = raw.filter(w => w.length >= 4 && !MATCH_STOP.has(w)).slice(0, 5);
+  // getrennt Geschriebenes zusammenziehen: „Hafer Drink“ → „haferdrink“
+  for(let i = 0; i < raw.length - 1 && words.length < 8; i++){ const j = raw[i] + raw[i+1]; if(j.length >= 8) words.push(j); }
+  let best = null;
+  if(words.length){
+    const cand = new Set();
+    words.forEach(w => [w, MATCH_SYN[w]].forEach(x => { if(x) searchBLS(x, 200).items.forEach(it => cand.add(it)); }));
+    cand.forEach(it => {
+      let r = -1, wi = 9;
+      words.forEach((w, i) => { const x = matchRel(w, it); if(x >= 0 && (r < 0 || x < r)){ r = x; wi = i; } });
+      if(r < 0) return;
+      const b = it.per100;
+      const dk = Math.abs(b.kcal - per.kcal) / Math.max(b.kcal, per.kcal, 40);
+      const dm = (Math.abs(b.p - per.p) + Math.abs(b.c - per.c) + Math.abs(b.f - per.f)) / Math.max(per.p + per.c + per.f, b.p + b.c + b.f, 8);
+      const dist = dk + dm;
+      if(dist >= (r === 0 ? 0.4 : 0.25)) return;
+      // Bonus, wenn ein Produktwort vollständig im BLS-Namen steht (stärker) oder das Synonym das Hauptwort ist
+      const full = words.some(w => it._c.indexOf(w) >= 0) ? 0.1 : words.some(w => MATCH_SYN[w] && blsHead(it) === MATCH_SYN[w]) ? 0.05 : 0;
+      const exact = words.some(w => blsHead(it) === w) ? 0.08 : 0;   // „Ananas roh“ vor „Ananasgelee“
+      const score = dist + r*0.12 + wi*0.1 - full - exact + (it.isDrink === !!isDrink ? 0 : 0.1) +
+        (/\bmit\b/.test(it._s) ? 0.08 : 0) + (MATCH_PREP.test(it._s) ? 0.1 : 0) + it.name.length*0.002;
+      if(!best || score < best.score) best = {it, score, dist};
+    });
+  }
+  return (_matchCache[key] = best ? best.it : null);
+}
+/* Werte je 100 g eines Produkts um geschätzte Mikros ergänzen (Etikettwerte haben Vorrang) */
+function withEstimate(item){
+  if(!item || !item.isProduct || item.isRecipe || item.labelMicros >= 3 || item.est || item.noEst) return item;
+  const m = blsMatch(item.name, item.per100, item.isDrink);
+  if(!m) return item;
+  const per100 = Object.assign({}, item.per100), estKeys = [];
+  MICROS.forEach(([k]) => { if(!per100[k] && m.per100[k]){ per100[k] = m.per100[k]; estKeys.push(k); } });
+  return Object.assign({}, item, {per100, est: m.name, estKeys, raw: item});
+}
+function renderAltHint(it){
+  const alt = it && it.est ? blsItems().find(x => x.name === it.est) : null;
   addCtx.alt = alt;
   $("#altHint").innerHTML = alt
-    ? '<div class="nodata althint">Für dieses Produkt gibt es keine Vitamindaten – sie würden heute nicht mitgezählt. Gleichwertig mit allen Vitaminen und Mineralstoffen:<br>' +
-      '<button class="chip" id="btnAlt">'+esc(alt.name)+' · BLS · '+fmt(Math.round(alt.per100.kcal))+' kcal je 100 '+(alt.isDrink?"ml":"g")+'</button></div>'
-    : "";
+    ? '<div class="nodata althint">Vitamine und Mineralstoffe stehen nicht auf dem Etikett – sie werden anhand von <b>'+esc(alt.name)+'</b> (Bundeslebensmittelschlüssel) geschätzt. Energie, Makros und Salz kommen vom Etikett.' +
+      (addCtx.editId ? '' : '<br><button class="chip" id="btnAlt">Stattdessen „'+esc(alt.name)+'“ eintragen</button> <button class="chip" id="btnNoEst">Passt nicht – ohne Schätzung</button>') + '</div>'
+    : (it && it.isProduct && !(it.labelMicros >= 3) ? '<div class="nodata althint">'+(it.noEst ? 'Ohne Schätzung' : 'Kein passendes Lebensmittel zum Schätzen gefunden')+' – Vitamine und Mineralstoffe werden für dieses Produkt nicht mitgezählt.</div>' : "");
 }
 /* Vorgeschlagenes BLS-Lebensmittel übernehmen – Menge, Mahlzeit und ggf. Bearbeiten-Modus bleiben */
 function useAlternative(){
@@ -2576,7 +2693,7 @@ function openEdit(id){
   $("#backToSearch").style.display = "none";
   $("#btnConfirmAdd").textContent = "Änderung speichern";
   $("#btnDeleteEntry").style.display = "";
-  if(e.unit !== "Portion") renderAltHint(e.name, it.per100.kcal, e.isDrink, entryNoMicro(e));
+  $("#altHint").innerHTML = e.est ? '<div class="nodata althint">Vitamine und Mineralstoffe geschätzt anhand von <b>'+esc(e.est)+'</b> (BLS).</div>' : "";
   updatePreview();
 }
 function saveEdit(a){
@@ -3005,6 +3122,13 @@ document.addEventListener("click", ev => {
   if(t.id==="btnConfirmAdd") return confirmAdd();
 
   if(t.dataset.del) return deleteEntry(t.dataset.del);
+  if(t.dataset.unest){
+    const e = log.find(x=>x.id===t.dataset.unest); if(!e) return;
+    (e.estKeys || MICROS.map(m=>m[0]).filter(k=>k!=="natrium")).forEach(k => e.n[k] = 0);
+    delete e.est; delete e.estKeys; e.noEst = true; e.noMicro = true;
+    sset("log", log); renderAll(); toast("Schätzung entfernt");
+    return;
+  }
   if(t.id==="btnYesterday"){
     const day = curDay(), yk = shiftKey(day, -1);
     const es = log.filter(e=>e.date===yk);
@@ -3120,7 +3244,16 @@ function applyProfileField(id, key, min, max, parse, final){
     toast(parts.length ? "Neue Ziele: "+parts.join(" · ") : "Profil gespeichert");
   }, 600);
 }
-$("#altHint").addEventListener("click", ev => { if(ev.target.closest("#btnAlt")) useAlternative(); });
+$("#altHint").addEventListener("click", ev => {
+  if(ev.target.closest("#btnAlt")) useAlternative();
+  if(ev.target.closest("#btnNoEst") && addCtx.sel && addCtx.sel.raw){
+    // Ursprüngliche Etikettwerte ohne Schätzung verwenden
+    const amt = $("#amtInput").value, meal = addCtx.meal;
+    addCtx.sel = Object.assign({}, addCtx.sel.raw, {noEst:true});
+    $("#amtInput").value = amt; addCtx.meal = meal;
+    renderAltHint(addCtx.sel); updatePreview();
+  }
+});
 PROFILE_FIELDS.forEach(([id,key,min,max,parse]) => {
   $("#"+id).addEventListener("input", () => applyProfileField(id,key,min,max,parse,false));
   $("#"+id).addEventListener("change", () => applyProfileField(id,key,min,max,parse,true));
@@ -3264,7 +3397,9 @@ function renderThemeBtn(){
   $("#btnTheme").innerHTML = dark ? ICON_SUN : ICON_MOON;
   $("#btnTheme").setAttribute("aria-label", dark ? "Zu hellem Design wechseln" : "Zu dunklem Design wechseln");
   const meta = document.querySelector('meta[name="theme-color"]');
-  if(meta) meta.setAttribute("content", dark ? "#151813" : "#3F7A4F");
+  // Als App: Statusleiste in Hintergrundfarbe, damit sie mit der Kopfzeile verschmilzt
+  const app = document.documentElement.classList.contains("app");
+  if(meta) meta.setAttribute("content", app ? (dark ? "#151813" : "#F6F7F3") : (dark ? "#151813" : "#3F7A4F"));
 }
 function toggleTheme(){
   const next = currentTheme() === "dark" ? "light" : "dark";
@@ -3273,6 +3408,9 @@ function toggleTheme(){
   renderThemeBtn();
 }
 $("#btnTheme").addEventListener("click", toggleTheme);
+/* App-Modus: Wechsel zwischen Browser und installierter App erkennen; Linie unter der Kopfzeile beim Scrollen */
+if(window.matchMedia) try{ matchMedia("(display-mode: standalone)").addEventListener("change", ev => { document.documentElement.classList.toggle("app", ev.matches); renderThemeBtn(); }); }catch(e){}
+window.addEventListener("scroll", () => document.documentElement.classList.toggle("scrolled", window.scrollY > 4), {passive:true});
 if(window.matchMedia) try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderThemeBtn); }catch(e){}
 renderThemeBtn();
 
@@ -3338,10 +3476,27 @@ renderStorageInfo();
 renderSourceInfo();
 renderInstallInfo();
 
+/* Einträge von Markenprodukten ohne Vitamindaten nachträglich schätzen (Werte je 100 g aus der Menge zurückrechnen) */
+function estimateOldEntries(){
+  if(!blsItems().length) return;
+  let changed = 0;
+  log.forEach(function(e){
+    if(e.est || e.noEst || e.estTried || e.unit === "Portion" || !e.amount || !entryNoMicro(e)) return;
+    e.estTried = 1; changed++;
+    const per = {}; ALL_KEYS.forEach(k => per[k] = (e.n[k]||0) / e.amount * 100);
+    const m = blsMatch(e.name, per, e.isDrink);
+    if(!m) return;
+    e.estKeys = MICROS.map(x=>x[0]).filter(k => !e.n[k] && m.per100[k]);
+    e.estKeys.forEach(k => e.n[k] = m.per100[k] * e.amount / 100);
+    e.est = m.name; e.noMicro = false;
+  });
+  if(changed) sset("log", log);
+}
 /* Datendateien werden mit „defer“ geladen – danach Caches neu aufbauen */
 window.addEventListener("DOMContentLoaded", function(){
   _prodCache = null; _blsCache = null; _codeIndex = null;
-  log.forEach(function(e){ if(e.noMicro === false && e.unit !== "Portion") delete e.noMicro; });
+  log.forEach(function(e){ if(e.noMicro === false && e.unit !== "Portion" && !e.est) delete e.noMicro; });
+  estimateOldEntries();
   renderSourceInfo(); renderToday();
   if($("#addSheet").classList.contains("open") && $("#searchInput").value.trim()) doSearch($("#searchInput").value);
 });
