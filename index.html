@@ -505,10 +505,12 @@ html.app .toast{bottom:calc(74px + env(safe-area-inset-bottom))}
       <div class="settingrow"><label for="pGw">Gewicht (kg)</label><input type="number" id="pGw" min="35" max="200" step="0.5"></div>
       <div class="settingrow"><label for="pPal">Aktivität (PAL)</label>
         <select id="pPal">
-          <option value="1.4">1,4 – überwiegend sitzend</option>
-          <option value="1.6">1,6 – moderat aktiv</option>
-          <option value="1.8">1,8 – aktiv</option>
-          <option value="2.0">2,0 – sehr aktiv</option>
+          <option value="1.4">1,4 – sitzend, kaum Sport</option>
+          <option value="1.5">1,5 – sitzend, 1–2× Sport pro Woche</option>
+          <option value="1.6">1,6 – sitzend, 3× Sport pro Woche oder viel zu Fuß</option>
+          <option value="1.7">1,7 – 4–5× Sport pro Woche</option>
+          <option value="1.8">1,8 – stehender Beruf oder fast täglich Sport</option>
+          <option value="2.0">2,0 – körperliche Arbeit oder Leistungssport</option>
         </select></div>
       <div class="settingrow"><label for="pZiel">Ziel</label>
         <select id="pZiel">
@@ -554,6 +556,14 @@ html.app .toast{bottom:calc(74px + env(safe-area-inset-bottom))}
       </details>
       <button class="ghost" id="btnLock" style="width:100%;margin-bottom:8px">Sperren (Passwort beim nächsten Öffnen)</button>
       <button class="danger" id="btnReset" style="width:100%">Alles zurücksetzen …</button>
+    </div>
+    <div class="card">
+      <h2>Online-Datenbanken</h2>
+      <div class="small muted" style="margin-bottom:10px">Fehlen auf dem Etikett Vitamine und Mineralstoffe, sucht die App online weiter: Zutatenliste und Kategorie bei Open Food Facts, danach die US-Nährstoffdatenbank USDA FoodData Central. Gefundene Werte werden je Barcode gespeichert.</div>
+      <div class="settingrow"><label for="fdcKey">USDA-Schlüssel</label><input type="text" id="fdcKey" autocomplete="off" spellcheck="false" placeholder="optional"></div>
+      <div class="small muted" style="margin:6px 0 10px">Ohne eigenen Schlüssel erlaubt USDA etwa 10 Abfragen pro Stunde. Einen kostenlosen Schlüssel (1.000 pro Stunde) gibt es unter <a href="https://fdc.nal.usda.gov/api-key-signup" target="_blank" rel="noopener">fdc.nal.usda.gov/api-key-signup</a>.</div>
+      <div class="small muted" id="liveInfo"></div>
+      <button class="ghost" id="btnLiveClear" style="width:100%;margin-top:8px">Gespeicherte Online-Schätzungen löschen</button>
     </div>
     <div class="card">
       <h2>Datenquellen</h2>
@@ -710,6 +720,7 @@ html.app .toast{bottom:calc(74px + env(safe-area-inset-bottom))}
 
 <!-- Markenprodukte aus Open Food Facts (optional – fehlt die Datei, läuft die App ohne sie) -->
 <script src="naehrwert-bls.js" defer></script>
+<script src="naehrwert-ch.js" defer></script>
 <script src="naehrwert-produkte.js" defer></script>
 <script>
 "use strict";
@@ -1805,8 +1816,31 @@ function blsItems(){
     return {id:"B"+r[1], name:r[0], cat:"bls", isDrink:!!r[iD], per100, portions:(B.portionen[r[iP]] || []).map(x=>x.slice()),
             cf:r[iC] || 0, src:"BLS", isBLS:true, blsGroup:r[1][0], _s:normalize(r[0]), _c:compact(r[0]), _w:normalize(r[0]).split(/[^a-z0-9]+/).filter(w=>w.length>=5), rank:i};
   });
+  // Schweizer Nährwertdatenbank ergänzen (gleiches Zeilenformat); gleichnamige BLS-Lebensmittel haben Vorrang
+  const C = chData();
+  if(C){
+    const G = C.meta.felder, gD = G.indexOf("getraenk"), gC = G.indexOf("koffein_mg_100ml"), gP = G.indexOf("portion_index"), gS = G.indexOf("synonyme"), gM = G.indexOf("fehlend");
+    const ck = ALL_KEYS.map(k => [k, G.indexOf(k)]).filter(x => x[1] >= 0);
+    const have = new Set(_blsCache.map(it => it._s));
+    const n0 = _blsCache.length;
+    C.rows.forEach(function(r, i){
+      const s = normalize(r[0]);
+      if(have.has(s)) return;
+      const per100 = {};
+      ck.forEach(([k, j]) => per100[k] = r[j] || 0);
+      const miss = (r[gM] || []).map(k => (MICROS.find(m => m[0] === k) || [k, k])[1]);
+      _blsCache.push({id:"C"+r[1], name:r[0], cat:"bls", isDrink:!!r[gD], per100, portions:(C.portionen[r[gP]] || []).map(x=>x.slice()),
+        cf:r[gC] || 0, src:"Schweizer Nährwertdatenbank", isBLS:true, isCH:true, blsGroup:"CH", missing:miss,
+        _s:normalize(r[0] + (r[gS] ? " " + r[gS] : "")), _c:compact(r[0]), _w:s.split(/[^a-z0-9]+/).filter(w=>w.length>=5), rank:n0+i});
+    });
+  }
   return _blsCache;
 }
+function chData(){ return (window.NW_CH && Array.isArray(window.NW_CH.rows)) ? window.NW_CH : null; }
+/* Name der Datenbank eines Lebensmittels für Hinweise */
+function dbName(it){ return it && it.isCH ? "Schweizer Nährwertdatenbank" : it && it.isFDC ? "USDA" : "Bundeslebensmittelschlüssel"; }
+/* Text „geschätzt anhand von …“ – ältere Einträge speichern nur den BLS-Namen */
+function estText(e){ return e.estV ? e.est : "„" + e.est + "“ (Bundeslebensmittelschlüssel)"; }
 function searchBLS(nq, limit, drinkOnly){
   const terms = nq.split(/\s+/).filter(Boolean);
   if(!terms.length) return {items:[], total:0};
@@ -1950,7 +1984,9 @@ function entryFromItem(item, amount, meal){
     noMicro: (!!item.isProduct && !(item.labelMicros >= 3) && !item.est) || (item.isRecipe && recipeHasProducts(item)),
     noEst: item.noEst || undefined,
     est: item.est || undefined,
+    estV: item.est ? item.estV : undefined,
     estKeys: item.est ? item.estKeys : undefined,
+    code: item.isProduct && item.code ? item.code : undefined,
     n
   };
 }
@@ -2123,7 +2159,7 @@ function entryDetail(e){
   const g = (ref, unit, txt, isMax) => (isMax ? "Deine Obergrenze: höchstens " : "Dein Tagesziel: ") + fmtRef(ref) + " " + unit + (txt ? " – " + txt : "");
   let h = '<div class="entrydetail"><div class="dhead"><b>Nährwerte für '+entryAmt(e)+'</b><span>% deines Tagesziels</span></div>';
   if(nm) h += '<div class="nodata">Markenprodukt ohne Vitamindaten – auf dem Etikett stehen nur Nährwerte und Salz.</div>';
-  if(e.est) h += '<div class="nodata">Vitamine und Mineralstoffe geschätzt anhand von „'+esc(e.est)+'“ (Bundeslebensmittelschlüssel); Energie, Makros und Salz vom Etikett. Geschätzte Werte sind mit ≈ markiert. <button class="mini" data-unest="'+e.id+'">Passt nicht – Schätzung entfernen</button></div>';
+  if(e.est) h += '<div class="nodata">Vitamine und Mineralstoffe geschätzt aus: '+esc(estText(e))+'; Energie, Makros und Salz vom Etikett. Geschätzte Werte sind mit ≈ markiert. <button class="mini" data-unest="'+e.id+'">Passt nicht – Schätzung entfernen</button></div>';
   h += '<div class="grp">Energie und Makronährstoffe</div>';
   h += row("kcal","Energie",n.kcal,"kcal",T.kcal,false,false,false, g(T.kcal,"kcal","Grundumsatz × Aktivität"+(ZIEL_KCAL[profile.ziel] ? (profile.ziel==="abnehmen"?" − 400":" + 300") : "")));
   h += row("p","Protein",n.p,"g",T.protein,false,false,false, g(T.protein,"g",fmt(T.gkg,1)+" g je kg Körpergewicht"));
@@ -2279,7 +2315,7 @@ function guessMeal(){
 }
 
 /* ---------- Profil ---------- */
-const PAL_TEXT = {"1.4":"überwiegend sitzend","1.6":"moderat aktiv","1.8":"aktiv","2.0":"sehr aktiv"};
+const PAL_TEXT = {"1.4":"sitzend, kaum Sport","1.5":"sitzend, 1–2× Sport pro Woche","1.6":"sitzend, 3× Sport pro Woche oder viel zu Fuß","1.7":"4–5× Sport pro Woche","1.8":"stehender Beruf oder fast täglich Sport","2.0":"körperliche Arbeit oder Leistungssport"};
 let lastTargets = null;   // für die Vorher-/Nachher-Anzeige nach einer Profiländerung
 function renderProfile(prev){
   const ae = document.activeElement;
@@ -2305,7 +2341,8 @@ function renderProfile(prev){
   }).join("");
   const sex = profile.geschlecht==="m" ? "männlich" : "weiblich";
   $("#targetExplain").innerHTML = [
-    "<b>Energie:</b> Grundumsatz nach Mifflin-St Jeor aus Gewicht, Größe, Alter und Geschlecht ("+fmt(T.bmr)+" kcal), mal Aktivitätsfaktor PAL "+fmt(profile.pal,1)+" ("+(PAL_TEXT[profile.pal.toFixed(1)]||"")+")"+(ZIEL_KCAL[profile.ziel] ? (profile.ziel==="abnehmen"?" − ":" + ")+fmt(Math.abs(ZIEL_KCAL[profile.ziel]))+" kcal" : "")+". Ziel: "+(ZIEL_TEXT[profile.ziel]||ZIEL_TEXT.halten)+"."+(T.kcal===T.bmr && ZIEL_KCAL[profile.ziel]<0 ? " Begrenzt auf den Grundumsatz." : ""),
+    "<b>Energie:</b> Grundumsatz nach Mifflin-St Jeor aus Gewicht, Größe, Alter und Geschlecht ("+fmt(T.bmr)+" kcal), mal Aktivitätsfaktor PAL "+fmt(profile.pal,1)+" ("+(PAL_TEXT[profile.pal.toFixed(1)]||"")+")"+(ZIEL_KCAL[profile.ziel] ? (profile.ziel==="abnehmen"?" − ":" + ")+fmt(Math.abs(ZIEL_KCAL[profile.ziel]))+" kcal" : "")+". Ziel: "+(ZIEL_TEXT[profile.ziel]||ZIEL_TEXT.halten)+"."+(T.kcal===T.bmr && ZIEL_KCAL[profile.ziel]<0 ? " Begrenzt auf den Grundumsatz." : "")+
+      " Zum Vergleich: "+[1.4,1.5,1.6,1.7,1.8].map(x=>"PAL "+fmt(x,1)+" → "+fmt(computeTargets(Object.assign({}, profile, {pal:x})).kcal)).join(" · ")+" kcal. Der PAL gilt für den ganzen Tag inklusive Sport – im Zweifel die niedrigere Stufe wählen und nach zwei Wochen am Gewicht prüfen.",
     "<b>Protein:</b> "+fmt(T.gkg,1)+" g je kg Körpergewicht – "+T.protBasis+"."+(T.protWeight!==profile.gewicht ? " Gerechnet mit "+fmt(T.protWeight,1)+" kg (Gewicht bei BMI 25 für deine Größe), weil sich der Bedarf auf die fettfreie Masse bezieht." : "")+" Ab PAL 1,8 steigt der Wert, weil Training mehr Eiweiß für Muskelaufbau und -reparatur braucht.",
     "<b>Fett und Kohlenhydrate:</b> Fett 30 % der Energie, davon gesättigte Fettsäuren höchstens 10 % – der Rest (ca. 20 %) aus ungesättigten Fettsäuren. Zucker höchstens 10 %, Kohlenhydrate decken den Rest.",
     "<b>Ballaststoffe:</b> mindestens 30 g, bei höherem Energiebedarf 12,5 g je 1000 kcal.",
@@ -2394,7 +2431,7 @@ function doSearch(q){
   const groups = [];
   if(own.length) groups.push({title:"Eigene Rezepte", items:own});
   if(local.length) groups.push({title:"Grundnahrungsmittel", items:local});
-  if(bls.items.length) groups.push({title:"Lebensmittel-Datenbank (BLS)", items:bls.items, more: bls.total > bls.items.length});
+  if(bls.items.length) groups.push({title:"Lebensmittel-Datenbanken (BLS, Schweiz)", items:bls.items, more: bls.total > bls.items.length});
   if(prod.items.length) groups.push({title:"Markenprodukte", items:prod.items, more: prod.total > prod.items.length});
   renderGroups(groups, "Keine Treffer – probier einen kürzeren oder anderen Begriff.");
   const stand = productStand();
@@ -2403,7 +2440,23 @@ function doSearch(q){
     : "";
   lastGroups = groups;
   offPage = 1; offLive = []; offBaseStatus = $("#apiStatus").textContent;
+  liveSets = {q};
   searchOFF(q, groups);
+  // Wenige Treffer in den Grunddatenbanken → USDA gleich mit abfragen
+  if(bls.total + local.length < 4 && q.length >= 3 && navigator.onLine !== false) searchFDC(q);
+}
+let liveSets = {};
+function renderLive(q){
+  if($("#searchInput").value.trim() !== q || liveSets.q !== q) return;
+  const extra = [];
+  if(liveSets.fdc && liveSets.fdc.length) extra.push({title:"USDA FoodData Central (live, englische Namen)", items:liveSets.fdc});
+  if(liveSets.off && liveSets.off.items.length) extra.push({title:"Neu aus Open Food Facts (live)", items:liveSets.off.items, more:liveSets.off.more});
+  renderGroups(lastGroups.concat(extra), "Keine Treffer – probier einen kürzeren oder anderen Begriff.");
+  const box = $("#resultBox");
+  if(liveSets.off && liveSets.off.more) box.insertAdjacentHTML("beforeend", '<button class="ghost" id="btnOffMore" style="width:100%;margin-top:10px">Weitere Produkte live laden</button>');
+  if(liveSets.fdcBusy) box.insertAdjacentHTML("beforeend", '<div class="small muted" style="margin-top:10px">Suche in USDA FoodData Central …</div>');
+  else if(liveSets.fdcMsg) box.insertAdjacentHTML("beforeend", '<div class="small muted" style="margin-top:10px">'+esc(liveSets.fdcMsg)+'</div>');
+  else if(!liveSets.fdc && q.length >= 3) box.insertAdjacentHTML("beforeend", '<button class="ghost" id="btnFdc" style="width:100%;margin-top:10px">Auch in USDA FoodData Central suchen</button>');
 }
 let lastGroups = [];
 let offPage = 1, offMore = false, offLive = [], offBaseStatus = "";
@@ -2470,8 +2523,8 @@ function searchOFF(q, groups){
       offMore = total > (offPage||1)*24;
       if($("#searchInput").value.trim()===q && (neu.length || offMore)){
         offLive = (offPage > 1 ? offLive : []).concat(neu);
-        renderGroups(groups.concat([{title:"Neu aus Open Food Facts (live)", items:offLive, more:offMore}]));
-        if(offMore) $("#resultBox").insertAdjacentHTML("beforeend", '<button class="ghost" id="btnOffMore" style="width:100%;margin-top:10px">Weitere Produkte live laden</button>');
+        liveSets.off = {items: offLive, more: offMore};
+        renderLive(q);
         $("#apiStatus").textContent = (offlineStatus ? offlineStatus + " · " : "") + offLive.length + " weitere live ergänzt" + (total ? " (Open Food Facts kennt " + total.toLocaleString("de-DE") + " Treffer)" : "");
       } else if($("#searchInput").value.trim()===q && !productData()){
         $("#apiStatus").textContent = "Keine passenden Online-Treffer";
@@ -2494,7 +2547,7 @@ function resultRow(it, idx){
   const poTxt = po ? " · " + po[0] + " ≈ " + fmt(Math.round(it.per100.kcal * po[1] / 100)) + " kcal" : "";
   const sub = it.isRecipe
     ? "Eigenes Rezept · "+fmt(Math.round(it.totals.kcal))+" kcal/Portion"
-    : fmt(Math.round(it.per100.kcal))+" kcal je 100 "+(it.isDrink?"ml":"g")+poTxt+" · "+(it.isProduct ? (it.labelMicros >= 3 ? "Markenprodukt" : "Markenprodukt · Vitamine geschätzt") : it.isBLS ? "BLS · alle Nährstoffe" : it.src);
+    : fmt(Math.round(it.per100.kcal))+" kcal je 100 "+(it.isDrink?"ml":"g")+poTxt+" · "+(it.isProduct ? (it.labelMicros >= 3 ? "Markenprodukt" : withEstimate(it).est ? "Markenprodukt · Vitamine geschätzt" : it.code && !liveCached(it.code) ? "Markenprodukt · Vitamine: Online-Suche" : "Markenprodukt · ohne Vitamine") : it.isCH ? "Schweiz · alle Nährstoffe" : it.isBLS ? "BLS · alle Nährstoffe" : it.isFDC ? "USDA · englischer Name" : it.src);
   return '<div class="result" data-pick="'+idx+'" role="button" tabindex="0">' +
     '<div class="name"><b>'+esc(it.name)+'</b><span>'+sub+'</span></div>' +
     '<button class="fav'+(isFav?' on':'')+'" data-fav="'+idx+'" aria-label="Favorit">'+(isFav?"★":"☆")+'</button></div>';
@@ -2536,7 +2589,9 @@ function pickItem(it){
         ? (it.labelMicros >= 3
             ? " · Nährwerte laut Etikett (Open Food Facts), inklusive " + it.labelMicros + " Vitamin- und Mineralstoffangaben."
             : " · Nährwerte laut Etikett (Open Food Facts)" + (it.missing && it.missing.length ? "; ohne Angabe: " + it.missing.join(", ") : "") + ".")
-        : it.isBLS ? " · Werte aus dem Bundeslebensmittelschlüssel (BLS 4.0) mit allen Vitaminen und Mineralstoffen." : "");
+        : it.isCH ? " · Werte aus der Schweizer Nährwertdatenbank (BLV) mit Vitaminen und Mineralstoffen" + (it.missing && it.missing.length ? "; ohne Angabe: " + it.missing.join(", ") : "") + "."
+        : it.isBLS ? " · Werte aus dem Bundeslebensmittelschlüssel (BLS 4.0) mit allen Vitaminen und Mineralstoffen."
+        : it.isFDC ? " · Werte aus USDA FoodData Central (US-Nährstoffdatenbank) mit Vitaminen und Mineralstoffen" + (it.missing && it.missing.length ? "; ohne Angabe: " + it.missing.join(", ") : "") + "." : "");
   $("#amtUnit").textContent = it.isRecipe ? "Portionen" : (it.isDrink ? "ml" : "g");
   const def = it.isRecipe ? 1 : (it.portions.length ? it.portions[0][1] : (it.isDrink?250:100));
   $("#amtInput").value = def;
@@ -2550,6 +2605,7 @@ function pickItem(it){
   $("#mealPickWrap").style.display = it.isDrink ? "none" : "";
   addCtx.swap = false;
   renderAltHint(it);
+  startLive(it);
   $("#mealChips").innerHTML = MEALS.map(m=>'<button class="chip" data-meal="'+m[0]+'" aria-pressed="'+(m[0]===addCtx.meal?"true":"false")+'">'+m[1]+'</button>').join("");
   updatePreview();
   showStep(2);
@@ -2565,7 +2621,8 @@ const MATCH_SKIP = /\b(fanta|sprite|mirinda|mezzo|schweppes|limo|limonade|eistee
 const MATCH_SYN = {spaghetti:"teigwaren",spaghettini:"teigwaren",penne:"teigwaren",fusilli:"teigwaren",farfalle:"teigwaren",makkaroni:"teigwaren",
   maccheroni:"teigwaren",rigatoni:"teigwaren",tagliatelle:"teigwaren",linguine:"teigwaren",nudeln:"teigwaren",bandnudeln:"teigwaren",pasta:"teigwaren",
   spirelli:"teigwaren",hornchen:"teigwaren",naturjoghurt:"joghurt",jogurt:"joghurt",yoghurt:"joghurt",speisequark:"quark",magerquark:"quark",
-  basmati:"reis",jasmin:"reis",basmatireis:"reis",langkornreis:"reis",cola:"colagetrank",haferflocken:"hafer"};
+  basmati:"reis",jasmin:"reis",basmatireis:"reis",langkornreis:"reis",cola:"colagetrank",haferflocken:"hafer",
+  kase:"schnittkase",leerdammer:"schnittkase",maasdamer:"schnittkase",kasescheiben:"schnittkase"};
 const MATCH_PREP = /\b(paniert|frittiert|gebacken|gebraten|uberbacken)\b/;
 function blsHead(it){ return it._hd || (it._hd = normalize(it.name).split(/[^a-z0-9]+/)[0]); }
 /* Wie eng hängt ein Wort aus dem Produktnamen mit dem BLS-Lebensmittel zusammen?
@@ -2584,10 +2641,21 @@ function matchRel(w, it){
   return best;
 }
 const _matchCache = {};
-function blsMatch(name, per, isDrink){
+let _waters = null;
+function mineralWater(name){
+  if(!_waters) _waters = blsItems().filter(it => it.isCH && /^Mineralwasser /.test(it.name))
+    .map(it => [normalize(it.name.slice(14).replace(/\s*\(.*$/, "")).split(/[^a-z0-9]+/).filter(w => w.length >= 4 && w !== "classic" && w !== "naturelle")[0], it]).filter(x => x[0]);
+  const s = " " + normalize(name).replace(/[^a-z0-9]+/g, " ") + " ";
+  const hit = _waters.find(x => s.indexOf(" " + x[0] + " ") >= 0);
+  return hit ? hit[1] : null;
+}
+function blsMatch(name, per, isDrink, strict){
   if(!blsItems().length || !per) return null;
-  const key = name + "|" + Math.round(per.kcal) + "|" + Math.round(per.p) + "|" + Math.round(per.c) + "|" + Math.round(per.f);
+  const key = (strict ? "!" : "") + name + "|" + Math.round(per.kcal) + "|" + Math.round(per.p) + "|" + Math.round(per.c) + "|" + Math.round(per.f);
   if(key in _matchCache) return _matchCache[key];
+  // Mineralwasser bekannter Marken: Calcium und Magnesium aus der Schweizer Nährwertdatenbank
+  const w = mineralWater(name);
+  if(w) return (_matchCache[key] = per.kcal < 5 ? w : null);
   if(MATCH_SKIP.test(normalize(name))) return (_matchCache[key] = null);
   const raw = normalize(name.replace(/\s*\([^)]*\)\s*$/, "")).split(/[^a-z0-9]+/).filter(w => w && !/\d/.test(w));
   const words = raw.filter(w => w.length >= 4 && !MATCH_STOP.has(w)).slice(0, 5);
@@ -2601,6 +2669,8 @@ function blsMatch(name, per, isDrink){
       let r = -1, wi = 9;
       words.forEach((w, i) => { const x = matchRel(w, it); if(x >= 0 && (r < 0 || x < r)){ r = x; wi = i; } });
       if(r < 0) return;
+      // über Kategorien: das ganze Kategoriewort muss Hauptwort oder Namensanfang sein („Butterkekse“ ↔ „Butterkekse/…“)
+      if(strict && !words.some(w => [w, w.replace(/(en|s|n)$/, ""), MATCH_SYN[w]].some(x => x && x.length >= 4 && (blsHead(it) === x || it._c.indexOf(x) === 0)))) return;
       const b = it.per100;
       const dk = Math.abs(b.kcal - per.kcal) / Math.max(b.kcal, per.kcal, 40);
       const dm = (Math.abs(b.p - per.p) + Math.abs(b.c - per.c) + Math.abs(b.f - per.f)) / Math.max(per.p + per.c + per.f, b.p + b.c + b.f, 8);
@@ -2617,21 +2687,257 @@ function blsMatch(name, per, isDrink){
   return (_matchCache[key] = best ? best.it : null);
 }
 /* Werte je 100 g eines Produkts um geschätzte Mikros ergänzen (Etikettwerte haben Vorrang) */
+/* Reihenfolge der Quellen: Etikett → Zutatenliste (Open Food Facts) → passendes Lebensmittel
+   aus BLS/Schweiz nach Produktname → nach Produktkategorie → USDA. Jeder fehlende Nährstoff
+   kommt aus der ersten Quelle, die ihn kennt. */
 function withEstimate(item){
   if(!item || !item.isProduct || item.isRecipe || item.labelMicros >= 3 || item.est || item.noEst) return item;
+  const live = item.code ? liveEst[item.code] : null;
   const m = blsMatch(item.name, item.per100, item.isDrink);
-  if(!m) return item;
-  const per100 = Object.assign({}, item.per100), estKeys = [];
-  MICROS.forEach(([k]) => { if(!per100[k] && m.per100[k]){ per100[k] = m.per100[k]; estKeys.push(k); } });
-  return Object.assign({}, item, {per100, est: m.name, estKeys, raw: item});
+  const cat = live && live.cat ? blsItems().find(x => x.name === live.cat) : null;
+  const srcs = [];
+  if(live && live.ing) srcs.push([live.ing, "Zutatenliste (Open Food Facts)"]);
+  if(m) srcs.push([m.per100, "„" + m.name + "“ (" + dbName(m) + ")"]);
+  if(cat && cat !== m) srcs.push([cat.per100, "„" + cat.name + "“ (" + dbName(cat) + ", über die Kategorie „" + live.catFrom + "“)"]);
+  if(live && live.usda) srcs.push([live.usda.v, "„" + live.usda.n + "“ (USDA)"]);
+  if(!srcs.length) return item;
+  const per100 = Object.assign({}, item.per100), estKeys = [], used = [];
+  MICROS.forEach(([k]) => {
+    if(per100[k]) return;
+    const s = srcs.find(s => s[0][k] > 0);
+    if(!s) return;
+    per100[k] = s[0][k]; estKeys.push(k);
+    if(used.indexOf(s[1]) < 0) used.push(s[1]);
+  });
+  if(!estKeys.length) return item;
+  const alt = m || cat;
+  return Object.assign({}, item, {per100, est: used.join(", "), estV: 2, estAlt: alt ? alt.name : null, estKeys, raw: item});
+}
+
+/* ---------- Live-Nährstoffsuche für Markenprodukte ----------
+   Ergebnisse je Barcode in nw1.liveEst: ing = Werte aus der Zutatenliste, cat = Name des
+   passenden BLS-/Schweiz-Lebensmittels über die Kategorie, usda = {n, v}. Leere Ergebnisse
+   werden nach 14 Tagen erneut versucht. */
+let liveEst = sget("liveEst", {});
+const LIVE_RETRY = 14 * 864e5;
+const _offFull = {}, _liveBusy = {};
+function liveCached(code){
+  const c = liveEst[code];
+  return c && (c.ing || c.cat || c.usda || Date.now() - c.t < LIVE_RETRY) ? c : null;
+}
+async function offProduct(code, ms){
+  if(code in _offFull) return _offFull[code];
+  const ctl = new AbortController(), kill = setTimeout(() => ctl.abort(), ms || 9000);
+  try{
+    const res = await fetch("https://world.openfoodfacts.org/api/v2/product/" + code + ".json", {signal: ctl.signal});
+    if(!res.ok && res.status !== 404) throw new Error("HTTP " + res.status);
+    const d = res.ok ? await res.json() : null;
+    return (_offFull[code] = d && d.status !== 0 && d.product || null);
+  } finally { clearTimeout(kill); }
+}
+/* Open Food Facts schätzt Nährstoffe aus der Zutatenliste (CIQUAL-Tabelle), Angaben in Gramm */
+const OFF_EST = {vitA:["vitamin-a_100g",1e6], vitC:["vitamin-c_100g",1e3], vitD:["vitamin-d_100g",1e6], b12:["vitamin-b12_100g",1e6],
+  folat:["vitamin-b9_100g",1e6], eisen:["iron_100g",1e3], calcium:["calcium_100g",1e3], magnesium:["magnesium_100g",1e3], zink:["zinc_100g",1e3],
+  kalium:["potassium_100g",1e3], jod:["iodine_100g",1e6], vitE:["vitamin-e_100g",1e3]};
+function sig(x){ return +(+x).toPrecision(3); }
+function offIngredientMicros(pr){
+  const ne = pr && pr.nutriments_estimated;
+  if(!ne) return null;
+  const v = {}; let n = 0;
+  Object.keys(OFF_EST).forEach(k => {
+    const x = +ne[OFF_EST[k][0]] || (k === "folat" ? +ne["folates_100g"] || 0 : 0);
+    if(x > 0){ v[k] = sig(x * OFF_EST[k][1]); n++; }
+  });
+  const o3 = (+ne["alpha-linolenic-acid_100g"]||0) + (+ne["eicosapentaenoic-acid_100g"]||0) + (+ne["docosahexaenoic-acid_100g"]||0);
+  if(o3 > 0){ v.o3 = sig(o3); n++; }
+  return n >= 4 ? v : null;
+}
+/* Deutsche Namen der Produktkategorien, die genaueste zuerst */
+async function offCategoryNames(tags){
+  const out = [];
+  const en = tags.filter(x => /^en:/.test(x)).slice(-6).reverse();
+  tags.filter(x => /^de:/.test(x)).reverse().forEach(x => out.push(x.slice(3).replace(/-/g, " ")));
+  if(en.length){
+    const ctl = new AbortController(), kill = setTimeout(() => ctl.abort(), 6000);
+    try{
+      const res = await fetch("https://world.openfoodfacts.org/api/v2/taxonomy?tagtype=categories&lc=de&fields=name&tags=" + encodeURIComponent(en.join(",")), {signal: ctl.signal});
+      const d = res.ok ? await res.json() : {};
+      en.forEach(x => { const nm = d[x] && d[x].name && d[x].name.de; if(nm && out.indexOf(nm) < 0) out.push(nm); });
+    } catch(e){} finally { clearTimeout(kill); }
+  }
+  return out;
+}
+function enTagText(tags){
+  const x = (tags || []).filter(t => /^en:[a-z0-9-]+$/.test(t)).pop();   // nur echte englische Kategorien
+  return x ? x.slice(3).replace(/-/g, " ") : "";
+}
+function liveTrim(){
+  const keys = Object.keys(liveEst);
+  if(keys.length > 500) keys.sort((a, b) => liveEst[a].t - liveEst[b].t).slice(0, keys.length - 500).forEach(k => delete liveEst[k]);
+}
+async function liveEstimate(raw){
+  const code = raw && raw.code;
+  if(!code || !/^\d{6,14}$/.test(code)) return null;
+  const have = liveCached(code);
+  if(have) return have;
+  if(_liveBusy[code]) return _liveBusy[code];
+  return (_liveBusy[code] = (async () => {
+    const c = {t: Date.now()};
+    let answered = false, usdaFailed = false;
+    try{
+      const pr = await offProduct(code);
+      answered = true;
+      if(pr){
+        const per = raw.per100, drink = !!raw.isDrink;
+        const ing = offIngredientMicros(pr);
+        if(ing) c.ing = ing;
+        const names = await offCategoryNames(pr.categories_tags || []);
+        for(const nm of names){
+          const m = blsMatch(nm, per, drink, true);   // über Kategorien nur bei gleichem Hauptwort
+          if(m){ c.cat = m.name; c.catFrom = nm; break; }
+        }
+        // USDA nur, wenn sonst nichts passt (Abfragen sind begrenzt)
+        if(!c.ing && !c.cat && !blsMatch(raw.name, per, drink)){
+          const qs = [pr.category_properties && pr.category_properties["ciqual_food_name:en"], enTagText(pr.categories_tags), names[0] && toEnglish(names[0])]
+            .filter((q, i, a) => q && /^[\x20-\x7e]+$/.test(q) && a.indexOf(q) === i).slice(0, 2);
+          for(const q of qs){
+            const f = await fdcBest(q, per, drink).catch(() => { usdaFailed = true; return null; });
+            if(f){ c.usda = {n: f.name, v: MICROS.reduce((o, [k]) => (f.per100[k] ? (o[k] = sig(f.per100[k])) : 0, o), {})}; break; }
+          }
+        }
+      }
+    } catch(e){}
+    delete _liveBusy[code];
+    if(!answered) return null;        // offline oder Zeitüberschreitung – später erneut versuchen
+    // USDA nicht erreichbar oder Abfragegrenze erreicht: in einer Stunde erneut versuchen
+    if(usdaFailed && !c.ing && !c.cat) c.t = Date.now() - LIVE_RETRY + 3600e3;
+    liveEst[code] = c; liveTrim(); sset("liveEst", liveEst);
+    renderLiveInfo();
+    return c;
+  })());
+}
+/* Beim Auswählen eines Produkts ohne Vitaminangaben online weitersuchen */
+function startLive(it){
+  const raw = it && (it.raw || it);
+  if(!raw || !raw.isProduct || raw.isRecipe || raw.labelMicros >= 3 || raw.noEst || !raw.code || liveCached(raw.code) || navigator.onLine === false) return;
+  addCtx.liveBusy = raw.code;
+  renderAltHint(it);
+  liveEstimate(raw).then(c => {
+    if(addCtx.liveBusy === raw.code) addCtx.liveBusy = null;
+    const sel = addCtx.sel;
+    if(!sel || addCtx.editId || sel.noEst || (sel.raw || sel).code !== raw.code) return;
+    const nx = withEstimate(sel.raw || sel);
+    addCtx.sel = nx;
+    renderAltHint(nx); updatePreview();
+  });
+}
+
+/* ---------- USDA FoodData Central ----------
+   US-Nährstoffdatenbank mit vollständigen Vitamin- und Mineralstoffwerten (englische Namen). */
+const FDC_N = {kcal:["208","957","958"], p:["203"], c:["205"], z:["269"], f:["204"], sf:["606"], b:["291"], vitA:["320"], vitC:["401"], vitD:["328"],
+  b12:["418"], folat:["417","435"], eisen:["303"], calcium:["301"], magnesium:["304"], zink:["309"], kalium:["306"], natrium:["307"], jod:["314"], vitE:["323"]};
+function fdcKey(){ return (sget("fdcKey", "") || "").trim() || "DEMO_KEY"; }
+function fdcItem(f){
+  const by = {};
+  (f.foodNutrients || []).forEach(x => { const n = String(x.nutrientNumber || ""); if(n && x.value != null && !(n in by)) by[n] = +x.value; });
+  const per100 = {}, missing = [];
+  Object.keys(FDC_N).forEach(k => { const n = FDC_N[k].find(n => n in by); per100[k] = n ? sig(by[n]) : 0; if(!n && MICROS.some(m => m[0] === k)) missing.push((MICROS.find(m => m[0] === k))[1]); });
+  const o3 = (by["851"] != null ? by["851"] : by["619"] || 0) + (by["629"] || 0) + (by["621"] || 0);
+  per100.o3 = sig(o3);
+  if(!per100.kcal && !per100.p && !per100.f) return null;
+  const d = f.description || "";
+  const drink = /\b(juice|milk|beverage|drink|soda|coffee|tea|water|smoothie|cola)\b/i.test(d) && !/\b(powder|dry|dried|chocolate|candies|cheese|bread)\b/i.test(d);
+  return {id:"U"+f.fdcId, name:d.charAt(0) + d.slice(1).toLowerCase(), isDrink:drink, per100, portions:[], cf: drink ? sig(by["262"] || 0) : 0,
+          src:"USDA", isFDC:true, missing, _s:normalize(d), _c:compact(d)};
+}
+async function fdcFetch(query, n){
+  const ctl = new AbortController(), kill = setTimeout(() => ctl.abort(), 9000);
+  try{
+    const res = await fetch("https://api.nal.usda.gov/fdc/v1/foods/search?api_key=" + encodeURIComponent(fdcKey()) +
+      "&query=" + encodeURIComponent(query) + "&dataType=" + encodeURIComponent("Foundation,SR Legacy,Survey (FNDDS)") + "&pageSize=" + (n || 25), {signal: ctl.signal});
+    if(res.status === 429) throw new Error("limit");
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    const d = await res.json();
+    return (d.foods || []).map(fdcItem).filter(Boolean);
+  } finally { clearTimeout(kill); }
+}
+/* Bester USDA-Treffer mit ähnlichen Makros (gleiche Abstandsregel wie beim BLS-Abgleich) */
+async function fdcBest(query, per, drink){
+  const items = await fdcFetch(query, 15);
+  // Das Hauptwort (im Englischen das letzte Wort) muss im USDA-Namen vorkommen: „pickled cucumbers“ → „cucumber“
+  const head = normalize(query).split(/[^a-z]+/).filter(w => w.length >= 3).pop() || "";
+  const stem = head.replace(/ies$/, "y").replace(/(es|s)$/, "");
+  let best = null;
+  items.forEach(b => {
+    if(stem.length >= 3 && b._s.indexOf(stem) < 0) return;
+    const q = b.per100;
+    const dk = Math.abs(q.kcal - per.kcal) / Math.max(q.kcal, per.kcal, 40);
+    const dm = (Math.abs(q.p - per.p) + Math.abs(q.c - per.c) + Math.abs(q.f - per.f)) / Math.max(per.p + per.c + per.f, q.p + q.c + q.f, 8);
+    const d = dk + dm + (b.isDrink === !!drink ? 0 : 0.1);
+    if(d < 0.35 && (!best || d < best.d)) best = {d, it: b};
+  });
+  return best ? best.it : null;
+}
+/* Einfache Übersetzung häufiger Lebensmittelwörter für die englischsprachige USDA-Suche */
+const DE_EN = {apfel:"apple",apfelsaft:"apple juice",banane:"banana",birne:"pear",orange:"orange",orangensaft:"orange juice",erdbeere:"strawberries",erdbeeren:"strawberries",
+  heidelbeere:"blueberries",heidelbeeren:"blueberries",blaubeeren:"blueberries",himbeere:"raspberries",himbeeren:"raspberries",traube:"grapes",trauben:"grapes",kirsche:"cherries",kirschen:"cherries",
+  zitrone:"lemon",pfirsich:"peach",pflaume:"plum",aprikose:"apricot",melone:"melon",wassermelone:"watermelon",feige:"figs",dattel:"dates",datteln:"dates",rosine:"raisins",rosinen:"raisins",
+  tomate:"tomatoes",tomaten:"tomatoes",gurke:"cucumber",karotte:"carrots",karotten:"carrots",mohre:"carrots",mohren:"carrots",kartoffel:"potatoes",kartoffeln:"potatoes",
+  susskartoffel:"sweet potato",zwiebel:"onions",knoblauch:"garlic",paprika:"sweet pepper",brokkoli:"broccoli",blumenkohl:"cauliflower",spinat:"spinach",grunkohl:"kale",
+  rosenkohl:"brussels sprouts",kohl:"cabbage",weisskohl:"cabbage",rotkohl:"red cabbage",zucchini:"zucchini",aubergine:"eggplant",pilze:"mushrooms",champignons:"mushrooms",
+  erbsen:"peas",bohnen:"beans",linsen:"lentils",kichererbsen:"chickpeas",mais:"corn",spargel:"asparagus",sellerie:"celery",lauch:"leeks",kurbis:"pumpkin",rote:"red",bete:"beets",
+  reis:"rice",nudeln:"pasta",brot:"bread",vollkornbrot:"whole wheat bread",haferflocken:"oats",hafer:"oats",hirse:"millet",buchweizen:"buckwheat",mehl:"flour",gerste:"barley",
+  ei:"egg",eier:"egg",milch:"milk",joghurt:"yogurt",kase:"cheese",quark:"quark cheese",butter:"butter",sahne:"cream",honig:"honey",zucker:"sugar",schokolade:"chocolate",
+  nusse:"nuts",mandeln:"almonds",walnusse:"walnuts",haselnusse:"hazelnuts",erdnusse:"peanuts",erdnussbutter:"peanut butter",cashews:"cashew nuts",pistazien:"pistachio nuts",
+  leinsamen:"flaxseed",sonnenblumenkerne:"sunflower seeds",kurbiskerne:"pumpkin seeds",sesam:"sesame seeds",hahnchen:"chicken",huhn:"chicken",pute:"turkey",truthahn:"turkey",
+  rind:"beef",rindfleisch:"beef",schwein:"pork",schweinefleisch:"pork",lamm:"lamb",hackfleisch:"ground beef",schinken:"ham",speck:"bacon",wurst:"sausage",
+  lachs:"salmon",thunfisch:"tuna",hering:"herring",makrele:"mackerel",forelle:"trout",kabeljau:"cod",garnelen:"shrimp",fisch:"fish",
+  ol:"oil",olivenol:"olive oil",rapsol:"canola oil",kaffee:"coffee",tee:"tea",saft:"juice",wasser:"water",bier:"beer",wein:"wine",
+  roh:"raw",gekocht:"cooked",gebraten:"fried",getrocknet:"dried",vollkorn:"whole grain",suss:"sweet",gesalzen:"salted",ungesalzen:"unsalted"};
+function toEnglish(q){
+  const words = normalize(q).split(/[^a-z0-9]+/).filter(Boolean);
+  let hit = false;
+  const out = words.map(w => { if(DE_EN[w]){ hit = true; return DE_EN[w]; }
+    // zusammengesetzte Wörter: „Kürbiskernöl“ → „kurbiskern“ + „ol“ wird nicht zerlegt, nur zwei bekannte Teile
+    for(let i = 3; i < w.length - 2; i++){ const a = DE_EN[w.slice(0, i)], b = DE_EN[w.slice(i)] || DE_EN[w.slice(i + 1)]; if(a && b){ hit = true; return a + " " + b; } }
+    return w; });
+  return hit ? out.join(" ") : q;
+}
+async function searchFDC(q){
+  if(!q || liveSets.q !== q || liveSets.fdcBusy) return;
+  liveSets.fdcBusy = true; liveSets.fdcMsg = "";
+  renderLive(q);
+  try{
+    let items = await fdcFetch(toEnglish(q), 25);
+    if(addCtx.drinkOnly) items = items.filter(it => it.isDrink);
+    if(liveSets.q !== q) return;
+    liveSets.fdc = items;
+    if(!items.length) liveSets.fdcMsg = "USDA: keine Treffer für „" + toEnglish(q) + "“.";
+  } catch(e){
+    if(liveSets.q !== q) return;
+    liveSets.fdc = [];
+    liveSets.fdcMsg = e.message === "limit" ? "USDA: Abfragegrenze erreicht – später erneut versuchen oder unter Profil einen eigenen kostenlosen Schlüssel eintragen." : "USDA ist gerade nicht erreichbar.";
+  }
+  liveSets.fdcBusy = false;
+  renderLive(q);
+}
+function renderLiveInfo(){
+  const box = $("#liveInfo"); if(!box) return;
+  const vals = Object.values(liveEst), n = vals.filter(c => c.ing || c.cat || c.usda).length;
+  box.textContent = vals.length ? fmt(vals.length) + " Produkte online geprüft, für " + fmt(n) + " davon Vitamin- und Mineralstoffwerte gefunden." : "Noch keine Produkte online geprüft.";
+  const k = $("#fdcKey"); if(k && document.activeElement !== k) k.value = sget("fdcKey", "");
 }
 function renderAltHint(it){
-  const alt = it && it.est ? blsItems().find(x => x.name === it.est) : null;
+  const alt = it && it.est && it.estAlt ? blsItems().find(x => x.name === it.estAlt) : null;
   addCtx.alt = alt;
-  $("#altHint").innerHTML = alt
-    ? '<div class="nodata althint">Vitamine und Mineralstoffe stehen nicht auf dem Etikett – sie werden anhand von <b>'+esc(alt.name)+'</b> (Bundeslebensmittelschlüssel) geschätzt. Energie, Makros und Salz kommen vom Etikett.' +
-      (addCtx.editId ? '' : '<br><button class="chip" id="btnAlt">Stattdessen „'+esc(alt.name)+'“ eintragen</button> <button class="chip" id="btnNoEst">Passt nicht – ohne Schätzung</button>') + '</div>'
-    : (it && it.isProduct && !(it.labelMicros >= 3) ? '<div class="nodata althint">'+(it.noEst ? 'Ohne Schätzung' : 'Kein passendes Lebensmittel zum Schätzen gefunden')+' – Vitamine und Mineralstoffe werden für dieses Produkt nicht mitgezählt.</div>' : "");
+  const busy = it && addCtx.liveBusy && addCtx.liveBusy === (it.raw || it).code;
+  $("#altHint").innerHTML = it && it.est
+    ? '<div class="nodata althint">Vitamine und Mineralstoffe stehen nicht auf dem Etikett – geschätzt aus: '+esc(it.est)+'. Energie, Makros und Salz kommen vom Etikett.' +
+      (busy ? '<br><span class="muted">Suche online nach weiteren Nährstoffdaten …</span>' : '') +
+      (addCtx.editId ? '' : '<br>' + (alt ? '<button class="chip" id="btnAlt">Stattdessen „'+esc(alt.name)+'“ eintragen</button> ' : '') + '<button class="chip" id="btnNoEst">Passt nicht – ohne Schätzung</button>') + '</div>'
+    : (it && it.isProduct && !(it.labelMicros >= 3) ? '<div class="nodata althint">' +
+        (busy ? 'Vitamine und Mineralstoffe stehen nicht auf dem Etikett – suche online nach Nährstoffdaten …'
+              : (it.noEst ? 'Ohne Schätzung' : 'Weder auf dem Etikett noch online Vitamin- und Mineralstoffdaten gefunden') + ' – Vitamine und Mineralstoffe werden für dieses Produkt nicht mitgezählt.') + '</div>' : "");
 }
 /* Vorgeschlagenes BLS-Lebensmittel übernehmen – Menge, Mahlzeit und ggf. Bearbeiten-Modus bleiben */
 function useAlternative(){
@@ -2693,7 +2999,7 @@ function openEdit(id){
   $("#backToSearch").style.display = "none";
   $("#btnConfirmAdd").textContent = "Änderung speichern";
   $("#btnDeleteEntry").style.display = "";
-  $("#altHint").innerHTML = e.est ? '<div class="nodata althint">Vitamine und Mineralstoffe geschätzt anhand von <b>'+esc(e.est)+'</b> (BLS).</div>' : "";
+  $("#altHint").innerHTML = e.est ? '<div class="nodata althint">Vitamine und Mineralstoffe geschätzt aus: '+esc(estText(e))+'.</div>' : "";
   updatePreview();
 }
 function saveEdit(a){
@@ -2899,11 +3205,7 @@ async function onCode(code){
   let it = productByCode(code);
   if(!it){
     try{
-      const ctl = new AbortController(); const kill = setTimeout(()=>ctl.abort(), 7000);
-      const res = await fetch("https://world.openfoodfacts.org/api/v2/product/" + code + ".json?fields=code,product_name,product_name_de,brands,nutriments,categories_tags", {signal:ctl.signal});
-      clearTimeout(kill);
-      const data = res.ok ? await res.json() : null;
-      const pr = data && data.product, nu = pr && pr.nutriments;
+      const pr = await offProduct(code, 9000), nu = pr && pr.nutriments;
       if(pr && nu && nu["energy-kcal_100g"]!=null){
         const per100 = {kcal:+nu["energy-kcal_100g"]||0, p:+nu.proteins_100g||0, c:+nu.carbohydrates_100g||0, z:+nu.sugars_100g||0, f:+nu.fat_100g||0, sf:+nu["saturated-fat_100g"]||0, b:+nu.fiber_100g||0};
         MICROS.forEach(([k])=>per100[k]=0);
@@ -3060,6 +3362,8 @@ document.addEventListener("click", ev => {
     try{ localStorage.removeItem(LS+"ui.unlocked"); sessionStorage.removeItem(LS+"ui.unlocked"); }catch(e){}
     document.documentElement.classList.add("locked"); setTimeout(()=>$("#lockInput").focus(), 50); return;
   }
+  if(t.id==="btnFdc"){ searchFDC($("#searchInput").value.trim()); return; }
+  if(t.id==="btnLiveClear"){ liveEst = {}; sset("liveEst", liveEst); Object.keys(_matchCache).forEach(k => delete _matchCache[k]); renderLiveInfo(); toast("Online-Schätzungen gelöscht"); return; }
   if(t.id==="btnOffMore"){ t.disabled = true; t.textContent = "Lade …"; offPage++; searchOFF($("#searchInput").value.trim(), lastGroups); return; }
   if(t.id==="btnDeleteEntry"){ const id = addCtx.editId; closeSheets(); return deleteEntry(id); }
   if(t.dataset.editrec!=null) return openRecipeEditor(+t.dataset.editrec);
@@ -3125,7 +3429,7 @@ document.addEventListener("click", ev => {
   if(t.dataset.unest){
     const e = log.find(x=>x.id===t.dataset.unest); if(!e) return;
     (e.estKeys || MICROS.map(m=>m[0]).filter(k=>k!=="natrium")).forEach(k => e.n[k] = 0);
-    delete e.est; delete e.estKeys; e.noEst = true; e.noMicro = true;
+    delete e.est; delete e.estV; delete e.estKeys; e.noEst = true; e.noMicro = true;
     sset("log", log); renderAll(); toast("Schätzung entfernt");
     return;
   }
@@ -3244,6 +3548,7 @@ function applyProfileField(id, key, min, max, parse, final){
     toast(parts.length ? "Neue Ziele: "+parts.join(" · ") : "Profil gespeichert");
   }, 600);
 }
+$("#fdcKey").addEventListener("change", ev => { sset("fdcKey", ev.target.value.trim()); toast(ev.target.value.trim() ? "USDA-Schlüssel gespeichert" : "USDA-Schlüssel entfernt"); });
 $("#altHint").addEventListener("click", ev => {
   if(ev.target.closest("#btnAlt")) useAlternative();
   if(ev.target.closest("#btnNoEst") && addCtx.sel && addCtx.sel.raw){
@@ -3342,12 +3647,19 @@ function renderSourceInfo(){
   box.innerHTML =
     '<p style="margin:0 0 8px">Grundnahrungsmittel und Rezepte: gerundete Durchschnittswerte aus gängigen Nährwerttabellen; Vitamin E und Omega-3 aus dem BLS.</p>' +
     (blsData()
-      ? '<p style="margin:0 0 8px">Lebensmittel-Datenbank: <b>' + blsItems().length.toLocaleString("de-DE") + '</b> Lebensmittel aus dem ' +
+      ? '<p style="margin:0 0 8px">Lebensmittel-Datenbank: <b>' + blsItems().filter(it => !it.isCH).length.toLocaleString("de-DE") + '</b> Lebensmittel aus dem ' +
         '<a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel (BLS) 4.0</a>, Max Rubner-Institut (2025), ' +
         'DOI <a href="https://doi.org/10.25826/Data20251217-134202-0" target="_blank" rel="noopener">10.25826/Data20251217-134202-0</a>, ' +
         'Lizenz <a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>. ' +
         'Für NährWert auf 21 Nährstoffe reduziert, Portionsgrößen und Koffein ergänzt.</p>'
       : '') +
+    (chData()
+      ? '<p style="margin:0 0 8px">Zusätzlich <b>' + blsItems().filter(it => it.isCH).length.toLocaleString("de-DE") + '</b> Lebensmittel und Mineralwässer aus der ' +
+        '<a href="https://naehrwertdaten.ch" target="_blank" rel="noopener">Schweizer Nährwertdatenbank</a> V 7.1, Bundesamt für Lebensmittelsicherheit und Veterinärwesen BLV (2026). ' +
+        'Getränke auf 100 ml umgerechnet, Portionsgrößen und Koffein ergänzt.</p>'
+      : '') +
+    '<p style="margin:0 0 8px">Online (bei Internetverbindung): Open Food Facts – Produkte, Kategorien und die Nährstoffschätzung aus der Zutatenliste; ' +
+    '<a href="https://fdc.nal.usda.gov" target="_blank" rel="noopener">USDA FoodData Central</a> (U.S. Department of Agriculture, gemeinfrei).</p>' +
     (P
       ? '<p style="margin:0">Markenprodukte: <b>' + productItems().length.toLocaleString("de-DE") + '</b> in Deutschland verkaufte Produkte aus ' +
         '<a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a>, Stand ' + esc(productStand()) + '. ' +
@@ -3492,12 +3804,36 @@ function estimateOldEntries(){
   });
   if(changed) sset("log", log);
 }
+/* Ältere Markenprodukt-Einträge ohne Vitamine online nachschlagen (höchstens 8 je Start) */
+async function liveOldEntries(){
+  if(navigator.onLine === false || !blsItems().length) return;
+  const todo = log.filter(e => !e.est && !e.noEst && !e.liveTried && e.unit !== "Portion" && e.amount && entryNoMicro(e)).slice(0, 8);
+  let changed = false;
+  for(const e of todo){
+    const prod = e.code ? null : findItemByName(e.name);
+    const code = e.code || (prod && prod.code);
+    if(!code){ e.liveTried = 1; changed = true; continue; }
+    const per = {}; ALL_KEYS.forEach(k => per[k] = (e.n[k]||0) / e.amount * 100);
+    const raw = {name: e.name, per100: per, isDrink: e.isDrink, isProduct: true, code, labelMicros: 0};
+    const c = await liveEstimate(raw);
+    if(!c) break;                     // offline oder gedrosselt – beim nächsten Start weiter
+    await new Promise(r => setTimeout(r, 1500));   // Open Food Facts nicht mit vielen Abfragen auf einmal belasten
+    e.liveTried = 1; changed = true;
+    const x = withEstimate(raw);
+    if(!x.est || !log.includes(e) || e.est) continue;
+    e.estKeys = x.estKeys; e.estKeys.forEach(k => e.n[k] = x.per100[k] * e.amount / 100);
+    e.est = x.est; e.estV = 2; e.code = code; e.noMicro = false;
+  }
+  if(changed){ sset("log", log); renderAll(); }
+}
 /* Datendateien werden mit „defer“ geladen – danach Caches neu aufbauen */
 window.addEventListener("DOMContentLoaded", function(){
-  _prodCache = null; _blsCache = null; _codeIndex = null;
+  _prodCache = null; _blsCache = null; _codeIndex = null; _waters = null;
+  Object.keys(_matchCache).forEach(k => delete _matchCache[k]);
   log.forEach(function(e){ if(e.noMicro === false && e.unit !== "Portion" && !e.est) delete e.noMicro; });
   estimateOldEntries();
-  renderSourceInfo(); renderToday();
+  renderSourceInfo(); renderToday(); renderLiveInfo();
+  setTimeout(liveOldEntries, 1500);
   if($("#addSheet").classList.contains("open") && $("#searchInput").value.trim()) doSearch($("#searchInput").value);
 });
 
