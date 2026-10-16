@@ -2,12 +2,13 @@
    App-Dateien kommen aus dem Cache und werden im Hintergrund aktualisiert.
    Anfragen an fremde Server (Open Food Facts, Scanner-Bibliothek) laufen normal
    übers Netz; die Scanner-Bibliothek wird nach dem ersten Laden mitgecacht. */
-const CACHE = "naehrwert-v10";
-const FILES = ["./", "index.html", "naehrwert-produkte.js", "naehrwert-bls.js", "naehrwert-ch.js", "manifest.webmanifest",
+const CACHE = "naehrwert-v17";
+const FILES = ["./", "index.html", "naehrwert-produkte.js", "naehrwert-bls.js", "naehrwert-ch.js", "naehrwert-scan.js", "naehrwert-wasser.js", "naehrwert-offline-2.js", "naehrwert-sprache.js", "manifest.webmanifest",
                "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", ev => {
-  ev.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  // cache: "reload" – am HTTP-Cache des Browsers vorbei, sonst landen beim Update alte Datendateien im neuen Cache
+  ev.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, {cache: "reload"})))).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", ev => {
   ev.waitUntil(caches.keys()

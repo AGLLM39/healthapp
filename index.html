@@ -123,6 +123,8 @@ textarea:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 .addline{width:100%; text-align:left; background:transparent; color:var(--accent); font-weight:600; padding:8px 0; font-size:13.5px}
 .empty{color:var(--muted); font-size:13px; padding:6px 0}
 /* ---------- Mikro-Balken ---------- */
+.mgrp{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:12px 0 2px}
+.mgrp:first-child{margin-top:4px}
 .micro{display:grid; grid-template-columns:96px 1fr 104px; gap:8px; align-items:center; padding:5px 0}
 .micro .lbl{font-size:13px}
 .micro .bar{height:8px; background:var(--surface2); border-radius:999px; overflow:hidden}
@@ -722,6 +724,10 @@ html.app .toast{bottom:calc(74px + env(safe-area-inset-bottom))}
 <script src="naehrwert-bls.js" defer></script>
 <script src="naehrwert-ch.js" defer></script>
 <script src="naehrwert-produkte.js" defer></script>
+<script src="naehrwert-scan.js" defer></script>
+<script src="naehrwert-wasser.js" defer></script>
+<script src="naehrwert-offline-2.js" defer></script>
+<script src="naehrwert-sprache.js" defer></script>
 <script>
 "use strict";
 /* =====================================================================
@@ -828,12 +834,24 @@ function restoreFromMirror(){
 
 /* ---------- Nährstoff-Schlüssel ---------- */
 const MICROS = [
-  ["vitA","Vitamin A","µg"], ["vitC","Vitamin C","mg"], ["vitD","Vitamin D","µg"],
-  ["b12","Vitamin B12","µg"], ["folat","Folat","µg"], ["eisen","Eisen","mg"],
-  ["calcium","Calcium","mg"], ["magnesium","Magnesium","mg"], ["zink","Zink","mg"],
-  ["kalium","Kalium","mg"], ["natrium","Natrium","mg"], ["jod","Jod","µg"],
-  ["vitE","Vitamin E","mg"], ["o3","Omega-3","g"]
+  ["vitA","Vitamin A","µg","Vitamine"], ["vitD","Vitamin D","µg","Vitamine"], ["vitE","Vitamin E","mg","Vitamine"],
+  ["vitK","Vitamin K","µg","Vitamine"], ["vitC","Vitamin C","mg","Vitamine"], ["b1","Vitamin B1","mg","Vitamine"],
+  ["b2","Vitamin B2","mg","Vitamine"], ["niacin","Niacin","mg","Vitamine"], ["b6","Vitamin B6","mg","Vitamine"],
+  ["folat","Folat","µg","Vitamine"], ["pantothen","Pantothensäure","mg","Vitamine"], ["biotin","Biotin","µg","Vitamine"],
+  ["b12","Vitamin B12","µg","Vitamine"],
+  ["calcium","Calcium","mg","Mineralstoffe"], ["magnesium","Magnesium","mg","Mineralstoffe"], ["phosphor","Phosphor","mg","Mineralstoffe"],
+  ["kalium","Kalium","mg","Mineralstoffe"], ["natrium","Natrium","mg","Mineralstoffe"], ["eisen","Eisen","mg","Mineralstoffe"],
+  ["zink","Zink","mg","Mineralstoffe"], ["kupfer","Kupfer","mg","Mineralstoffe"], ["mangan","Mangan","mg","Mineralstoffe"],
+  ["jod","Jod","µg","Mineralstoffe"],
+  ["o3","Omega-3","g","Fettsäuren"]
 ];
+/* Seit Oktober 2026 ergänzt. Ältere Einträge und Lebensmittel ohne Angabe haben diese Werte nicht –
+   sie gelten dann als „keine Angabe“ statt als 0. */
+const NEW_MICROS = ["vitK","b1","b2","niacin","b6","pantothen","biotin","phosphor","kupfer","mangan"];
+/* Herkunft des Referenzwerts, wo es kein DGE-Referenzwert im engeren Sinn ist */
+const REF_NOTE = {vitE:"DGE-Schätzwert", vitK:"DGE-Schätzwert", pantothen:"DGE-Schätzwert", biotin:"DGE-Schätzwert",
+  phosphor:"DGE-Schätzwert", kupfer:"DGE-Schätzwert", mangan:"EFSA-Schätzwert", kalium:"DGE-Schätzwert", natrium:"DGE-Schätzwert (Obergrenze)",
+  o3:"0,5 % der Energie (DGE-Richtwert)"};
 const MACRO_KEYS = ["kcal","p","c","z","f","sf","b"];
 
 /* ---------- Warum wichtig? Kurzinfos je Nährstoff (aufklappbar) ---------- */
@@ -901,6 +919,36 @@ const NUTRIENT_INFO = {
   vitE: ["Antioxidans: schützt Zellwände und Fette im Körper vor Schäden durch Oxidation.",
          "Der Bedarf steigt mit der Menge an mehrfach ungesättigten Fettsäuren.",
          "Quellen: Pflanzenöle (vor allem Weizenkeim-, Sonnenblumen- und Rapsöl), Nüsse, Samen."],
+  vitK: ["Nötig für die Blutgerinnung und den Einbau von Calcium in die Knochen.",
+         "Quellen: grünes Blattgemüse (Grünkohl, Spinat, Feldsalat), Kohl, Kräuter; Vitamin K2 auch in Käse und Sauerkraut.",
+         "Fettlöslich – mit etwas Öl zum Gemüse wird es besser aufgenommen."],
+  b1:   ["Thiamin: unverzichtbar, um Kohlenhydrate in Energie umzuwandeln; wichtig für Nerven und Muskeln.",
+         "Der Bedarf steigt mit dem Energieverbrauch – wer viel isst und sich viel bewegt, braucht mehr.",
+         "Quellen: Vollkorn, Haferflocken, Hülsenfrüchte, Schweinefleisch, Sonnenblumenkerne. Wasserlöslich und kaum speicherbar."],
+  b2:   ["Riboflavin: hilft, Energie aus allen Nährstoffen zu gewinnen; wichtig für Haut, Schleimhäute und Augen.",
+         "Quellen: Milch und Milchprodukte, Käse, Eier, Fleisch, Fisch, Vollkorn, Pilze.",
+         "Lichtempfindlich – Milch in undurchsichtigen Verpackungen behält mehr davon."],
+  niacin:["Am Energiestoffwechsel fast aller Zellen beteiligt; wichtig für Haut, Nerven und Verdauung.",
+         "Der Körper kann Niacin zum Teil aus der Aminosäure Tryptophan bilden – angegeben ist deshalb das Niacin-Äquivalent.",
+         "Quellen: Fleisch, Geflügel, Fisch, Erdnüsse, Vollkorn, Pilze."],
+  b6:   ["Zentral für den Eiweißstoffwechsel – wer mehr Protein isst, braucht etwas mehr B6.",
+         "Wichtig für Nervensystem, Blutbildung und Immunsystem.",
+         "Quellen: Geflügel, Fisch, Kartoffeln, Bananen, Hülsenfrüchte, Vollkorn, Nüsse."],
+  pantothen:["Baustein des Coenzym A, das für Energiegewinnung und den Aufbau von Fetten und Hormonen gebraucht wird.",
+         "Steckt in fast allen Lebensmitteln (griechisch „pantothen“ = überall) – ein Mangel ist sehr selten.",
+         "Besonders viel in Leber, Eiern, Vollkorn, Hülsenfrüchten, Pilzen und Avocado."],
+  biotin:["Hilft beim Abbau von Fetten, Kohlenhydraten und Eiweiß; wichtig für Haut, Haare und Nägel.",
+         "Darmbakterien bilden zusätzlich etwas Biotin – ein Mangel ist bei normaler Ernährung sehr selten.",
+         "Quellen: Eier (vor allem das Eigelb), Leber, Nüsse, Haferflocken, Sojabohnen, Pilze."],
+  phosphor:["Zusammen mit Calcium Baustoff von Knochen und Zähnen; Teil der Energieträger in jeder Zelle (ATP).",
+         "Bis 18 Jahre ist der Bedarf höher, weil Knochen noch wachsen.",
+         "Steckt in fast allen eiweißreichen Lebensmitteln und als Zusatzstoff in Cola und Schmelzkäse – zu wenig ist selten."],
+  kupfer:["Nötig für die Blutbildung, das Bindegewebe, die Pigmentierung von Haut und Haaren und das Immunsystem.",
+         "Arbeitet eng mit Eisen zusammen: Ohne Kupfer kann Eisen nicht richtig genutzt werden.",
+         "Quellen: Nüsse, Kerne, Kakao, Vollkorn, Hülsenfrüchte, Leber, Schalentiere."],
+  mangan:["Bestandteil von Enzymen für Knochenaufbau, Energiestoffwechsel und den Schutz der Zellen vor Oxidation.",
+         "Vor allem in pflanzlichen Lebensmitteln: Vollkorn, Haferflocken, Nüsse, Hülsenfrüchte, Tee.",
+         "Der Wert ist ein Schätzwert der EFSA – genaue Bedarfszahlen gibt es nicht."],
   o3:   ["Lebensnotwendige Fettsäuren, die der Körper nicht selbst bilden kann.",
          "Alpha-Linolensäure aus Lein-, Raps- und Walnussöl; EPA und DHA aus fettem Seefisch sind wichtig für Herz, Gehirn und Augen.",
          "Der Richtwert ist 0,5 % der Energie – mit einem Esslöffel Rapsöl kommt man schon weit."]
@@ -931,6 +979,18 @@ function microRefs(p){
   r.jod = p.alter >= 51 ? 180 : 200;
   // Vitamin E: DGE-Schätzwerte (mg Tocopherol-Äquivalent)
   r.vitE = m ? (jung || g === "19–24" ? 15 : g === "25–50" ? 14 : g === "51–64" ? 13 : 12) : (g === "ab 65" ? 11 : 12);
+  // B-Vitamine (DGE 2020/21), Vitamin K, Pantothensäure, Biotin, Phosphor, Kupfer (DGE), Mangan (EFSA)
+  const alt51 = p.alter >= 51;
+  r.vitK = m ? (alt51 ? 80 : 70) : (alt51 ? 65 : 60);
+  r.b1 = m ? (jung ? 1.4 : g === "19–24" ? 1.3 : g === "ab 65" ? 1.1 : 1.2) : (jung ? 1.1 : 1.0);
+  r.b2 = m ? (jung ? 1.6 : alt51 ? 1.3 : 1.4) : (jung ? 1.2 : alt51 ? 1.0 : 1.1);
+  r.niacin = m ? (jung ? 17 : g === "19–24" ? 16 : g === "ab 65" ? 14 : 15) : (jung || g === "19–24" ? 13 : g === "25–50" ? 12 : 11);
+  r.b6 = m ? 1.6 : 1.4;
+  r.pantothen = 5;
+  r.biotin = 40;
+  r.phosphor = jung ? 1250 : 700;
+  r.kupfer = m ? (jung ? 1.3 : 1.5) : (jung ? 1.1 : 1.25);
+  r.mangan = 3;
   return r;
 }
 
@@ -1787,7 +1847,18 @@ function dbItem(i){
   const d = DB[i];
   const per100 = {kcal:d.k,p:d.p,c:d.c,z:d.z,f:d.f,sf:d.sf,b:d.b};
   MICROS.forEach(([k]) => per100[k] = (d.m && d.m[k]) || 0);
+  // Neue Nährstoffe aus dem zugeordneten BLS-Lebensmittel; ohne Zuordnung „keine Angabe“
+  const b = blsByCode(LOCAL_BLS[d.n]);
+  NEW_MICROS.forEach(k => per100[k] = d.m && d.m[k] != null ? d.m[k] : b && b.per100[k] != null ? b.per100[k] : undefined);
   return {id:"L"+i, name:d.n, cat:d.cat||"sonstiges", kw:d.kw||"", isDrink:!!d.d, per100, portions:d.po||[], cf:d.cf||0, src:"lokal"};
+}
+/* Zuordnung Grundnahrungsmittel → BLS-Code (nur für die ab Oktober 2026 ergänzten Nährstoffe) */
+const LOCAL_BLS = {"Weißbrot":"B311000","Vollkornbrot":"B101000","Brötchen":"B511000","Toastbrot":"B254000","Knäckebrot":"B6A2700","Haferflocken":"C133000","Müsli (ungesüßt)":"C512000","Cornflakes":"C515400","Reis (gekocht)":"C352032","Nudeln (gekocht)":"E401032","Vollkornnudeln (gekocht)":"E500032","Kartoffeln (gekocht)":"X6A1010","Pommes frites":"10449","Couscous (gekocht)":"C119232","Quinoa (gekocht)":"C118122","Vollmilch 3,5 %":"M111300","Fettarme Milch 1,5 %":"M111200","Naturjoghurt 3,5 %":"M1E3300","Griechischer Joghurt 10 %":"M130500","Skyr":"M710100","Magerquark":"M713100","Hüttenkäse":"M711300","Gouda":"M402600","Emmentaler":"M304600","Mozzarella":"M032100","Frischkäse":"M710700","Ei":"E111100","Hähnchenbrust":"V416100","Putenbrust":"V486100","Rinderhackfleisch":"U010100","Rindersteak":"U211100","Schweineschnitzel (natur)":"U541100","Lachs":"T410100","Thunfisch (Dose, Wasser)":"T121902","Seelachs":"T207152","Hering":"T102100","Garnelen":"T753100","Salami":"W149300","Kochschinken":"W424000","Leberwurst":"Y023113","Bratwurst":"W222100","Tofu":"H861000","Linsen (gekocht)":"H730132","Kichererbsen (gekocht)":"X574212","Kidneybohnen (Dose)":"H742902","Erbsen":"G760100","Erdnüsse":"H110600","Mandeln":"H210100","Walnüsse":"H120100","Cashewkerne":"H170100","Haselnüsse":"H130100","Erdnussbutter":"H880200","Kürbiskerne":"H310100","Leinsamen (geschrotet)":"H410400","Tomate":"G561100","Gurke":"G520100","Paprika (rot)":"G543100","Karotte":"G620100","Brokkoli":"G312100","Blumenkohl":"G311100","Spinat":"G211100","Zucchini":"G582100","Aubergine":"G510100","Champignons":"K701100","Zwiebel":"G480100","Knoblauch":"G490100","Blattsalat":"G105100","Feldsalat":"G104100","Mais (Dose)":"G570902","Süßkartoffel":"13406","Rote Bete":"G613100","Kürbis (Hokkaido)":"G581000","Avocado":"F502100","Sauerkraut":"G345152","Apfel":"F110100","Banane":"F503100","Orange":"F603100","Mandarine":"F606100","Erdbeeren":"F301100","Blaubeeren":"F304100","Himbeeren":"F302100","Weintrauben":"F310100","Birne":"F130100","Kiwi":"F514100","Pfirsich":"F203100","Wassermelone":"F535100","Ananas":"F501100","Rosinen":"F840100","Olivenöl":"Q120000","Rapsöl":"Q180000","Butter":"Q630000","Margarine":"Q400000","Honig":"S120000","Marmelade":"S135000","Nuss-Nougat-Creme":"S145000","Zucker":"S111100","Milchschokolade":"S530000","Zartbitterschokolade":"S560000","Gummibärchen":"S361000","Butterkekse":"D630400","Kartoffelchips":"K280100","Vanilleeis":"S241000","Pizza Margherita":"X912033","Döner Kebab":"Y921162","Mineralwasser":"N120000","Orangensaft":"F603600","Apfelsaft":"F110600","Cola":"498","Limonade":"N310400","Eistee":"804","Energy-Drink":"13465","Kaffee (schwarz)":"N410100","Cappuccino":"N414000","Latte Macchiato":"N418000","Schwarzer Tee":"N630000","Grüner Tee":"N610100","Kräutertee":"N720100","Kakao (mit Milch)":"14220","Smoothie (Frucht)":"F032600","Bier":"816","Alkoholfreies Bier":"13420","Mehrkornbrötchen":"B591000","Roggenbrot":"B221000","Dinkelvollkornbrot":"B710500","Pumpernickel":"B780500","Baguette":"B781200","Laugenbrezel":"X061410","Croissant":"D771600","Vollkorntoast":"B111200","Fladenbrot":"B782100","Reiswaffel":"C532800","Zwieback":"930","Milchbrötchen":"D7A5400","Vollkornreis (gekocht)":"1067","Basmatireis (gekocht)":"C352032","Kartoffelpüree":"X639012","Bratkartoffeln":"X651043","Kartoffelsalat":"X1A2020","Gnocchi (gekocht)":"K270032","Spätzle (gekocht)":"X711512","Nudeln, roh (Hartweizen)":"E401000","Vollkornnudeln, roh":"E510000","Spaghetti (gekocht)":"E401032","Penne (gekocht)":"E401032","Fusilli (gekocht)":"E401032","Makkaroni (gekocht)":"E401032","Bandnudeln / Eiernudeln (gekocht)":"E432032","Reisnudeln (gekocht)":"C559032","Glasnudeln (gekocht)":"H030432","Mie-Nudeln (gekocht)":"E432032","Bulgur (gekocht)":"C119132","Hirse (gekocht)":"C334032","Polenta (gekocht)":"C526000","Semmelknödel":"E606000","Chiasamen":"H480100","Weizenkleie":"C217000","Haferdrink (ungesüßt)":"C660000","Sojadrink (ungesüßt)":"H841100","Mandeldrink (ungesüßt)":"H800000","Buttermilch":"M150000","Kefir":"M130300","Fruchtjoghurt":"M2R8300","Speisequark 20 %":"M713300","Saure Sahne / Schmand":"M172500","Sahne 30 %":"M173900","Crème fraîche":"M176800","Butterkäse":"M501800","Camembert":"M602700","Feta":"M012200","Parmesan":"M306400","Schmelzkäse":"M771600","Rührei (zubereitet)":"Y725412","Spiegelei":"Y710142","Eiklar":"E113100","Hähnchenschenkel":"Y569122","Schweinebraten":"Y352212","Schweinefilet":"U611100","Rinderbraten":"Y161212","Gemischtes Hackfleisch":"U050100","Lammkotelett":"U727100","Ente (gebraten)":"Y576113","Frikadelle":"Y912030","Wiener Würstchen":"W211200","Currywurst":"Y944062","Fleischwurst":"W234000","Speck / Bacon":"W411300","Rinderleber":"V531100","Forelle":"T422100","Kabeljau":"T204100","Scholle":"T305100","Makrele":"T107100","Sardinen (Dose)":"T817900","Räucherlachs":"T410600","Fischstäbchen":"T930182","Matjes":"T103100","Miesmuscheln":"T792132","Thunfisch (Dose, Öl)":"T121702","Räuchertofu":"H861000","Tempeh":"14251","Seitan":"C558000","Hummus":"H960000","Vegane Wurst":"H930100","Gemüsebratling":"X5A1000","Rote Linsen (gekocht)":"H730032","Edamame (Sojabohnen)":"G750100","Paranüsse":"H180100","Pistazien":"H250100","Pekannüsse":"H160100","Macadamia":"H190100","Sonnenblumenkerne":"H430100","Sesam":"H420100","Mandelmus":"H212800","Studentenfutter":"H810000","Grüne Bohnen":"353","Rosenkohl":"G332100","Grünkohl":"G322100","Weißkohl":"G342100","Rotkohl":"G341100","Spargel":"G450100","Lauch / Porree":"G470100","Sellerie (Knolle)":"G660100","Fenchel":"G430152","Radieschen":"G691100","Rucola":"G130100","Eisbergsalat":"G103100","Chinakohl":"G321100","Kohlrabi":"G331100","Pastinake":"G640100","Mangold":"G230100","Erbsen (tiefgekühlt)":"G760100","Oliven (grün)":"H510802","Getrocknete Tomaten":"G560400","Artischocke":"G410100","Ingwer":"R211200","Sprossen (Mungbohnen)":"H650100","Gurkensalat":"X252640","Aprikose":"F201100","Pflaume":"F220100","Kirschen":"F211100","Nektarine":"F202100","Grapefruit":"F604100","Zitrone":"F601100","Mango":"F516100","Papaya":"F517100","Brombeeren":"F303100","Schwarze Johannisbeeren":"F323100","Granatapfel":"13882","Datteln (getrocknet)":"F504400","Aprikosen (getrocknet)":"F201400","Pflaumen (getrocknet)":"F220400","Cranberrys (getrocknet)":"F414400","Apfelmus":"Y843143","Sonnenblumenöl":"Q320000","Kokosöl":"Q550000","Leinöl":"Q160000","Mayonnaise":"X341040","Ketchup":"R141100","Senf":"R132000","Sojasauce":"R143000","Tomatensauce (Passata)":"R161200","Pesto (Basilikum)":"X372012","Joghurt-Dressing":"X357340","Balsamico-Essig":"R125000","Jodsalz":"R114000","Salzstangen":"D064000","Erdnussflips":"D041000","Popcorn (gesalzen)":"C518000","Schokokeks":"D7B5100","Donut":"14233","Käsekuchen":"D480200","Apfelkuchen":"D130100","Marmorkuchen":"D431100","Milchreis (gesüßt)":"X810033","Pudding (Vanille)":"R481132","Schokoladeneis":"S242000","Waffel":"14016","Pfannkuchen / Crêpe":"X925012","Lasagne":"X730033","Pizza Salami":"X9A5020","Pizza Hawaii":"X9A5010","Hamburger":"Y911060","Cheeseburger":"Y911160","Tomatensuppe":"X444343","Gemüsesuppe":"X462123","Linsensuppe":"X462513","Kürbissuppe":"X4A3010","Chili con Carne":"X469753","Gulasch":"Y1A1000","Fisch mit Kartoffeln":"Y622812","Käsespätzle":"X711412","Maultaschen":"X760212","Bratkartoffeln mit Ei":"X651912","Griechischer Salat":"X203850","Pommes mit Currywurst":"Y944062","Traubensaft":"F310600","Multivitaminsaft":"F014600","Kirschsaft":"F211600","Tomatensaft":"564","Espresso":"N411100","Pfefferminztee":"N721000","Orangenlimonade":"N310300","Buttermilch-Drink (Frucht)":"M252000","Radler":"P192000","Weißwein":"P210000","Rotwein":"P2A3000","Weizenbier":"P151100","Apfelschorle":"N256000","Wasser (Leitungswasser)":"N110000","Ciabatta":"B311000","Wrap / Tortilla (Weizen)":"B783012","Pita":"B782100","Tagliatelle frisch (gekocht)":"E432032","Dinkelnudeln (gekocht)":"E632032","Lasagneplatten, roh":"E401000","Tortellini gefüllt (gekocht)":"E609232","Ravioli gefüllt (gekocht)":"E603032","Udon-Nudeln (gekocht)":"E401032","Soba-Nudeln (gekocht)":"C320032","Instant-Nudeln (zubereitet)":"E401062","Sushi-Reis (gekocht)":"X8A1100","Sojajoghurt":"H844000","Harzer Käse":"M730100","Serrano-/Parmaschinken":"693","Putenaufschnitt":"W561000","Sojaschnetzel (zubereitet)":"14146","Falafel":"Y9A1050","Veggie-Burger-Patty":"14115","Hefeflocken":"K762400","Weiße Bohnen (Dose)":"X574312","Schwarze Bohnen (Dose)":"X574312","Chili (frisch)":"360","Tiefkühl-Gemüsemischung":"G090100","Feige (frisch)":"F505100","Gemüsebrühe (zubereitet)":"X416243","Müsliriegel":"S830000","Schokoriegel (gefüllt)":"S581500","Salzcracker":"D050000","Spaghetti Bolognese":"X740433","Spaghetti Carbonara":"X740733","Chicken Wrap":"Y599112","Gyros mit Tzatziki":"Y384112","Falafel-Teller":"Y9A1050","Sushi (gemischt)":"Y627112","Kartoffel-Gemüse-Auflauf":"X640063","Müsli mit Milch & Obst":"X092410","Porridge mit Obst":"X9A2100","Kebab-Teller":"Y921062","Sprudelwasser mit Zitrone":"N127000","Milchkaffee":"1187","Eiskaffee":"Y997043","Rooibostee":"N601000","Ingwer-Zitronen-Tee":"803","Matcha-Tee":"N610100","Spezi":"N390100","Sportgetränk (isotonisch)":"N259000","Cola Zero":"N110000","Johannisbeerschorle":"N271000","Linsennudeln (gekocht)":"H730132","Kichererbsennudeln (gekocht)":"X574212"};
+let _blsCodeIndex = null;
+function blsByCode(code){
+  if(!code || !blsItems().length) return null;
+  if(!_blsCodeIndex){ _blsCodeIndex = {}; blsItems().forEach(it => { if(!it.isCH) _blsCodeIndex[it.id.slice(1)] = it; }); }
+  return _blsCodeIndex[code] || null;
 }
 let _localCache = null;
 function allLocalItems(){
@@ -1828,7 +1899,7 @@ function blsItems(){
       if(have.has(s)) return;
       const per100 = {};
       ck.forEach(([k, j]) => per100[k] = r[j] || 0);
-      const miss = (r[gM] || []).map(k => (MICROS.find(m => m[0] === k) || [k, k])[1]);
+      const miss = (r[gM] || []).concat(NEW_MICROS.filter(k => G.indexOf(k) < 0)).map(k => (MICROS.find(m => m[0] === k) || [k, k])[1]);
       _blsCache.push({id:"C"+r[1], name:r[0], cat:"bls", isDrink:!!r[gD], per100, portions:(C.portionen[r[gP]] || []).map(x=>x.slice()),
         cf:r[gC] || 0, src:"Schweizer Nährwertdatenbank", isBLS:true, isCH:true, blsGroup:"CH", missing:miss,
         _s:normalize(r[0] + (r[gS] ? " " + r[gS] : "")), _c:compact(r[0]), _w:s.split(/[^a-z0-9]+/).filter(w=>w.length>=5), rank:n0+i});
@@ -1970,7 +2041,7 @@ function entryFromItem(item, amount, meal){
   if(item.isRecipe){
     ALL_KEYS.forEach(k => n[k] = (item.totals[k]||0)*amount); // amount = Portionen
   } else {
-    ALL_KEYS.forEach(k => n[k] = (item.per100[k]||0)*amount/100);
+    ALL_KEYS.forEach(k => { if(item.per100[k] != null || MACRO_KEYS.indexOf(k) >= 0) n[k] = (item.per100[k]||0)*amount/100; });
   }
   return {
     id: newId(),
@@ -2112,12 +2183,14 @@ function renderToday(){
 
   // Mikros – zugeklappt mit Zusammenfassung
   let inTarget = 0;
-  $("#microBox").innerHTML = MICROS.map(([k,label,unit]) => {
+  let mgrp = "";
+  $("#microBox").innerHTML = MICROS.map(([k,label,unit,gr]) => {
+    const head = gr !== mgrp ? '<div class="mgrp">'+(mgrp = gr)+'</div>' : '';
     const val = t[k], ref = T.micros[k], p100 = val/ref*100;
     let color = p100 < 70 ? "var(--warn)" : "var(--ok)";
     if(k==="natrium") color = p100 > 100 ? "var(--over)" : "var(--ok)";
     if(k==="natrium" ? p100 <= 100 : p100 >= 70) inTarget++;
-    return '<div class="micro" data-nutr="'+k+'" role="button" tabindex="0"><span class="lbl">'+label+'</span>' +
+    return head + '<div class="micro" data-nutr="'+k+'" role="button" tabindex="0"><span class="lbl">'+label+'</span>' +
       '<span class="bar"><i style="width:'+Math.min(100,p100)+'%;background:'+color+'"></i></span>' +
       '<span class="val num">'+fmt(val, val<10?1:0)+' / '+fmtRef(ref)+' '+unit+'</span></div>';
   }).join("");
@@ -2169,11 +2242,12 @@ function entryDetail(e){
   h += row("sf","davon gesättigt",n.sf,"g",T.sfMax,true,true,false, g(T.sfMax,"g","10 % der Energie",true));
   h += row("uf","davon ungesättigt",Math.max(0,(n.f||0)-(n.sf||0)),"g",T.fett-T.sfMax,false,true,false, g(T.fett-T.sfMax,"g","rund 20 % der Energie"));
   h += row("b","Ballaststoffe",n.b,"g",T.ballast,false,false,false, g(T.ballast,"g"));
-  h += '<div class="grp">Vitamine und Mineralstoffe</div>';
-  MICROS.forEach(([k,label,unit]) => {
+  let grp = "";
+  MICROS.forEach(([k,label,unit,gr]) => {
+    if(gr !== grp){ grp = gr; h += '<div class="grp">'+gr+'</div>'; }
     const isMax = k==="natrium";
-    const txt = k==="o3" ? "0,5 % der Energie" : "DGE-Referenzwert für "+sex+", "+T.gruppe+" Jahre";
-    h += row(k, label, n[k]||0, unit, T.micros[k], isMax, false, nm && !isMax && !n[k], g(T.micros[k], unit, txt, isMax), !!e.est && (e.estKeys ? e.estKeys.indexOf(k) >= 0 : k !== "natrium"));
+    const txt = k==="o3" ? REF_NOTE.o3 : (REF_NOTE[k] || "DGE-Referenzwert")+" für "+sex+", "+T.gruppe+" Jahre";
+    h += row(k, label, n[k]||0, unit, T.micros[k], isMax, false, (nm && !isMax && !n[k]) || n[k] == null, g(T.micros[k], unit, txt, isMax), !!e.est && (e.estKeys ? e.estKeys.indexOf(k) >= 0 : k !== "natrium"));
   });
   if(e.isDrink) h += '<div class="small muted" style="margin-top:6px">'+fmt(e.ml||0)+' ml Flüssigkeit'+(e.cf?' · '+fmt(Math.round(e.cf))+' mg Koffein':'')+'</div>';
   h += '<div class="dfoot"><span class="small muted">Tippe auf einen Nährstoff für Hintergründe.</span>' +
@@ -2240,11 +2314,17 @@ function weeklyGaps(){
   }, 0) / tracked.length;
   const unsure = noMicroShare > 0.3;
   const out = [];
+  // je Nährstoff: Anteil der Energie aus Einträgen ohne Angabe für genau diesen Wert
+  const unknownShare = k => tracked.reduce((s, d) => {
+    const es = log.filter(e => e.date === d.k && !e.isDrink);
+    const all = es.reduce((a, e) => a + e.n.kcal, 0) || 1;
+    return s + es.filter(e => e.n[k] == null).reduce((a, e) => a + e.n.kcal, 0) / all;
+  }, 0) / tracked.length;
   MICROS.forEach(([k,label]) => {
     if(k==="natrium") return;
     const a = tracked.reduce((s,d)=>s+d.t[k],0)/tracked.length;
     const pct = a/T.micros[k]*100;
-    if(pct < 70) out.push({key:k, label, pct, unsure});
+    if(pct < 70) out.push({key:k, label, pct, unsure: unsure || noMicroShare + unknownShare(k) > 0.3});
   });
   const fib = tracked.reduce((s,d)=>s+d.t.b,0)/tracked.length / T.ballast * 100;
   if(fib < 70) out.push({key:"b", label:"Ballaststoffe", pct:fib, unsure:false});   // steht auf jedem Etikett
@@ -2347,7 +2427,7 @@ function renderProfile(prev){
     "<b>Fett und Kohlenhydrate:</b> Fett 30 % der Energie, davon gesättigte Fettsäuren höchstens 10 % – der Rest (ca. 20 %) aus ungesättigten Fettsäuren. Zucker höchstens 10 %, Kohlenhydrate decken den Rest.",
     "<b>Ballaststoffe:</b> mindestens 30 g, bei höherem Energiebedarf 12,5 g je 1000 kcal.",
     "<b>Wasser:</b> "+T.mlKg+" ml je kg Körpergewicht"+(T.aktivZuschlag?" plus "+fmt(T.aktivZuschlag)+" ml für Aktivität":"")+". Etwa 60 % davon aus Getränken, der Rest steckt im Essen.",
-    "<b>Vitamine und Mineralstoffe:</b> DGE-Referenzwerte für "+sex+", "+T.gruppe+" Jahre. Sie hängen von Alter und Geschlecht ab, nicht vom Gewicht.",
+    "<b>Vitamine und Mineralstoffe:</b> DGE-Referenzwerte für "+sex+", "+T.gruppe+" Jahre (bei Vitamin E und K, Pantothensäure, Biotin, Phosphor, Kupfer, Kalium und Natrium Schätzwerte; Mangan: Schätzwert der EFSA). Sie hängen von Alter und Geschlecht ab, nicht vom Gewicht.",
     "<b>Omega-3:</b> 0,5 % der Energie als Omega-3-Fettsäuren ("+fmt(T.micros.o3,1)+" g) – DGE-Richtwert für Alpha-Linolensäure. Gute Quellen: Lein-, Raps- und Walnussöl, Walnüsse, Leinsamen, fetter Seefisch."
   ].map(x=>"<li>"+x+"</li>").join("");
   lastTargets = T;
@@ -2396,7 +2476,7 @@ function recentItems(){
 }
 function renderDefaultList(){
   renderCatChips();
-  if(addCtx.src==="favoriten"){ renderResults(favs.filter(f=>!addCtx.drinkOnly||f.isDrink)); return; }
+  if(addCtx.src==="favoriten"){ renderResults(favs.map(f=>(!f.isRecipe && findItemByName(f.name)) || f).filter(f=>!addCtx.drinkOnly||f.isDrink)); return; }
   if(addCtx.src==="eigene"){ renderResults(recipes.map((r,i)=>recipeToItem(r,"R"+i)).filter(()=> !addCtx.drinkOnly)); return; }
   if(addCtx.cat){
     renderResults(allLocalItems().filter(it=>it.cat===addCtx.cat), CAT_LABEL[addCtx.cat]);
@@ -2463,7 +2543,10 @@ let offPage = 1, offMore = false, offLive = [], offBaseStatus = "";
 /* Vitamine/Mineralstoffe aus Open-Food-Facts-Nährwerten (in Gramm je 100 g gespeichert) */
 const OFF_MICROS = {vitA:["vitamin-a_100g",1e6], vitC:["vitamin-c_100g",1e3], vitD:["vitamin-d_100g",1e6], b12:["vitamin-b12_100g",1e6],
   folat:["folates_100g",1e6], eisen:["iron_100g",1e3], calcium:["calcium_100g",1e3], magnesium:["magnesium_100g",1e3], zink:["zinc_100g",1e3],
-  kalium:["potassium_100g",1e3], jod:["iodine_100g",1e6], vitE:["vitamin-e_100g",1e3], o3:["omega-3-fat_100g",1]};
+  kalium:["potassium_100g",1e3], jod:["iodine_100g",1e6], vitE:["vitamin-e_100g",1e3], o3:["omega-3-fat_100g",1],
+  vitK:["vitamin-k_100g",1e6], b1:["vitamin-b1_100g",1e3], b2:["vitamin-b2_100g",1e3], niacin:["vitamin-pp_100g",1e3],
+  b6:["vitamin-b6_100g",1e3], pantothen:["pantothenic-acid_100g",1e3], biotin:["biotin_100g",1e6],
+  phosphor:["phosphorus_100g",1e3], kupfer:["copper_100g",1e3], mangan:["manganese_100g",1e3]};
 function offMicros(nu, per100){
   let n = 0;
   Object.keys(OFF_MICROS).forEach(function(k){
@@ -2511,7 +2594,7 @@ function searchOFF(q, groups){
         per100.natrium = nu.sodium_100g!=null ? +nu.sodium_100g*1000 : 0;
         const lm = offMicros(nu, per100);
         const tags = p.categories_tags||[];
-        const drink = tags.indexOf("en:beverages")>=0 || tags.indexOf("en:waters")>=0;
+        const drink = offIsDrink(tags);
         const nm = p.product_name_de || p.product_name;
         return {id:"O"+p.code, code:p.code||"", name:nm+(p.brands?" ("+p.brands.split(",")[0].trim()+")":""), isDrink:drink, per100, portions:[], cf:0, src:"Open Food Facts", isProduct:true, missing:[], labelMicros:lm};
       }).filter(Boolean);
@@ -2575,6 +2658,8 @@ function renderGroups(groups, emptyText){
 }
 
 function pickItem(it){
+  // Über „Getränk hinzufügen“ gewählt (auch per Scan): als Getränk eintragen, z. B. Milch
+  if(addCtx.drinkOnly && it && !it.isDrink && !it.isRecipe) it = Object.assign({}, it, {isDrink:true});
   it = withEstimate(it);
   addCtx.sel = it;
   addCtx.editId = null;
@@ -3013,7 +3098,7 @@ function saveEdit(a){
     return;
   }
   const f = a / e.amount;
-  ALL_KEYS.forEach(k => e.n[k] = (e.n[k]||0)*f);
+  ALL_KEYS.forEach(k => { if(e.n[k] != null) e.n[k] *= f; });
   e.cf = (e.cf||0)*f;
   if(e.isDrink) e.ml = a;
   e.amount = a;
@@ -3213,7 +3298,7 @@ async function onCode(code){
         const lm = offMicros(nu, per100);
         const nm = pr.product_name_de || pr.product_name || ("Produkt " + code);
         const tags = pr.categories_tags||[];
-        const drink = tags.indexOf("en:beverages")>=0 || tags.indexOf("en:waters")>=0 || tags.indexOf("en:drinks")>=0;
+        const drink = offIsDrink(tags);
         it = {id:"O"+code, code, name:nm + (pr.brands ? " (" + pr.brands.split(",")[0].trim() + ")" : ""), isDrink:drink, per100, portions:[], cf:0, src:"Open Food Facts", isProduct:true, missing:[], labelMicros:lm};
       }
     }catch(e){}
@@ -3647,7 +3732,7 @@ function renderSourceInfo(){
   box.innerHTML =
     '<p style="margin:0 0 8px">Grundnahrungsmittel und Rezepte: gerundete Durchschnittswerte aus gängigen Nährwerttabellen; Vitamin E und Omega-3 aus dem BLS.</p>' +
     (blsData()
-      ? '<p style="margin:0 0 8px">Lebensmittel-Datenbank: <b>' + blsItems().filter(it => !it.isCH).length.toLocaleString("de-DE") + '</b> Lebensmittel aus dem ' +
+      ? '<p style="margin:0 0 8px">Lebensmittel-Datenbank: <b>' + blsItems().filter(it => !it.isCH && !it.isOFF2).length.toLocaleString("de-DE") + '</b> Lebensmittel aus dem ' +
         '<a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel (BLS) 4.0</a>, Max Rubner-Institut (2025), ' +
         'DOI <a href="https://doi.org/10.25826/Data20251217-134202-0" target="_blank" rel="noopener">10.25826/Data20251217-134202-0</a>, ' +
         'Lizenz <a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>. ' +
@@ -3804,6 +3889,38 @@ function estimateOldEntries(){
   });
   if(changed) sset("log", log);
 }
+/* Einträge von vor der Erweiterung um neue Nährstoffe einmalig ergänzen */
+/* Open-Food-Facts-Kategorien, die als Getränk zählen – Milch steht dort unter „dairies“, nicht unter „beverages“ */
+function offIsDrink(tags){
+  return (tags||[]).some(t => /^en:(beverages|drinks|waters|milks|.+-milks|dairy-drinks|.*milk-drinks|plant-based-beverages|plant-milks|juices|fruit-juices|smoothies|kefirs|buttermilks|drinkable-yogurts)$/.test(t) &&
+    !/(powder|condensed|evaporated|pulver)/.test(t)) && !(tags||[]).some(t => /(powder|pulver|condensed-milks)/.test(t));
+}
+/* Ältere Einträge, die über „Getränk hinzufügen“ kamen, aber nicht als Getränk erkannt wurden
+   (lagen unter „getraenk“ und tauchten weder bei Getränken noch bei Mahlzeiten auf) */
+function repairDrinkEntries(){
+  let n = 0;
+  log.forEach(e => { if(e.meal === "getraenk" && !e.isDrink && e.unit !== "Portion"){ e.isDrink = true; e.unit = "ml"; e.ml = e.amount; n++; } });
+  if(n) sset("log", log);
+}
+function backfillNewMicros(){
+  if(!blsItems().length) return;
+  let changed = 0;
+  log.forEach(function(e){
+    if(e.nm2 || e.unit === "Portion" || !e.amount) return;
+    e.nm2 = 1; changed++;
+    if(NEW_MICROS.every(k => e.n[k] != null)) return;
+    const it = findItemByName(e.name);
+    if(!it || it.isRecipe) return;
+    const x = withEstimate(it);
+    if(it.isProduct && !x.est && !(it.labelMicros >= 3)) return;   // ohne Vitamindaten: bleibt „keine Angabe“
+    NEW_MICROS.forEach(k => {
+      if(e.n[k] != null || x.per100[k] == null) return;
+      e.n[k] = x.per100[k] * e.amount / 100;
+      if(e.est && x.estKeys && x.estKeys.indexOf(k) >= 0) (e.estKeys = e.estKeys || []).push(k);
+    });
+  });
+  if(changed) sset("log", log);
+}
 /* Ältere Markenprodukt-Einträge ohne Vitamine online nachschlagen (höchstens 8 je Start) */
 async function liveOldEntries(){
   if(navigator.onLine === false || !blsItems().length) return;
@@ -3828,8 +3945,10 @@ async function liveOldEntries(){
 }
 /* Datendateien werden mit „defer“ geladen – danach Caches neu aufbauen */
 window.addEventListener("DOMContentLoaded", function(){
-  _prodCache = null; _blsCache = null; _codeIndex = null; _waters = null;
+  _prodCache = null; _blsCache = null; _codeIndex = null; _waters = null; _localCache = null; _blsCodeIndex = null;
   Object.keys(_matchCache).forEach(k => delete _matchCache[k]);
+  repairDrinkEntries();
+  backfillNewMicros();
   log.forEach(function(e){ if(e.noMicro === false && e.unit !== "Portion" && !e.est) delete e.noMicro; });
   estimateOldEntries();
   renderSourceInfo(); renderToday(); renderLiveInfo();
