@@ -2219,11 +2219,11 @@ function renderToday(){
   const unsat = Math.max(0, t.f - t.sf);
   const rings = [
     ["Protein", t.p, T.protein, false, "var(--prot)"],
-    ["Kohlenhydr.", t.c, T.kh, false, "var(--carb)"],
+    ["Kohlenhydrate", t.c, T.kh, false, "var(--carb)"],
     ["Zucker", t.z, T.zuckerMax, true, "var(--carb)"],
-    ["Fett unges.", unsat, T.fett - T.sfMax, false, "var(--fat)"],
-    ["Fett gesätt.", t.sf, T.sfMax, true, "var(--fat)"],
-    ["Ballastst.", t.b, T.ballast, false, "var(--accent)"]
+    ["Fett ungesättigt", unsat, T.fett - T.sfMax, false, "var(--fat)"],
+    ["Fett gesättigt", t.sf, T.sfMax, true, "var(--fat)"],
+    ["Ballaststoffe", t.b, T.ballast, false, "var(--accent)"]
   ];
   $("#macroRings").innerHTML = rings.map(([lbl,val,goal,isMax,base]) => {
     const pct = val/goal;

@@ -233,3 +233,45 @@ nav.tabs .inner{isolation:isolate}
 #microFold > summary h2::before{display:block; -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z'/%3E%3Cpath d='M18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z'/%3E%3Cpath d='M18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z'/%3E%3C/svg%3E"); background:var(--fat)}
 :root{--leaf-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 19c0-8 5-14 14-14 0 9-6 14-14 14z'/%3E%3Cpath d='M5 19l8.5-8.5'/%3E%3C/svg%3E")}
 .quickdrinks button::before{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5c3 4 6 7.2 6 10.5a6 6 0 0 1-12 0c0-3.3 3-6.5 6-10.5z'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5c3 4 6 7.2 6 10.5a6 6 0 0 1-12 0c0-3.3 3-6.5 6-10.5z'/%3E%3C/svg%3E")}
+
+/* ---------- Schrift: lesbare Größen, normale Schreibweise (Oktober 2026, 2. Runde) ----------
+   Nichts, was gelesen werden soll, unter 13 px; Fließtext 16 px; keine kleinen Großbuchstaben-Labels.
+   Die Grautöne sind etwas dunkler, damit Zweitinfos gut lesbar bleiben. */
+:root{--muted:#59625A}
+:root[data-theme="light"]{--muted:#59625A}
+:root[data-theme="dark"]{--muted:#AAB3A8}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--muted:#AAB3A8} }
+body{font-size:16px}
+.small, .small.muted{font-size:14px}
+.empty, .gapnote, .nodata, .apistatus, .catchips .hint, .legend, .pastnote, .pastnote button{font-size:13.5px}
+header.app .date, html.app header.app .date{font-size:13.5px}
+/* Labels unter den Ringen, Abschnittsköpfe: normal geschrieben statt GROSS UND GESPERRT */
+.ringcell .lbl, .mgrp, .reshead, .entrydetail .grp, .storagestate b{
+  text-transform:none; letter-spacing:0; font-size:13.5px; font-weight:600; color:var(--ink)}
+.ringcell .lbl{white-space:normal; line-height:1.2; margin-top:7px}
+.mgrp{margin:16px 0 4px}
+.reshead{margin:14px 0 4px}
+.ringcell .val{font-size:13.5px}
+.ringcell .sub, .ringcell .lim{font-size:13px}
+.drinkstats .pill span{font-size:13px; line-height:1.3}
+.mealhead .sum{font-size:13px}
+.entry .name span, .result .name span{font-size:13px}
+.entry .kcal, .result .k{font-size:14px}
+.micro .lbl{font-size:14px}
+.micro .val{font-size:13px}
+.micro{grid-template-columns:104px 1fr 112px}
+.chart .goal span, .chart .col.empty span, .chartlabels span{font-size:13px}
+.gaplist .tag{font-size:13.5px}
+.recipecard .why{font-size:13px}
+.recipecard .ing, .recipecard .nut{font-size:13.5px}
+.targetgrid .t span, .targetgrid .t em{font-size:13px}
+.daynav .dlabel small{font-size:13px}
+.entrydetail .dhead, .nrow summary .np{font-size:13px}
+.nrow summary{font-size:14px}
+.nrow ul{font-size:14px}
+.mealtools button, .quickdrinks button{font-size:13.5px}
+.quickdrinks button span{font-size:13px}
+details.microfold > summary .state{font-size:13px}
+nav.tabs button, html.app nav.tabs button{font-size:12.5px}
+.sp-sub, .sp-tip{font-size:13px}
+.sp-tag{font-size:13px}
