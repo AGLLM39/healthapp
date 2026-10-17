@@ -1,0 +1,235 @@
+/* NährWert – Gestaltung (Oktober 2026)
+   Wird nach dem eingebauten <style> geladen und überschreibt nur Aussehen: Farben, Flächen,
+   Schatten, Abstände, kleine Symbole und Bewegungen. Funktionen und Aufbau bleiben unverändert.
+   Farbidee: warmes Leinen als Grund, frisches Blattgrün als Leitfarbe, dazu drei gleich kräftige
+   Töne für die Makros (Protein Blau, Kohlenhydrate Bernstein, Fett Violett). */
+
+/* ---------- Farben ---------- */
+:root{
+  --bg:#F4F3EE; --surface:#FFFFFF; --surface2:#EFEEE8; --ink:#1E2A21; --muted:#677064;
+  --accent:#2E7D57; --accent-2:#5DAA7A; --accent-soft:#E2F0E7; --drink:#2E7FA8; --drink-soft:#E3F0F6;
+  --ok:#3B9462; --warn:#D3982A; --over:#C8553F; --line:#E7E5DD;
+  --on-accent:#FFFFFF; --on-over:#FFFFFF;
+  --warn-ink:#8A5D0B; --over-ink:#A9432F; --prot:#3D7EBE; --carb:#D98E2B; --fat:#8C62B8;
+  --shadow:0 1px 2px rgba(30,42,33,.04), 0 6px 18px -6px rgba(30,42,33,.10);
+  --shadow-lg:0 2px 6px rgba(30,42,33,.06), 0 18px 40px -12px rgba(30,42,33,.22);
+  --glass:rgba(255,255,255,.78);
+  --hero:radial-gradient(120% 100% at 0% 0%, #E4F2E9 0%, rgba(228,242,233,0) 60%), radial-gradient(90% 80% at 100% 100%, #F3EFE2 0%, rgba(243,239,226,0) 55%), #FFFFFF;
+  --radius:18px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#101411; --surface:#192019; --surface2:#222a23; --ink:#E7ECE5; --muted:#97A195;
+    --accent:#6CC08E; --accent-2:#9BD8B1; --accent-soft:#1E3427; --drink:#67B4D8; --drink-soft:#1B2E37;
+    --ok:#6CC08E; --warn:#E4B35B; --over:#E2826D; --line:#2A332B;
+    --on-accent:#0D2015; --on-over:#2B0E0A;
+    --warn-ink:var(--warn); --over-ink:var(--over); --prot:#77AADC; --carb:#E8AE5B; --fat:#B694DE;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 22px -10px rgba(0,0,0,.55);
+    --shadow-lg:0 2px 6px rgba(0,0,0,.35), 0 20px 44px -14px rgba(0,0,0,.7);
+    --glass:rgba(25,32,25,.78);
+    --hero:radial-gradient(120% 100% at 0% 0%, #1F3a2a 0%, rgba(31,58,42,0) 60%), radial-gradient(90% 80% at 100% 100%, #262a1d 0%, rgba(38,42,29,0) 55%), #192019;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#F4F3EE; --surface:#FFFFFF; --surface2:#EFEEE8; --ink:#1E2A21; --muted:#677064;
+  --accent:#2E7D57; --accent-2:#5DAA7A; --accent-soft:#E2F0E7; --drink:#2E7FA8; --drink-soft:#E3F0F6;
+  --ok:#3B9462; --warn:#D3982A; --over:#C8553F; --line:#E7E5DD;
+  --on-accent:#FFFFFF; --on-over:#FFFFFF;
+  --warn-ink:#8A5D0B; --over-ink:#A9432F; --prot:#3D7EBE; --carb:#D98E2B; --fat:#8C62B8;
+  --shadow:0 1px 2px rgba(30,42,33,.04), 0 6px 18px -6px rgba(30,42,33,.10);
+  --shadow-lg:0 2px 6px rgba(30,42,33,.06), 0 18px 40px -12px rgba(30,42,33,.22);
+  --glass:rgba(255,255,255,.78);
+  --hero:radial-gradient(120% 100% at 0% 0%, #E4F2E9 0%, rgba(228,242,233,0) 60%), radial-gradient(90% 80% at 100% 100%, #F3EFE2 0%, rgba(243,239,226,0) 55%), #FFFFFF;
+}
+:root[data-theme="dark"]{
+  --bg:#101411; --surface:#192019; --surface2:#222a23; --ink:#E7ECE5; --muted:#97A195;
+  --accent:#6CC08E; --accent-2:#9BD8B1; --accent-soft:#1E3427; --drink:#67B4D8; --drink-soft:#1B2E37;
+  --ok:#6CC08E; --warn:#E4B35B; --over:#E2826D; --line:#2A332B;
+  --on-accent:#0D2015; --on-over:#2B0E0A;
+  --warn-ink:var(--warn); --over-ink:var(--over); --prot:#77AADC; --carb:#E8AE5B; --fat:#B694DE;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 22px -10px rgba(0,0,0,.55);
+  --shadow-lg:0 2px 6px rgba(0,0,0,.35), 0 20px 44px -14px rgba(0,0,0,.7);
+  --glass:rgba(25,32,25,.78);
+  --hero:radial-gradient(120% 100% at 0% 0%, #1F3a2a 0%, rgba(31,58,42,0) 60%), radial-gradient(90% 80% at 100% 100%, #262a1d 0%, rgba(38,42,29,0) 55%), #192019;
+}
+
+/* ---------- Grundlagen ---------- */
+body{-webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; letter-spacing:-.003em}
+::selection{background:var(--accent-soft)}
+h2{font-size:15.5px; font-weight:680; letter-spacing:-.005em; display:flex; align-items:center; gap:9px}
+h2::before{content:none}
+.card{border-radius:var(--radius); border-color:transparent; box-shadow:var(--shadow); padding:16px}
+:root[data-theme="dark"] .card{border-color:var(--line)}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .card{border-color:var(--line)} }
+
+/* Symbole vor den Kartenüberschriften (Form als Maske, Farbe je Bereich) */
+.card h2::before, #microFold > summary h2::before{
+  content:""; flex:0 0 auto; width:18px; height:18px; display:none;
+  -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-size:contain; mask-size:contain; -webkit-mask-position:center; mask-position:center}
+
+/* ---------- Kopfzeile mit Logo ---------- */
+header.app h1{display:flex; align-items:center; gap:0; font-size:22px; letter-spacing:-.02em}
+header.app h1::before{
+  content:""; width:30px; height:30px; border-radius:10px; flex:0 0 auto; margin-right:9px;
+  background:linear-gradient(145deg, var(--accent-2), var(--accent));
+  box-shadow:0 4px 12px -4px color-mix(in srgb, var(--accent) 60%, transparent), inset 0 1px 0 rgba(255,255,255,.25)}
+header.app h1 .nw-mark{display:none}
+header.app{position:relative}
+header.app h1{position:relative}
+header.app h1::after{
+  content:""; position:absolute; left:7px; top:50%; width:16px; height:16px; margin-top:-8px; background:#fff;
+  -webkit-mask:var(--leaf-mask) center/contain no-repeat; mask:var(--leaf-mask) center/contain no-repeat}
+:root[data-theme="dark"] header.app h1::after{background:#0D2015}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) header.app h1::after{background:#0D2015} }
+header.app .date{margin-left:39px; margin-top:0}
+.themebtn{box-shadow:var(--shadow); border-color:transparent}
+html.app header.app{background:color-mix(in srgb, var(--bg) 86%, transparent); -webkit-backdrop-filter:saturate(1.6) blur(14px); backdrop-filter:saturate(1.6) blur(14px)}
+html.app .daynav{background:color-mix(in srgb, var(--bg) 86%, transparent); -webkit-backdrop-filter:saturate(1.6) blur(14px); backdrop-filter:saturate(1.6) blur(14px)}
+
+/* ---------- Tageswahl ---------- */
+.daynav{margin-top:8px}
+.daynav button{background:var(--surface); border:none; box-shadow:var(--shadow); border-radius:12px}
+.daynav button:disabled{box-shadow:none; background:transparent}
+.daynav .dlabel{font-size:15px}
+.pastnote{border-radius:12px}
+
+/* ---------- Heute: Kalorienkarte ---------- */
+#view-heute .card:has(#kcalRing){background:var(--hero); padding:18px 16px 16px}
+.kcalstats .v{font-size:32px; font-weight:750; letter-spacing:-.035em; line-height:1.1}
+.kcalstats .v small{font-size:13.5px; letter-spacing:0}
+#kcalRest{margin-top:4px}
+#kcalRing .ring .center{font-size:22px !important; font-weight:750; letter-spacing:-.02em}
+.ring svg circle:first-child{opacity:.9}
+.ringrow{gap:16px 6px; margin-top:16px; padding-top:14px; border-top:1px solid var(--line)}
+.ringcell .lbl{font-size:10.5px; letter-spacing:.08em; font-weight:600; margin-top:6px}
+.ringcell .val{font-weight:600}
+.ringcell .center{font-weight:700}
+/* Ringe füllen sich beim Anzeigen */
+.ring svg circle + circle{animation:nwRing .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes nwRing{from{stroke-dasharray:0 999}}
+
+/* ---------- Spracheingabe-Leiste ---------- */
+body .speakbar{border:none; box-shadow:var(--shadow); padding:6px 6px 6px 6px; margin:12px 0 4px}
+body .speakbar .sp-open{font-size:15px}
+body .sp-mic{background:linear-gradient(145deg, var(--accent-2), var(--accent)); box-shadow:0 6px 14px -6px color-mix(in srgb, var(--accent) 70%, transparent)}
+
+/* ---------- Getränke ---------- */
+.fluidbar{height:10px; background:var(--drink-soft)}
+.fluidbar i{background:linear-gradient(90deg, color-mix(in srgb, var(--drink) 70%, #fff), var(--drink))}
+.drinkstats .pill{border-radius:14px; padding:9px 8px; background:var(--surface2)}
+.card:has(#fluidVal) > .small.num:first-of-type{margin-top:-2px}
+#fluidVal{font-size:22px; font-weight:750; letter-spacing:-.03em; color:var(--drink)}
+.drinkstats .pill b{font-size:15.5px}
+.quickdrinks button{border-radius:14px; padding:9px 10px 9px 34px; position:relative; transition:transform .12s ease, background .2s}
+.quickdrinks button::before{content:""; position:absolute; left:11px; top:50%; width:15px; height:15px; margin-top:-7.5px; background:var(--drink);
+  -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-size:contain; mask-size:contain}
+.quickdrinks button:active{transform:scale(.97)}
+
+/* ---------- Mahlzeiten und Einträge ---------- */
+.mealhead{margin:16px 0 4px}
+.mealhead h3, .mealline h3{display:flex; align-items:center; gap:8px}
+.mealhead h3::before, .mealline h3::before{content:""; width:7px; height:7px; border-radius:50%; background:var(--accent); flex:0 0 auto}
+.mealline h3::before{background:var(--line)}
+.mealhead .sum{font-weight:600; color:var(--ink); background:var(--surface2); border-radius:999px; padding:2px 9px; font-size:12px}
+.entry{padding:9px 0}
+.entry .name b{font-weight:600}
+.entry .kcal{font-variant-numeric:tabular-nums}
+.entrywrap.open{background:transparent}
+.entrydetail{border-radius:14px}
+.addline, .mini{color:var(--accent)}
+.mealtools button{border-radius:999px}
+
+/* ---------- Mikronährstoffe ---------- */
+details.microfold > summary .state{background:var(--surface2); border-radius:999px; padding:3px 10px; font-weight:600; color:var(--ink)}
+details.microfold > summary .state::after{color:var(--accent)}
+.micro .bar{height:9px; background:var(--surface2)}
+.micro .bar i{background-image:linear-gradient(90deg, rgba(255,255,255,.18), rgba(255,255,255,0))}
+.mgrp{font-weight:650; letter-spacing:.08em; color:var(--muted)}
+.legend i{border-radius:50%}
+
+/* ---------- Woche ---------- */
+.chart .col i{background:linear-gradient(180deg, var(--accent-2), var(--accent)); opacity:.45; border-radius:8px 8px 4px 4px}
+.chart .col.today i{opacity:1; box-shadow:0 6px 14px -6px color-mix(in srgb, var(--accent) 70%, transparent)}
+.chart .col.empty i{border-radius:8px}
+.gaplist .tag{background:var(--surface2); padding:5px 11px; font-weight:500}
+table.avg td{padding:8px 0}
+table.avg td:first-child{color:var(--muted)}
+
+/* ---------- Rezepte ---------- */
+.recipecard{border:1px solid var(--line); background:color-mix(in srgb, var(--surface2) 45%, var(--surface)); border-radius:16px; padding:14px}
+.recipecard .why{background:var(--accent-soft); color:var(--accent)}
+.recipecard h4{font-size:15px; letter-spacing:-.005em}
+.recipefoot select{background:var(--surface)}
+
+/* ---------- Profil ---------- */
+.settingrow{grid-template-columns:minmax(0, 1fr) minmax(150px, 1.35fr)}
+.settingrow input, .settingrow select{background:var(--surface2); border-color:transparent}
+.targetgrid .t{border-radius:14px; padding:10px 12px}
+.targetgrid .t b{font-size:16px; letter-spacing:-.01em}
+
+/* ---------- Bedienelemente ---------- */
+button{transition:background .2s, box-shadow .2s, transform .12s ease}
+button:active{transform:scale(.98)}
+button.primary{background:linear-gradient(145deg, var(--accent-2), var(--accent)); box-shadow:0 6px 16px -8px color-mix(in srgb, var(--accent) 80%, transparent); border-radius:12px}
+button.primary:disabled{box-shadow:none}
+button.chip{background:var(--surface); border-color:var(--line)}
+button.chip[aria-pressed="true"]{box-shadow:inset 0 0 0 1px var(--accent)}
+input[type=text],input[type=number],input[type=search],input[type=password],select,textarea{border-radius:12px; transition:border-color .2s, box-shadow .2s}
+input:focus-visible, select:focus-visible, textarea:focus-visible{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent)}
+
+/* ---------- Navigation unten ---------- */
+nav.tabs{background:var(--glass); -webkit-backdrop-filter:saturate(1.6) blur(16px); backdrop-filter:saturate(1.6) blur(16px); border-top-color:color-mix(in srgb, var(--line) 70%, transparent)}
+nav.tabs button{position:relative; font-weight:550}
+nav.tabs button svg{transition:transform .2s ease}
+nav.tabs button[aria-current="true"] svg{transform:translateY(-1px)}
+nav.tabs button::before{content:""; position:absolute; top:5px; left:50%; width:54px; height:30px; margin-left:-27px; border-radius:999px;
+  background:var(--accent-soft); opacity:0; transform:scale(.6); transition:opacity .2s, transform .25s cubic-bezier(.2,.8,.2,1); z-index:-1}
+nav.tabs button[aria-current="true"]::before{opacity:1; transform:scale(1)}
+nav.tabs .inner{isolation:isolate}
+
+/* ---------- Fenster (Sheets) ---------- */
+.overlay{background:rgba(12,18,13,.38); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px)}
+.overlay.open{animation:nwFade .2s ease both}
+.sheet{border-radius:24px 24px 0 0; border:none; box-shadow:var(--shadow-lg)}
+.sheet.open{animation:nwSheet .32s cubic-bezier(.2,.9,.25,1) both}
+.sheet .grab{width:42px; height:5px; margin-top:9px}
+.sheet .head h3{font-size:17px; letter-spacing:-.01em}
+.result{padding:10px 2px}
+.toast{box-shadow:var(--shadow-lg); padding:10px 18px}
+@keyframes nwFade{from{opacity:0}}
+@keyframes nwSheet{from{transform:translateY(48px)}}
+
+/* ---------- Sperrbildschirm ---------- */
+#lockScreen{background:var(--hero)}
+#lockScreen .box{border:none; box-shadow:var(--shadow-lg); border-radius:22px}
+
+/* ---------- Ansichten wechseln: Karten gleiten sanft herein ---------- */
+.view.active > *{animation:nwUp .45s cubic-bezier(.2,.8,.2,1) both}
+.view.active > *:nth-child(2){animation-delay:.04s}
+.view.active > *:nth-child(3){animation-delay:.08s}
+.view.active > *:nth-child(4){animation-delay:.12s}
+.view.active > *:nth-child(5){animation-delay:.16s}
+.view.active > *:nth-child(n+6){animation-delay:.2s}
+@keyframes nwUp{from{opacity:0; transform:translateY(10px)}}
+
+@media (prefers-reduced-motion: reduce){
+  .view.active > *, .sheet.open, .overlay.open, .ring svg circle + circle{animation:none !important}
+}
+
+/* ---------- Symbole (SVG als Maske) ---------- */
+.card:has(#fluidVal) h2::before{display:block; -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5c3 4 6 7.2 6 10.5a6 6 0 0 1-12 0c0-3.3 3-6.5 6-10.5z'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5c3 4 6 7.2 6 10.5a6 6 0 0 1-12 0c0-3.3 3-6.5 6-10.5z'/%3E%3C/svg%3E"); background:var(--drink)}
+.card:has(#mealsBox) h2::before{display:block; -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-1.7 1-2.5 3-2.5 5.5S15.3 12 17 12v9'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-1.7 1-2.5 3-2.5 5.5S15.3 12 17 12v9'/%3E%3C/svg%3E"); background:var(--accent)}
+.card:has(#weekChart) h2::before{display:block; -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20v-9M9.5 20V5M15 20v-7M20.5 20V9'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20v-9M9.5 20V5M15 20v-7M20.5 20V9'/%3E%3C/svg%3E"); background:var(--accent)}
+.card:has(#avgTable) h2::before{display:block; -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6h16M4 12h16M4 18h10'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6h16M4 12h16M4 18h10'/%3E%3C/svg%3E"); background:var(--prot)}
+.card:has(#gapList) h2::before{display:block; -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Ccircle cx='12' cy='12' r='4.5'/%3E%3Ccircle cx='12' cy='12' r='.8'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Ccircle cx='12' cy='12' r='4.5'/%3E%3Ccircle cx='12' cy='12' r='.8'/%3E%3C/svg%3E"); background:var(--warn)}
+.card:has(#suggestBox) h2::before{display:block; -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z'/%3E%3C/svg%3E"); background:var(--carb)}
+.card:has(#ownRecipeBox) h2::before{display:block; -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3.5h12v17l-6-4-6 4z'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3.5h12v17l-6-4-6 4z'/%3E%3C/svg%3E"); background:var(--fat)}
+.card:has(#pAlter) h2::before{display:block; -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='3.6'/%3E%3Cpath d='M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='3.6'/%3E%3Cpath d='M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5'/%3E%3C/svg%3E"); background:var(--accent)}
+.card:has(#targetGrid) h2::before{display:block; -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 21V4M5 4h11l-2 4 2 4H5'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 21V4M5 4h11l-2 4 2 4H5'/%3E%3C/svg%3E"); background:var(--carb)}
+.card:has(#installInfo) h2::before{display:block; -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='7' y='2.5' width='10' height='19' rx='2.5'/%3E%3Cpath d='M11 18.5h2'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='7' y='2.5' width='10' height='19' rx='2.5'/%3E%3Cpath d='M11 18.5h2'/%3E%3C/svg%3E"); background:var(--drink)}
+.card:has(#storageInfo) h2::before{display:block; -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cellipse cx='12' cy='6' rx='7' ry='2.8'/%3E%3Cpath d='M5 6v12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6M5 12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cellipse cx='12' cy='6' rx='7' ry='2.8'/%3E%3Cpath d='M5 6v12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6M5 12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8'/%3E%3C/svg%3E"); background:var(--prot)}
+.card:has(#fdcKey) h2::before{display:block; -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Cpath d='M3.5 12h17M12 3.5c2.5 2.6 3.6 5.5 3.6 8.5s-1.1 5.9-3.6 8.5c-2.5-2.6-3.6-5.5-3.6-8.5s1.1-5.9 3.6-8.5z'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Cpath d='M3.5 12h17M12 3.5c2.5 2.6 3.6 5.5 3.6 8.5s-1.1 5.9-3.6 8.5c-2.5-2.6-3.6-5.5-3.6-8.5s1.1-5.9 3.6-8.5z'/%3E%3C/svg%3E"); background:var(--drink)}
+.card:has(#sourceInfo) h2::before{display:block; -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5zM5 19.5A1.5 1.5 0 0 0 6.5 21H19'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5zM5 19.5A1.5 1.5 0 0 0 6.5 21H19'/%3E%3C/svg%3E"); background:var(--fat)}
+#microFold > summary h2::before{display:block; -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z'/%3E%3Cpath d='M18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z'/%3E%3Cpath d='M18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z'/%3E%3C/svg%3E"); background:var(--fat)}
+:root{--leaf-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 19c0-8 5-14 14-14 0 9-6 14-14 14z'/%3E%3Cpath d='M5 19l8.5-8.5'/%3E%3C/svg%3E")}
+.quickdrinks button::before{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5c3 4 6 7.2 6 10.5a6 6 0 0 1-12 0c0-3.3 3-6.5 6-10.5z'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5c3 4 6 7.2 6 10.5a6 6 0 0 1-12 0c0-3.3 3-6.5 6-10.5z'/%3E%3C/svg%3E")}

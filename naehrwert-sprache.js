@@ -450,9 +450,15 @@ css.textContent = [
   ".speakbar{display:flex; align-items:center; gap:8px; margin:12px 0; padding:5px 5px 5px 6px; background:var(--surface); border:1px solid var(--line); border-radius:999px; box-shadow:var(--shadow)}",
   ".speakbar .sp-open{flex:1; min-width:0; background:transparent; text-align:left; color:var(--muted); font-size:14.5px; padding:9px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}",
   ".sp-mic{flex:0 0 auto; width:44px; height:44px; border-radius:50%; background:var(--accent); color:var(--on-accent); display:flex; align-items:center; justify-content:center; padding:0}",
+  ".sp-mic{position:relative}",
   ".sp-mic.on{animation:spPulse 1.3s ease-in-out infinite}",
+  ".sp-mic.wait{opacity:.85}",
+  ".sp-mic.wait::after{content:''; position:absolute; inset:-4px; border-radius:50%; border:2.5px solid transparent; border-top-color:var(--accent); border-right-color:var(--accent); animation:spSpin .8s linear infinite}",
+  "@keyframes spSpin{to{transform:rotate(360deg)}}",
+  ".sp-tip{font-size:12.5px; line-height:1.45; background:var(--surface2); border-radius:12px; padding:10px 12px; margin:6px 0 10px}",
+  ".sp-tip .chip{margin-top:8px}",
   "@keyframes spPulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent)}50%{box-shadow:0 0 0 11px color-mix(in srgb, var(--accent) 0%, transparent)}}",
-  "@media (prefers-reduced-motion: reduce){.sp-mic.on{animation:none; outline:3px solid var(--accent-soft)}}",
+  "@media (prefers-reduced-motion: reduce){.sp-mic.on{animation:none; outline:3px solid var(--accent-soft)} .sp-mic.wait::after{animation:none}}",
   ".sp-in{display:flex; gap:8px; align-items:flex-start; margin:4px 0 4px}",
   ".sp-in textarea{flex:1; min-height:66px}",
   ".sp-status{min-height:18px; margin:2px 0 6px}",
@@ -484,6 +490,7 @@ sheet.innerHTML =
     '<div class="sp-in"><textarea id="spText" rows="2" placeholder="z. B. Zum Frühstück zwei Eier und ein Glas Orangensaft" autocomplete="off"></textarea>' +
     '<button class="sp-mic" id="spMic" aria-label="Sprechen" title="Sprechen">' + MIC_SVG + '</button></div>' +
     '<div class="small muted sp-status" id="spStatus" aria-live="polite"></div>' +
+    '<div id="spTips"></div>' +
     '<div id="spList"></div>' +
     '<div id="spSum"></div>' +
     '<div id="spMealWrap" style="display:none;margin-top:12px"><div class="small" style="font-weight:600;margin-bottom:4px">Mahlzeit</div><div class="mealchips" id="spMeals"></div></div>' +
@@ -511,7 +518,8 @@ function openSpeak(listen){
   openSheet("speakSheet");
   status(idleHint());
   render();
-  if(listen) startVoice();
+  checkMicPerm();
+  if(listen) startVoice(false);
   else setTimeout(() => el("spText").focus(), 150);
 }
 
@@ -610,67 +618,292 @@ function addAll(){
     {label: "Rückgängig", fn: () => { log = log.filter(x => ids.indexOf(x.id) < 0); sset("log", log); renderAll(); toast("Rückgängig gemacht"); }});
 }
 
-/* ---------- Spracherkennung ---------- */
-let rec = null, listening = false, heard = false, errShown = false, baseText = "";
-function setMic(){
-  [el("spMic"), el("spBarMic")].forEach(b => { if(b){ b.classList.toggle("on", listening); b.setAttribute("aria-pressed", listening ? "true" : "false"); } });
+/* ---------- Mikrofon- und Kamerafreigabe ----------
+   Ob der Browser eine Freigabe dauerhaft speichert, entscheidet er selbst (bzw. das iPhone) –
+   eine Webseite kann das nicht übernehmen. Die App merkt sich aber, dass die Freigabe schon einmal
+   erteilt wurde. Fragt der Browser trotzdem wieder, zeigt sie einmal, wo man „immer erlauben“
+   einstellt. Wurde der Zugriff blockiert, steht dort, wie man ihn wieder freigibt. */
+const UA = navigator.userAgent || "";
+const ANDROID = /Android/.test(UA);
+// iPadOS meldet sich wie ein Mac – erkennbar am Touchscreen
+const IOS = !ANDROID && (/iPad|iPhone|iPod/.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1));
+const PERM = {
+  key: k => "nw1.perm." + k,
+  had(k){ try{ return localStorage.getItem(PERM.key(k)) === "1"; }catch(e){ return false; } },
+  mark(k){ try{ localStorage.setItem(PERM.key(k), "1"); }catch(e){} },
+  tipOff(k){ try{ return localStorage.getItem(PERM.key(k) + ".tip") === "aus"; }catch(e){ return false; } },
+  setTipOff(k){ try{ localStorage.setItem(PERM.key(k) + ".tip", "aus"); }catch(e){} },
+  // "granted" | "prompt" | "denied" | null (unbekannt)
+  async state(k){
+    try{
+      if(!navigator.permissions || !navigator.permissions.query) return null;
+      const r = await navigator.permissions.query({name: k === "mic" ? "microphone" : "camera"});
+      return r && r.state || null;
+    }catch(e){ return null; }
+  }
+};
+function permSteps(k, blocked){
+  const what = k === "mic" ? "Mikrofon" : "Kamera";
+  if(IOS) return (blocked ? "Der Zugriff auf " + (k === "mic" ? "das Mikrofon" : "die Kamera") + " ist blockiert. " : "") +
+    "Am iPhone: Einstellungen → Apps → Safari → " + what + " → „Erlauben“ (bei älteren iOS-Versionen: Einstellungen → Safari → " + what + "). " +
+    "Dann fragt das iPhone nicht mehr nach – auch nicht in der App auf dem Home-Bildschirm." +
+    (k === "mic" ? " Falls zusätzlich „Spracherkennung“ abgefragt wird: einmal erlauben, das bleibt gespeichert." : "");
+  if(ANDROID) return (blocked ? "Der Zugriff ist blockiert. " : "") +
+    "In Chrome: auf das Symbol links neben der Adresse tippen → Berechtigungen → " + what + " → „Zulassen“. " +
+    "Bei der Abfrage „Bei Besuch der Website zulassen“ wählen, nicht „Nur dieses Mal“.";
+  return (blocked ? "Der Zugriff ist blockiert. " : "") +
+    "Im Browser auf das Symbol links neben der Adresse klicken → " + what + " → „Zulassen“ bzw. „Immer erlauben“.";
 }
-function stopVoice(){ if(rec && listening){ try{ rec.stop(); }catch(e){} } }
+function permStepsAll(){
+  if(IOS) return "Am iPhone: Einstellungen → Apps → Safari → Mikrofon und Kamera jeweils auf „Erlauben“ stellen (bei älteren iOS-Versionen: Einstellungen → Safari). Das gilt auch für die App auf dem Home-Bildschirm. Fragt das iPhone zusätzlich nach „Spracherkennung“: einmal erlauben, das bleibt gespeichert.";
+  if(ANDROID) return "In Chrome: auf das Symbol links neben der Adresse tippen → Berechtigungen → Mikrofon und Kamera auf „Zulassen“. Bei der Abfrage „Bei Besuch der Website zulassen“ wählen, nicht „Nur dieses Mal“.";
+  return "Im Browser auf das Symbol links neben der Adresse klicken und Mikrofon und Kamera auf „Zulassen“ bzw. „Immer erlauben“ stellen.";
+}
+/* Hinweis-Kasten in ein Fenster setzen (einmal pro Art, „Verstanden“ blendet ihn dauerhaft aus) */
+function permTip(k, box, blocked){
+  if(!box || (!blocked && PERM.tipOff(k))) return;
+  const old = box.querySelector(".sp-tip[data-kind='" + k + "']");
+  if(old) old.remove();
+  const d = document.createElement("div");
+  d.className = "sp-tip"; d.setAttribute("data-kind", k);
+  d.innerHTML = '<b>' + (blocked ? (k === "mic" ? "Mikrofon blockiert" : "Kamera blockiert") : "Damit du nicht jedes Mal zustimmen musst") + '</b><br>' + esc(permSteps(k, blocked)) +
+    (blocked ? '' : '<br><button class="chip" data-tipoff="' + k + '">Verstanden</button>');
+  box.appendChild(d);
+  const b = d.querySelector("[data-tipoff]");
+  if(b) b.addEventListener("click", ev => { ev.stopPropagation(); PERM.setTipOff(k); d.remove(); });
+}
+
+/* ---------- Spracherkennung ----------
+   Abgesichert gegen die Aussetzer, die bei Web-Spracherkennung vorkommen:
+   - iOS 26/27: Lief vorher ein Video (z. B. die Kamera des Barcode-Scanners), bleibt die Erkennung
+     stumm – das Mikrofon wirkt aktiv, es kommen aber weder Text noch Fehler noch Ende (WebKit-Bug
+     321436). Darum: für jeden Versuch eine neue Erkennung, die alte wird hart abgebrochen; bleibt
+     die neue stumm, startet die App sie nach kurzer Pause einmal selbst neu.
+   - Meldet eine Erkennung nie ihr Ende, wird sie nach Zeitlimit verworfen – der Mikrofon-Knopf
+     reagiert danach sofort wieder (vorher blieb er in „läuft noch“ hängen).
+   - „Ich höre zu“ erscheint erst, wenn das Mikrofon wirklich Ton liefert; bis dahin „Mikrofon startet …“.
+   - Safari beendet die Erkennung nicht immer von selbst: nach einer Sprechpause wird sie abgeschlossen. */
+const V = {state: "idle", rec: null, id: 0, heard: false, audio: false, speech: false, err: null, userStop: false,
+  baseText: "", retries: 0, timers: [], lastResult: 0, mediaAt: 0, local: false, log: []};
+function vlog(m){ V.log.push(Math.round(performance.now()) + " " + m); if(V.log.length > 60) V.log.shift(); }
+function vClear(){ V.timers.forEach(clearTimeout); V.timers = []; }
+function vLater(fn, ms){ const id = V.id; V.timers.push(setTimeout(() => { if(id === V.id) fn(); }, ms)); }
+function kill(r){
+  if(!r) return;
+  r.onresult = r.onerror = r.onend = r.onstart = r.onaudiostart = r.onsoundstart = r.onspeechstart = null;
+  try{ r.abort(); }catch(e){}
+}
+function setMic(){
+  [el("spMic"), el("spBarMic")].forEach(b => {
+    if(!b) return;
+    b.classList.toggle("on", V.state === "listening");
+    b.classList.toggle("wait", V.state === "starting" || V.state === "stopping");
+    b.setAttribute("aria-pressed", V.state === "idle" ? "false" : "true");
+    b.setAttribute("aria-label", V.state === "idle" ? "Sprechen" : "Zuhören beenden");
+  });
+}
+// Lief gerade ein Video oder Ton? (Auslöser des iOS-Fehlers)
+document.addEventListener("play", () => { V.mediaAt = Date.now(); }, true);
+document.addEventListener("pause", () => { V.mediaAt = Date.now(); }, true);
+// Chrome: Spracherkennung auf dem Gerät nutzen, wenn das deutsche Sprachpaket schon installiert ist
+try{ if(SR && SR.available) SR.available({langs: ["de-DE"], processLocally: true}).then(st => { V.local = st === "available"; }).catch(() => {}); }catch(e){}
+
 const SR_ERR = {
-  "not-allowed": "Kein Zugriff aufs Mikrofon. Erlaube ihn in den Einstellungen – oder diktiere mit dem Mikrofon der Tastatur.",
-  "service-not-allowed": "Die Spracherkennung ist hier nicht erlaubt. Tippe ins Feld und nutze das Mikrofon der Tastatur.",
-  "audio-capture": "Kein Mikrofon gefunden.",
+  "not-allowed": "Kein Zugriff aufs Mikrofon.",
+  "service-not-allowed": "Die Spracherkennung ist auf diesem Gerät nicht erlaubt. Tippe ins Feld und nutze das Mikrofon der Tastatur.",
+  "audio-capture": "Kein Mikrofon gefunden – oder eine andere App nutzt es gerade.",
   "network": "Die Spracherkennung dieses Browsers braucht Internet. Offline geht es mit dem Mikrofon der Tastatur.",
-  "no-speech": "Nichts gehört – tippe nochmal aufs Mikrofon und sprich.",
   "language-not-supported": "Deutsch wird von der Spracherkennung hier nicht unterstützt. Nutze das Mikrofon der Tastatur."
 };
-function startVoice(){
+function stopVoice(){ if(V.state !== "idle") finishVoice(true); }
+function abortVoice(){ if(V.state === "idle") return; vlog("abort"); kill(V.rec); V.rec = null; vClear(); V.id++; V.state = "idle"; setMic(); }
+
+function startVoice(isRetry){
+  isRetry = isRetry === true;
   if(!SR){
     status("Dieser Browser hat keine eingebaute Spracherkennung. Tippe ins Feld und nutze das Mikrofon deiner Tastatur.");
     el("spText").focus();
     return;
   }
-  if(listening){ stopVoice(); return; }
+  // Zweiter Tipp während des Zuhörens = fertig
+  if(!isRetry && (V.state === "starting" || V.state === "listening")){ finishVoice(true); return; }
+  // Alles Alte weg – auch eine Erkennung, die hängt, ohne je ihr Ende zu melden
+  kill(V.rec); V.rec = null; vClear(); V.id++;
+  if(!isRetry){ V.retries = 0; V.heard = false; V.baseText = el("spText").value.trim(); }
+  V.audio = V.speech = false; V.err = null; V.userStop = false; V.lastResult = 0;
+  let r;
   try{
-    rec = new SR();
-    rec.lang = "de-DE"; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
-  }catch(e){ status(SR_ERR["service-not-allowed"]); return; }
-  heard = false; errShown = false;
-  baseText = el("spText").value.trim();
-  rec.onresult = ev => {
+    r = new SR();
+    r.lang = "de-DE"; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
+    if(V.local) try{ r.processLocally = true; }catch(e){}
+  }catch(e){ V.state = "idle"; setMic(); status(SR_ERR["service-not-allowed"]); return; }
+  V.rec = r;
+  const id = V.id;
+  const mine = fn => ev => { if(id === V.id && V.rec === r) fn(ev); };
+  const gotAudio = () => {
+    if(V.audio) return;
+    V.audio = true; V.state = "listening"; setMic();
+    status("Ich höre zu … z. B. „Banane 70 Gramm“ oder „zwei Eier und ein Glas Milch“");
+    if(!PERM.had("mic")) PERM.mark("mic");
+  };
+  r.onstart = mine(() => { vlog("start"); vLater(() => { if(!V.audio && V.state === "starting") gotAudio(); }, 900); });
+  r.onaudiostart = mine(() => { vlog("audiostart"); gotAudio(); });
+  r.onsoundstart = r.onspeechstart = mine(ev => { vlog(ev.type); V.speech = true; gotAudio(); });
+  r.onresult = mine(ev => {
     let txt = "";
     for(let i = 0; i < ev.results.length; i++) txt += ev.results[i][0].transcript;
     txt = txt.trim();
     if(!txt) return;
-    heard = true;
-    el("spText").value = (baseText ? baseText.replace(/[,\s]+$/, "") + ", " : "") + txt;
+    gotAudio();
+    V.heard = true; V.speech = true; V.lastResult = Date.now();
+    el("spText").value = (V.baseText ? V.baseText.replace(/[,\s]+$/, "") + ", " : "") + txt;
     clearTimeout(parseTimer);
     parseTimer = setTimeout(parseNow, 120);
-  };
-  rec.onerror = ev => {
-    if(ev.error === "aborted") return;
-    errShown = true;
-    status(SR_ERR[ev.error] || "Spracherkennung nicht verfügbar (" + ev.error + "). Nutze das Mikrofon der Tastatur.");
-  };
-  rec.onend = () => {
-    listening = false; setMic();
-    if(heard){ parseNow(); status(rows.length ? "Prüfen und eintragen – oder nochmal aufs Mikrofon tippen, um etwas zu ergänzen." : idleHint()); }
-    else if(!errShown) status("Nichts verstanden – tippe nochmal aufs Mikrofon oder diktiere mit der Tastatur.");
-  };
-  try{
-    rec.start();
-    listening = true; setMic();
-    status("Ich höre zu … z. B. „Banane 70 Gramm“ oder „zwei Eier und ein Glas Milch“");
-  }catch(e){
-    listening = false; setMic();
-    status(SR_ERR["service-not-allowed"]);
-  }
+    // Sprechpause → abschließen (Safari hört sonst manchmal endlos weiter)
+    vLater(() => { if(V.state === "listening" && Date.now() - V.lastResult >= 2100) finishVoice(false); }, 2200);
+  });
+  r.onerror = mine(ev => { vlog("error " + ev.error); V.err = ev.error; });
+  r.onend = mine(() => { vlog("end"); endVoice(); });
+  V.state = "starting"; setMic();
+  status(isRetry ? "Mikrofon wird neu gestartet …" : "Mikrofon startet …");
+  try{ const ae = document.activeElement; if(ae && ae.blur) ae.blur(); }catch(e){}
+  try{ r.start(); vlog("start() " + (isRetry ? "retry" : "")); }
+  catch(e){ vlog("start() failed " + (e && e.name)); V.err = "start-failed"; endVoice(); return; }
+  // Wächter: Mikrofon kommt nicht in Gang (beim ersten Mal länger warten – da steht die Freigabe-Abfrage)
+  vLater(() => { if(!V.audio && !V.heard) stall("noaudio"); }, PERM.had("mic") ? 5000 : 15000);
+  // Mikrofon läuft, liefert aber nichts (der iOS-Fehler nach Videowiedergabe)
+  vLater(() => { if(!V.heard && !V.speech) stall("silent"); }, PERM.had("mic") ? 8000 : 18000);
+  vLater(() => finishVoice(false), 30000);
 }
+/* Erkennung hängt oder bleibt stumm: verwerfen und einmal selbst neu starten */
+function stall(kind){
+  if(V.state === "idle") return;
+  vlog("stall " + kind);
+  kill(V.rec); V.rec = null; vClear();
+  if(V.retries < 1){
+    V.retries++;
+    V.state = "starting"; setMic();
+    status("Mikrofon hakt – wird neu gestartet …");
+    const id = ++V.id;
+    // nach Video/Ton im Hintergrund braucht iOS eine längere Pause
+    setTimeout(() => { if(id === V.id) startVoice(true); }, Date.now() - V.mediaAt < 15000 ? 2500 : 700);
+    return;
+  }
+  V.id++; V.state = "idle"; setMic();
+  status(kind === "noaudio"
+    ? "Das Mikrofon startet gerade nicht. Tippe nochmal aufs Mikrofon – oder ins Feld und nutze das Mikrofon der Tastatur."
+    : "Das Mikrofon liefert gerade keinen Ton. Tippe nochmal aufs Mikrofon – oder ins Feld und nutze das Mikrofon der Tastatur.");
+}
+/* Zuhören beenden; meldet die Erkennung kein Ende, wird sie nach kurzer Zeit verworfen */
+function finishVoice(byUser){
+  if(V.state === "idle") return;
+  vlog("finish " + (byUser ? "user" : "auto"));
+  V.userStop = !!byUser;
+  const r = V.rec;
+  if(!r){ endVoice(); return; }
+  V.state = "stopping"; setMic();
+  try{ r.stop(); }catch(e){}
+  vLater(() => { vlog("stop timeout"); kill(r); endVoice(); }, 1300);
+}
+function endVoice(){
+  if(V.state === "idle") return;
+  const r = V.rec;
+  if(r){ r.onresult = r.onerror = r.onend = null; }
+  V.rec = null; vClear(); V.id++;
+  V.state = "idle"; setMic();
+  if(V.heard){
+    V.retries = 0;
+    parseNow();
+    status(rows.length ? "Prüfen und eintragen – oder nochmal aufs Mikrofon tippen, um etwas zu ergänzen." : idleHint());
+    return;
+  }
+  const e = V.err;
+  if(e === "not-allowed"){
+    status(SR_ERR[e]);
+    PERM.state("mic").then(st => permTip("mic", el("spTips"), st !== "prompt"));
+    return;
+  }
+  if(e && e !== "aborted" && e !== "no-speech" && e !== "start-failed"){ status(SR_ERR[e] || "Spracherkennung nicht verfügbar (" + e + "). Nutze das Mikrofon der Tastatur."); return; }
+  if(V.userStop){ status(idleHint()); return; }
+  if(e === "no-speech" || V.speech){ status("Nichts verstanden – tippe aufs Mikrofon und sprich gleich los."); return; }
+  // Ende ohne Ton und ohne Fehler: meist direkt nach der Freigabe-Abfrage oder nach dem Scanner
+  if(V.retries < 1){
+    V.retries++;
+    V.state = "starting"; setMic();
+    status("Mikrofon wird neu gestartet …");
+    const id = V.id;
+    setTimeout(() => { if(id === V.id) startVoice(true); }, Date.now() - V.mediaAt < 15000 ? 2500 : 700);
+    return;
+  }
+  status("Das Mikrofon hat nicht reagiert. Tippe nochmal aufs Mikrofon – oder ins Feld und nutze das Mikrofon der Tastatur.");
+}
+/* Beim Öffnen: Fragt der Browser erneut, obwohl schon einmal erlaubt? Dann Hinweis zum dauerhaften Erlauben. */
+function checkMicPerm(){
+  PERM.state("mic").then(st => {
+    const box = el("spTips");
+    if(!box) return;
+    if(st === "denied") permTip("mic", box, true);
+    else if(st === "prompt" && PERM.had("mic")) permTip("mic", box, false);
+  });
+}
+
+/* ---------- Kamera für den Barcode-Scanner ---------- */
+if(typeof openScanner === "function"){
+  const baseScanner = openScanner;
+  openScanner = function(){
+    const before = PERM.state("cam");                 // parallel – der Scanner startet ohne Verzögerung
+    const res = baseScanner.apply(this, arguments);
+    const box = document.querySelector("#scanSheet .body");
+    let n = 0;
+    // Sobald die Kamera läuft (oder abgelehnt wurde) – unabhängig davon, wann der Scanner fertig geladen ist
+    const tick = async () => {
+      if(typeof scanStream !== "undefined" && scanStream){
+        const st = await before;
+        if(st === "prompt" && PERM.had("cam")) permTip("cam", box, false);   // wurde schon wieder gefragt
+        PERM.mark("cam");
+        return;
+      }
+      const txt = (document.getElementById("scanStatus") || {}).textContent || "";
+      if(/Kein Kamerazugriff/.test(txt)){
+        const after = await PERM.state("cam");
+        if(after === "denied" || /nicht erlaubt/.test(txt)) permTip("cam", box, true);
+        return;
+      }
+      const open = document.getElementById("scanSheet");
+      if(++n < 60 && open && open.classList.contains("open")) setTimeout(tick, 250);
+    };
+    setTimeout(tick, 150);
+    return res;
+  };
+}
+
+/* ---------- Profil: Übersicht der Freigaben ---------- */
+function renderPermCard(){
+  const host = document.getElementById("installInfo");
+  const card = host && host.closest(".card");
+  if(!card) return;
+  let c = document.getElementById("permCard");
+  if(!c){
+    c = document.createElement("div");
+    c.className = "card"; c.id = "permCard";
+    card.parentNode.insertBefore(c, card.nextSibling);
+  }
+  Promise.all([PERM.state("mic"), PERM.state("cam")]).then(([m, k]) => {
+    const word = (s, had) => s === "granted" ? "dauerhaft erlaubt" : s === "denied" ? "blockiert" : had ? "erlaubt, fragt aber jedes Mal" : s === "prompt" ? "noch nicht gefragt" : had ? "erlaubt" : "noch nicht genutzt";
+    c.innerHTML = '<h2>Mikrofon &amp; Kamera</h2>' +
+      '<div class="small muted" style="margin-bottom:8px">Die Freigabe speichert dein Browser bzw. dein Handy – nicht die App. So musst du nur einmal zustimmen:</div>' +
+      '<table class="avg"><tr><td>Mikrofon (Spracheingabe)</td><td>' + word(m, PERM.had("mic")) + '</td></tr>' +
+      '<tr><td>Kamera (Barcode-Scanner)</td><td>' + word(k, PERM.had("cam")) + '</td></tr></table>' +
+      '<div class="small" style="margin-top:8px">' + esc(permStepsAll()) + '</div>';
+  });
+}
+const _switchTab = typeof switchTab === "function" ? switchTab : null;
+if(_switchTab){ switchTab = function(tab){ const r = _switchTab.apply(this, arguments); if(tab === "profil") renderPermCard(); return r; }; }
 
 /* ---------- Ereignisse ---------- */
 el("spBarMic").addEventListener("click", () => openSpeak(true));
 el("spBarOpen").addEventListener("click", () => openSpeak(false));
-el("spMic").addEventListener("click", startVoice);
+el("spMic").addEventListener("click", () => startVoice(false));
 el("spText").addEventListener("input", () => { clearTimeout(parseTimer); parseTimer = setTimeout(parseNow, 350); });
 el("spText").addEventListener("keydown", ev => {
   if(ev.key === "Enter" && !ev.shiftKey){ ev.preventDefault(); parseNow(); ev.target.blur(); }
@@ -707,9 +940,9 @@ sheet.addEventListener("input", ev => {
   renderSum();
 });
 
-// Schließen beendet das Zuhören
+// Schließen beendet das Zuhören sofort
 const baseClose = closeSheets;
-closeSheets = function(){ stopVoice(); return baseClose.apply(this, arguments); };
+closeSheets = function(){ abortVoice(); return baseClose.apply(this, arguments); };
 
-window.NW_SPRACHE = {parseText, parseSpec, wordNum, findCandidates, open: openSpeak};
+window.NW_SPRACHE = {parseText, parseSpec, wordNum, findCandidates, open: openSpeak, voiceLog: () => V.log.slice(), voiceState: () => V.state, perm: PERM};
 })();

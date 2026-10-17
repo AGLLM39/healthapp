@@ -236,6 +236,8 @@ function showUnknown(code, offline){
     '<br><button class="chip" id="btnLinkName">Über den Namen zuordnen</button> <button class="chip" id="btnRescan">Nochmal scannen</button></div>';
   $("#btnLinkName").onclick = () => linkByName(code);
   $("#btnRescan").onclick = () => openScanner();
+  // Hersteller-Vorschläge und „Etikett eintragen“ (naehrwert-etikett.js)
+  if(window.NW_ETIKETT) try{ NW_ETIKETT.unknownHook(code); }catch(e){}
 }
 // Zuordnung verfällt, wenn der Hinzufügen-Dialog ohne Eintrag geschlossen wird
 new MutationObserver(() => { if(!$("#addSheet").classList.contains("open") && addCtx.pendingCode) addCtx.pendingCode = null; })
@@ -301,7 +303,7 @@ function ingredientMatch(names, cooked){
       const head = q.split(" ")[0], cq = compact(q);
       if(ING_STOP.has(head)) continue;
       let best = null;
-      searchBLS(q, 60).items.forEach(it => {
+      searchBLS(q, 60, false, true).items.forEach(it => {
         const h = blsHead(it);
         // Wortanfang allein reicht nicht: „Pfeffer“ ist keine „Pfefferminze“, „Sushireis“ kein „Sushi-Ingwer“
         let s = h === head || h === MATCH_SYN[head] ? -0.1 : stem(h) === stem(head) || h === stem(head) || stem(h) === head ? 0 : q.indexOf(" ") > 0 && it._c.indexOf(cq) === 0 ? 0.25 : 2;
