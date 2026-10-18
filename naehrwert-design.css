@@ -68,7 +68,10 @@ h2::before{content:none}
   -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-size:contain; mask-size:contain; -webkit-mask-position:center; mask-position:center}
 
 /* ---------- Kopfzeile mit Logo ---------- */
-header.app h1{display:flex; align-items:center; gap:0; font-size:22px; letter-spacing:-.02em}
+header.app h1{display:flex; align-items:center; gap:0; font-size:22px; letter-spacing:.02em}
+/* Logo in derselben Schrift wie die Startanimation, damit der Schriftzug nahtlos hineingleitet */
+header.app h1, #lockScreen h1{font-family:"Avenir Next", Avenir, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-weight:700}
+#lockScreen h1{letter-spacing:.02em}
 header.app h1::before{
   content:""; width:30px; height:30px; border-radius:10px; flex:0 0 auto; margin-right:9px;
   background:linear-gradient(145deg, var(--accent-2), var(--accent));
