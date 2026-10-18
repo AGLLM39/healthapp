@@ -182,7 +182,7 @@ nav.tabs button[aria-current="true"]{color:var(--accent); font-weight:650}
 .overlay{position:fixed; inset:0; background:rgba(15,20,14,.45); z-index:50; display:none}
 .overlay.open{display:block}
 .sheet{position:fixed; left:0; right:0; bottom:0; z-index:51; background:var(--surface); border-radius:18px 18px 0 0;
-  max-width:640px; margin:0 auto; max-height:88vh; display:none; flex-direction:column; border:1px solid var(--line); border-bottom:none}
+  max-width:640px; margin:0 auto; max-height:88vh; max-height:88dvh; display:none; flex-direction:column; border:1px solid var(--line); border-bottom:none}
 .sheet.open{display:flex}
 .sheet .grab{width:38px; height:4px; border-radius:99px; background:var(--line); margin:8px auto 0}
 .sheet .head{display:flex; align-items:center; justify-content:space-between; padding:8px 16px 6px}
@@ -361,6 +361,17 @@ html.app .result .fav{min-width:40px; min-height:40px}
 html.app .micro{padding:7px 0}
 html.app .mini{padding:8px 4px}
 html.app .nrow summary{padding:9px 0}
+/* Tipp-Flächen auf Touch-Geräten mindestens etwa 44 px hoch (Checkliste „Touch ergonomics“) */
+@media (pointer:coarse){
+  .prep summary, html.app .prep summary{padding:14px 0}
+  .nrow summary, html.app .nrow summary{padding:13px 0}
+  .micro, html.app .micro{padding-top:12px; padding-bottom:12px}
+  details.microfold > summary{min-height:44px; align-items:center}
+  #btnYesterday, html.app .themebtn{min-height:44px}
+  html.app .themebtn{width:44px}
+  .mini, html.app .mini{padding:13px 6px}
+  .addline, html.app .addline{padding:13px 0}
+}
 html.app .quickdrinks button{min-height:48px}
 /* Navigationsleiste wie in nativen Apps */
 html.app nav.tabs .inner{max-width:none}
@@ -649,11 +660,11 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   <section class="view" id="view-profil">
     <div class="card">
       <h2>Profil</h2>
-      <div class="settingrow"><label for="pAlter">Alter</label><input type="number" id="pAlter" min="15" max="99"></div>
+      <div class="settingrow"><label for="pAlter">Alter</label><input type="number" id="pAlter" min="15" max="99" inputmode="numeric"></div>
       <div class="settingrow"><label for="pSex">Geschlecht</label>
         <select id="pSex"><option value="m">männlich</option><option value="w">weiblich</option></select></div>
-      <div class="settingrow"><label for="pGr">Größe (cm)</label><input type="number" id="pGr" min="120" max="230"></div>
-      <div class="settingrow"><label for="pGw">Gewicht (kg)</label><input type="number" id="pGw" min="35" max="200" step="0.5"></div>
+      <div class="settingrow"><label for="pGr">Größe (cm)</label><input type="number" id="pGr" min="120" max="230" inputmode="numeric"></div>
+      <div class="settingrow"><label for="pGw">Gewicht (kg)</label><input type="number" id="pGw" min="35" max="200" step="0.5" inputmode="decimal"></div>
       <div class="settingrow"><label for="pPal">Aktivität (PAL)</label>
         <select id="pPal">
           <option value="1.4">1,4 – sitzend, kaum Sport</option>
@@ -753,7 +764,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
         <button class="chip" data-src="eigene" aria-pressed="false">Eigene Rezepte</button>
       </div>
       <div class="searchrow">
-        <input type="search" id="searchInput" placeholder="Lebensmittel suchen … z. B. Haferflocken" autocomplete="off">
+        <input type="search" id="searchInput" placeholder="Lebensmittel suchen … z. B. Haferflocken" autocomplete="off" enterkeyhint="search">
         <button id="btnScan" aria-label="Barcode scannen" title="Barcode scannen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="display:block"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 8v8M10 8v8M13 8v8M16.5 8v8"/></svg></button>
       </div>
       <div class="apistatus" id="apiStatus"></div>
@@ -768,7 +779,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
       <div class="portchips" id="portChips"></div>
       <div class="amountrow">
         <button class="chip" id="amtMinus" aria-label="weniger">−</button>
-        <input type="number" id="amtInput" min="1" step="1" value="100" inputmode="decimal">
+        <input type="number" id="amtInput" min="1" step="1" value="100" inputmode="decimal" enterkeyhint="done">
         <span class="unit" id="amtUnit">g</span>
         <button class="chip" id="amtPlus" aria-label="mehr">+</button>
       </div>
@@ -789,19 +800,19 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   <div class="head"><h3 id="recTitle">Eigenes Rezept</h3><button class="ghost" data-close>Schließen</button></div>
   <div class="body">
     <input type="text" id="recName" placeholder="Name, z. B. Mein Frühstücksmüsli" style="margin-bottom:10px">
-    <input type="search" id="recSearch" placeholder="Zutat suchen und antippen …" autocomplete="off">
+    <input type="search" id="recSearch" placeholder="Zutat suchen und antippen …" autocomplete="off" enterkeyhint="search">
     <div id="recResults"></div>
     <div style="margin-top:10px"><b class="small">Zutaten</b><div id="recIngs"><div class="empty">Noch keine Zutaten.</div></div></div>
     <div class="settingrow" style="grid-template-columns:1fr 90px;margin-top:6px">
       <label for="recServes" class="small">Ergibt Portionen</label>
-      <input type="number" id="recServes" min="1" max="20" step="1" value="1">
+      <input type="number" id="recServes" min="1" max="20" step="1" value="1" inputmode="numeric">
     </div>
     <div class="small muted num" id="recTotals" style="margin:4px 0 12px"></div>
     <div class="small" style="font-weight:600;margin-bottom:4px">Zubereitung <span class="muted" style="font-weight:400">(optional, ein Schritt je Zeile)</span></div>
     <textarea id="recSteps" rows="4" placeholder="z. B.&#10;Zwiebel würfeln und andünsten.&#10;Restliche Zutaten zugeben und 10 Minuten köcheln."></textarea>
     <div class="settingrow" style="grid-template-columns:1fr 90px">
       <label for="recMin" class="small">Zeitaufwand in Minuten</label>
-      <input type="number" id="recMin" min="0" max="480" placeholder="z. B. 20">
+      <input type="number" id="recMin" min="0" max="480" placeholder="z. B. 20" inputmode="numeric">
     </div>
     <button class="primary" id="btnSaveRecipe" style="width:100%;margin-top:8px">Rezept speichern</button>
   </div>
@@ -3553,7 +3564,7 @@ function renderDraft(){
   $("#recIngs").innerHTML = draft.ings.length
     ? draft.ings.map((g,i)=>'<div class="ingline"><span class="n">'+esc(g[0])+'</span>' +
         (g[3] ? '<span class="small muted">'+esc(g[3])+'</span>' :
-        '<input type="number" min="1" value="'+g[1]+'" data-ingamt="'+i+'" aria-label="Gramm"> <span class="small muted">g</span>') +
+        '<input type="number" min="1" value="'+g[1]+'" data-ingamt="'+i+'" aria-label="Gramm" inputmode="decimal"> <span class="small muted">g</span>') +
         '<button class="del" data-ingdel="'+i+'">✕</button></div>').join("")
     : '<div class="empty">Noch keine Zutaten.</div>';
   renderDraftTotals();
@@ -3595,8 +3606,24 @@ function saveRecipe(){
 /* =====================================================================
    Sheets, Navigation, Events
    ===================================================================== */
-function openSheet(id){ $("#overlay").classList.add("open"); $("#"+id).classList.add("open"); }
-function closeSheets(){ stopScanner(); $("#overlay").classList.remove("open"); $$(".sheet").forEach(s=>s.classList.remove("open")); }
+/* iOS Safari ignoriert overflow:hidden am Body: Seite hinter geöffneten Fenstern festsetzen und die Position danach wiederherstellen */
+let _scrollLockY = null;
+function lockScroll(){
+  if(_scrollLockY !== null) return;
+  if(!(matchMedia("(pointer:coarse)").matches || document.documentElement.classList.contains("app"))) return;   // Desktop: kein Sprung durch die Scrollleiste
+  _scrollLockY = window.scrollY;
+  const b = document.body.style;
+  b.position = "fixed"; b.top = "-" + _scrollLockY + "px"; b.left = "0"; b.right = "0"; b.width = "100%";
+}
+function unlockScroll(){
+  if(_scrollLockY === null) return;
+  const y = _scrollLockY, b = document.body.style;
+  _scrollLockY = null;
+  b.position = ""; b.top = ""; b.left = ""; b.right = ""; b.width = "";
+  window.scrollTo({top: y, left: 0, behavior: "instant"});
+}
+function openSheet(id){ lockScroll(); $("#overlay").classList.add("open"); $("#"+id).classList.add("open"); }
+function closeSheets(){ stopScanner(); $("#overlay").classList.remove("open"); $$(".sheet").forEach(s=>s.classList.remove("open")); unlockScroll(); }
 
 function switchTab(tab){
   $$("nav.tabs button").forEach(b=>b.setAttribute("aria-current", b.dataset.tab===tab ? "true":"false"));
