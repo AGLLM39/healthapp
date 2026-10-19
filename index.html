@@ -417,6 +417,8 @@ html.app .toast{bottom:calc(74px + env(safe-area-inset-bottom))}
 #splash.ss-fly{pointer-events:none}
 #splash.ss-fly .ss-hint{opacity:0; transition-duration:.2s}
 #splash .ss-stage{transform-origin:0 0}
+/* Kamerafahrt in den Innenraum des „ä“ (Blender-Video, Hochformat): wird per Skript exakt über den Schriftzug gelegt */
+#splash video.ss-zoom{inset:auto; left:0; top:0; width:auto; height:auto; max-width:none; object-fit:fill; transform-origin:0 0; opacity:0; pointer-events:none}
 html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:nwMark calc(.6s * var(--nw-k, 1)) cubic-bezier(.34,1.45,.64,1) calc(.66s * var(--nw-k, 1)) both}
 @keyframes nwMark{from{opacity:0; transform:scale(.3)}}
 </style>
@@ -425,6 +427,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
     <video muted autoplay playsinline webkit-playsinline preload="auto" disablepictureinpicture disableremoteplayback></video>
     <img alt="">
   </div>
+  <video class="ss-zoom" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture disableremoteplayback></video>
   <div class="ss-hint">Lebensmittel werden geladen …</div>
 </div>
 <script>
@@ -447,14 +450,71 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
     if(gone || !ready || !played) return; gone = true;
     var reduce = false; try{ reduce = matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
     if(reduce) return fade();
-    calm(function(){ if(!fly()) fade(); });
+    calm(function(){ zoom(function(){ if(!fly()) fade(); }); });
+  }
+  // Übergang: Die Kamera fährt in den Innenraum des „ä“, durch die wachsende Öffnung erscheint die Startseite.
+  // In Blender gerendert (Hintergrund deckend, nur der Innenraum durchsichtig) – ein Video läuft auf dem iPhone
+  // unabhängig davon weiter, ob die Seite gerade rechnet. Bildausschnitt in Pixeln des Intro-Schlussbilds (1280x720):
+  // 1361,7 x 3404,3, Mitte = Bühnenmitte. Deckt das Video den Schirm nicht (Tablet, Computer), fliegt der Schriftzug wie bisher.
+  var zv = el.querySelector(".ss-zoom"), ZW = 1361.70, ZH = 3404.26;
+  function zoom(fail){
+    var t0 = performance.now(), stage = el.querySelector(".ss-stage");
+    if(!zv || !zv.play || zv.nwFailed || !el.animate) return fail();
+    (function wait(){
+      if(zv.readyState >= 3) return start();
+      if(zv.nwFailed || performance.now() - t0 > 1500) return fail();
+      setTimeout(wait, 50);
+    })();
+    function start(){
+      var r = stage.getBoundingClientRect(), s = el.getBoundingClientRect(), k = r.width / 1280;
+      if(!(k > 0)) return fail();
+      var w = ZW * k, h = ZH * k, x = r.left + 640 * k - w / 2, y = r.top + 360 * k - h / 2;
+      if(x > s.left + .5 || y > s.top + .5 || x + w < s.right - .5 || y + h < s.bottom - .5) return fail();
+      zv.style.width = w + "px"; zv.style.height = h + "px"; zv.style.transform = "translate(" + x.toFixed(2) + "px," + y.toFixed(2) + "px)";
+      zv.style.opacity = "1"; el.classList.add("ss-fly");
+      // Erst wenn das erste Videobild (deckungsgleich mit dem Schlussbild) zu sehen ist: Schlussbild und Grund weg
+      var bg = el.querySelector(".ss-bg"), shown = false;
+      var show = function(){ if(shown) return; shown = true; stage.style.visibility = "hidden"; if(bg) bg.style.visibility = "hidden"; };
+      if(zv.requestVideoFrameCallback) zv.requestVideoFrameCallback(show);
+      zv.addEventListener("playing", function(){ setTimeout(show, 150); }, {once: true});
+      // Blockiert die Seite, bleibt auf dem iPhone das Bild stehen, die Uhr des Videos läuft aber weiter – danach
+      // ginge es sprunghaft am Ende weiter. Darum: nach jeder Lücke Video und Startseite um die Lücke zurückstellen.
+      var last = performance.now(), anims = [];
+      var back = function(gap){
+        try{ zv.currentTime = Math.max(0, (zv.ended ? zv.duration : zv.currentTime) - gap / 1000); }catch(e){}
+        var q = zv.play(); if(q && q.catch) q.catch(function(){});
+        anims.forEach(function(a){ try{ a.currentTime = Math.max(0, (a.currentTime || 0) - gap); }catch(e){} });
+      };
+      requestAnimationFrame(function tick(){
+        if(!el.parentNode) return; var t = performance.now(), gap = t - last; last = t;
+        if(shown && gap > 120) back(gap - 17); requestAnimationFrame(tick);
+      });
+      zv.addEventListener("ended", function(){
+        if(!zv.ended) return; var gap = performance.now() - last;
+        if(gap > 120){ last = performance.now(); back(gap - 17); } else release();
+      });
+      setTimeout(release, 12000);
+      try{ zv.currentTime = 0; }catch(e){}
+      var p = zv.play(); if(p && p.catch) p.catch(function(){ if(shown) return release(); zv.style.opacity = "0"; fail(); });
+      // Die Startseite kommt aus etwas größerer Entfernung entgegen und kommt nach der Fahrt sanft zur Ruhe
+      var de = document.documentElement, list = de.classList.contains("locked") ? [document.querySelector("#lockScreen .box")]
+        : [document.querySelector(".wrap"), document.querySelector("nav.tabs")];
+      list.forEach(function(e){
+        if(!e) return; var b = e.getBoundingClientRect(), o = (s.width / 2 - b.left).toFixed(1) + "px " + (s.height / 2 - b.top).toFixed(1) + "px";
+        anims.push(e.animate([{transform: "scale(.86)", transformOrigin: o}, {transform: "none", transformOrigin: o}],
+          {duration: 2200, delay: 250, easing: "cubic-bezier(.42,0,.18,1)", fill: "backwards"}));
+      });
+      rewind(anims);
+    }
   }
   // Erst loslegen, wenn die Seite gerade nicht rechnet (zwei ruhige Bilder hintereinander, höchstens 0,7 s warten)
   function calm(cb){
-    var t0 = performance.now(), last = 0, ok = 0;
+    var t0 = performance.now(), last = 0, ok = 0, fired = false;
+    var run = function(){ if(fired) return; fired = true; setTimeout(cb, 0); };
+    setTimeout(run, 900);   // falls gar keine Bilder kommen (Seite im Hintergrund)
     requestAnimationFrame(function f(ts){
-      if(last) ok = ts - last < 40 ? ok + 1 : 0; last = ts;
-      if(ok >= 2 || performance.now() - t0 > 700) setTimeout(cb, 0); else requestAnimationFrame(f);
+      if(fired) return; if(last) ok = ts - last < 40 ? ok + 1 : 0; last = ts;
+      if(ok >= 2 || performance.now() - t0 > 700) run(); else requestAnimationFrame(f);
     });
   }
   // Wurde die Seite direkt nach dem Start blockiert, war noch nichts zu sehen: dann alles auf Anfang,
@@ -558,6 +618,12 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
     v.src = base + kinds.shift(); try{ var q = v.play(); if(q && q.catch) q.catch(function(){}); }catch(e){}
   });
   v.src = base + kinds.shift();
+  // Video für den Übergang schon jetzt laden (gleiche Formatwahl wie oben)
+  if(zv){
+    var zk = navigator.vendor === "Apple Computer, Inc." ? [".mov", ".webm"] : [".webm", ".mov"], zb = "naehrwert-zoom-" + (dark ? "dunkel" : "hell");
+    zv.addEventListener("error", function(){ if(zk.length){ zv.src = zb + zk.shift(); zv.load(); } else zv.nwFailed = true; });
+    zv.src = zb + zk.shift(); try{ zv.load(); }catch(e){}
+  }
   try{ var p = v.play(); if(p && p.catch) p.catch(function(){ setTimeout(function(){ if(!(v.currentTime > 0)) still(); }, 50); }); }catch(e){ still(); }
   setTimeout(function(){ if(!started && !(v.currentTime > 0)) still(); }, 2500);
   // Antippen: Animation überspringen (Schlussbild bleibt stehen, bis alles geladen ist)
