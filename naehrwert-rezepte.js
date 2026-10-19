@@ -6,6 +6,8 @@
      vegetarisch, vegan, schnell, ohne Kochen, gemerkt).
    - Rezept-Ansicht: Nährwerte je Portion, Anteil am Tagesbedarf, was das Gericht heute für dich
      schließt, Zutaten für 1–8 Portionen, Einkaufsliste teilen, Zubereitung, Eintragen mit Portionsgröße.
+   - Einkaufsliste für die Lücken der Woche: alltägliche Lebensmittel mit Wochenmengen, die die Nährstofflücken
+     der letzten 7 Tage schließen (wahlweise vegetarisch/vegan), zum Abhaken und Teilen.
    - Eigene Rezepte: Zutaten per Satz oder Diktat anlegen („200 g Haferflocken, 300 ml Milch …“).
    Nährwerte kommen wie überall aus den Datenbanken der App (recipeToItem). */
 (function(){
@@ -158,7 +160,21 @@ css.textContent = [
   ".rv-tools{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}",
   ".rv-say{margin:2px 0 12px}",
   ".rv-say textarea{min-height:56px}",
-  ".rv-say .rv-foot{margin-top:6px}"
+  ".rv-say .rv-foot{margin-top:6px}",
+  ".rv-gap{font-size:13px; padding:3px 10px; border-radius:999px; background:var(--surface2)}",
+  ".rv-gap b{color:var(--accent)}",
+  ".rv-shop{display:flex; align-items:center; gap:11px; padding:10px 0; border-bottom:1px solid var(--line)}",
+  ".rv-shop:last-of-type{border-bottom:none}",
+  ".rv-shop .rv-txt{flex:1; min-width:0}",
+  ".rv-shop b{display:block; font-weight:600; font-size:15px}",
+  ".rv-shop .rv-meta{display:block; margin-top:1px}",
+  ".rv-for{display:block; font-size:12.5px; color:var(--accent); margin-top:2px}",
+  ".rv-check{flex:0 0 auto; width:26px; height:26px; padding:0; border-radius:50%; border:2px solid var(--line); background:var(--surface)}",
+  ".rv-shop.done .rv-check{background:var(--accent); border-color:var(--accent)}",
+  ".rv-shop.done .rv-check::after{content:'✓'; color:var(--on-accent); font-size:14px; font-weight:700}",
+  ".rv-shop.done .rv-txt{opacity:.5}",
+  ".rv-shop.done b{text-decoration:line-through}",
+  ".rv-find{flex:0 0 auto; padding:6px 10px; font-size:13px}"
 ].join("\n");
 document.head.appendChild(css);
 
@@ -176,6 +192,10 @@ book.innerHTML = '<h2>Rezeptbuch</h2>' +
   '<input type="search" id="rvSearch" class="rv-search" placeholder="Rezept oder Zutat suchen …" autocomplete="off">' +
   '<div class="rv-filters" id="rvFilters"></div><div id="rvList"></div>';
 if(sugCard && sugCard.parentNode) sugCard.parentNode.insertBefore(book, ownCard || null);
+const shopCard = document.createElement("div");
+shopCard.className = "card"; shopCard.id = "gapShop";
+shopCard.innerHTML = '<h2>Einkaufsliste für deine Lücken</h2><div class="small muted" style="margin-top:-2px">Lebensmittel, die deine Nährstofflücken der letzten 7 Tage schließen.</div><div id="rvShop"></div>';
+if(sugCard && sugCard.parentNode) sugCard.parentNode.insertBefore(shopCard, book);
 
 const FILTERS = [["alle","Alle"],["fruehstueck","Frühstück"],["warm","Warm essen"],["brotzeit","Brotzeit & Snack"],["veg","Vegetarisch"],
   ["vegan","Vegan"],["schnell","Bis 15 Min."],["kalt","Ohne Kochen"],["gemerkt","★ Gemerkt"]];
@@ -243,9 +263,152 @@ function renderMine(){
   // 3. Eigene Rezepte
   const own = el("ownRecipeBox");
   if(own) own.innerHTML = recipes.length ? allOwn().map(rowHTML).join("") : '<div class="empty">Noch keine eigenen Rezepte. Mit „+ Neu“ anlegen – die Zutaten auch per Satz, z. B. „60 g Haferflocken, 200 ml Milch, eine Banane“.</div>';
+  // 4. Einkaufsliste für die Lücken der Woche
+  drawShop();
 }
 // Wird überall aufgerufen, wo die App die Rezepte neu zeichnet
 renderRecipes = function(){ try{ renderMine(); }catch(e){ console.error(e); } };
+
+/* ---------- Einkaufsliste für die Lücken der Woche ----------
+   Aus einer Auswahl alltäglicher Lebensmittel wird eine kleine Wocheneinkaufsliste zusammengestellt,
+   die die Nährstofflücken der letzten 7 Tage möglichst gut schließt. Die Nährwerte kommen 1:1 aus den
+   Datenbanken der App; vorgegeben sind nur übliche Portionsgrößen und wie oft pro Woche sinnvoll ist.
+   Vorgehen: Schritt für Schritt die Portion wählen, die die verbleibenden Lücken (gewichtet nach PRIO)
+   am meisten verkleinert – im Verhältnis zu ihren Kalorien, mit Abschlag für Wiederholungen. */
+// [Name in der Datenbank, Portion in g, Portionsangabe, höchstens je Woche, Gruppe, Ernährung: a = alle, v = vegetarisch, g = vegan]
+const SHOP_FOODS = [
+  ["Spinat", 150, "1 Portion", 4, "Gemüse", "g"], ["Brokkoli", 200, "1 Portion", 4, "Gemüse", "g"], ["Grünkohl", 150, "1 Portion", 3, "Gemüse", "g"],
+  ["Feldsalat", 60, "1 Schale", 4, "Gemüse", "g"], ["Rucola", 50, "1 Handvoll", 4, "Gemüse", "g"], ["Paprika (rot)", 150, "1 Schote", 5, "Gemüse", "g"],
+  ["Karotte", 120, "2 Stück", 5, "Gemüse", "g"], ["Rosenkohl", 150, "1 Portion", 3, "Gemüse", "g"], ["Erbsen (tiefgekühlt)", 150, "1 Portion", 3, "Gemüse", "g"],
+  ["Süßkartoffel", 200, "1 Stück", 3, "Gemüse", "g"], ["Kürbis (Hokkaido)", 200, "1 Portion", 3, "Gemüse", "g"], ["Champignons", 150, "1 Portion", 3, "Gemüse", "g"],
+  ["Fenchel", 150, "1 Knolle", 2, "Gemüse", "g"],
+  ["Banane", 120, "1 Stück", 5, "Obst", "g"], ["Orange", 150, "1 Stück", 5, "Obst", "g"], ["Kiwi", 75, "1 Stück", 5, "Obst", "g"],
+  ["Himbeeren", 125, "1 Schale", 4, "Obst", "g"], ["Blaubeeren", 125, "1 Schale", 4, "Obst", "g"], ["Erdbeeren", 150, "1 Schale", 4, "Obst", "g"],
+  ["Aprikosen (getrocknet)", 30, "1 Handvoll", 4, "Obst", "g"],
+  ["Linsen (gekocht)", 200, "1 Portion gegart", 3, "Hülsenfrüchte", "g"], ["Kichererbsen (gekocht)", 200, "1 Portion gegart", 3, "Hülsenfrüchte", "g"],
+  ["Kidneybohnen (Dose)", 200, "½ Dose", 3, "Hülsenfrüchte", "g"], ["Edamame (Sojabohnen)", 150, "1 Portion", 3, "Hülsenfrüchte", "g"], ["Tofu", 150, "½ Packung", 3, "Hülsenfrüchte", "g"],
+  ["Walnüsse", 30, "1 Handvoll", 7, "Nüsse & Samen", "g"], ["Mandeln", 30, "1 Handvoll", 7, "Nüsse & Samen", "g"], ["Haselnüsse", 30, "1 Handvoll", 7, "Nüsse & Samen", "g"],
+  ["Kürbiskerne", 25, "1 Handvoll", 7, "Nüsse & Samen", "g"], ["Sonnenblumenkerne", 25, "1 Handvoll", 7, "Nüsse & Samen", "g"], ["Leinsamen (geschrotet)", 15, "1 EL", 7, "Nüsse & Samen", "g"],
+  ["Chiasamen", 15, "1 EL", 7, "Nüsse & Samen", "g"], ["Paranüsse", 10, "2 Stück", 3, "Nüsse & Samen", "g"], ["Sesam", 10, "1 EL", 7, "Nüsse & Samen", "g"],
+  ["Haferflocken", 50, "1 Portion", 7, "Getreide", "g"], ["Vollkornbrot", 50, "1 Scheibe", 10, "Getreide", "g"], ["Vollkornnudeln, roh", 100, "1 Portion", 3, "Getreide", "g"],
+  ["Quinoa (gekocht)", 150, "1 Portion gegart", 3, "Getreide", "g"], ["Weizenkleie", 10, "1 EL", 7, "Getreide", "g"],
+  ["Naturjoghurt 3,5 %", 150, "1 Becher", 7, "Milchprodukte & Ei", "v"], ["Vollmilch 3,5 %", 200, "1 Glas", 7, "Milchprodukte & Ei", "v"], ["Skyr", 150, "1 Becher", 5, "Milchprodukte & Ei", "v"],
+  ["Magerquark", 150, "1 Portion", 5, "Milchprodukte & Ei", "v"], ["Emmentaler", 30, "1 Scheibe", 7, "Milchprodukte & Ei", "v"], ["Gouda", 30, "1 Scheibe", 7, "Milchprodukte & Ei", "v"],
+  ["Hüttenkäse", 150, "1 Becher", 4, "Milchprodukte & Ei", "v"], ["Ei", 60, "1 Ei", 7, "Milchprodukte & Ei", "v"],
+  ["Lachs", 125, "1 Filet", 2, "Fisch", "a"], ["Hering", 100, "1 Portion", 2, "Fisch", "a"], ["Makrele", 100, "1 Portion", 2, "Fisch", "a"],
+  ["Sardinen (Dose)", 90, "1 Dose", 2, "Fisch", "a"], ["Seelachs", 125, "1 Filet", 2, "Fisch", "a"], ["Forelle", 125, "1 Filet", 2, "Fisch", "a"],
+  ["Rindersteak", 150, "1 Steak", 2, "Fleisch", "a"], ["Hähnchenbrust", 150, "1 Filet", 3, "Fleisch", "a"],
+  ["Rapsöl", 10, "1 EL", 7, "Öl & Würzen", "g"], ["Leinöl", 10, "1 EL", 7, "Öl & Würzen", "g"], ["Jodsalz", 2, "1 Prise zum Würzen", 7, "Öl & Würzen", "g"]
+];
+const SHOP_DIETS = [["a", "Alles"], ["v", "Vegetarisch"], ["g", "Vegan"]];
+// Abwechslung und DGE-Empfehlungen: Fisch 1–2-mal, Fleisch höchstens 300 g pro Woche
+const SHOP_GROUP = {"Gemüse": {foods: 3}, "Fisch": {foods: 2, portions: 2}, "Fleisch": {foods: 1, portions: 2}};
+const groupLimit = g => Object.assign({foods: 2, portions: 99}, SHOP_GROUP[g] || {});
+const dietOk = (d, f) => d === "a" || (d === "v" ? f !== "a" : f === "g");
+let shopDiet = sget("gapShopDiet", "a");
+const _shopItem = new Map();
+function shopItem(name){
+  if(!_shopItem.has(name)){
+    const it = typeof findItemByName === "function" ? findItemByName(name) : null;
+    _shopItem.set(name, it ? withEstimate(it) : null);
+  }
+  return _shopItem.get(name);
+}
+function shopGaps(){
+  let g = [];
+  try{ g = weeklyGaps(); }catch(e){ return {gaps: [], tracked: 0}; }
+  const tracked = last7Keys().filter(k => log.some(e => e.date === k)).length;
+  const sure = g.filter(x => !x.unsure);
+  return {gaps: sure.length ? sure : g, tracked};
+}
+function buildShop(gaps){
+  const T = computeTargets(profile);
+  const week = {}, rem = {};
+  gaps.forEach(g => { week[g.key] = goalOf(g.key, T) * 7; rem[g.key] = week[g.key] * Math.max(0, 1 - g.pct / 100); });
+  const cands = SHOP_FOODS.filter(f => dietOk(shopDiet, f[5])).map(f => {
+    const it = shopItem(f[0]);
+    if(!it || !it.per100) return null;
+    const n = {};
+    gaps.forEach(g => { n[g.key] = (it.per100[g.key] || 0) * f[1] / 100; });
+    return {name: f[0], grams: f[1], label: f[2], max: f[3], group: f[4], kcal: (it.per100.kcal || 0) * f[1] / 100, n, count: 0};
+  }).filter(Boolean);
+  // Jodsalz statt normalem Salz kostet nichts extra – bei einer Jod-Lücke immer dabei
+  const salt = cands.find(c => c.name === "Jodsalz");
+  if(salt && rem.jod > 0){ salt.count = 7; gaps.forEach(g => { rem[g.key] = Math.max(0, rem[g.key] - salt.n[g.key] * 7); }); }
+  else if(salt) salt.max = 0;
+  const gain = c => gaps.reduce((s, g) => s + prio(g.key) * Math.min(c.n[g.key], rem[g.key]) / week[g.key], 0);
+  for(let step = 0; step < 60; step++){
+    const used = cands.filter(c => c.count > 0 && c !== salt).length;
+    let best = null, bestS = 0;
+    cands.forEach(c => {
+      if(c.count >= c.max || (!c.count && used >= 10)) return;
+      const lim = groupLimit(c.group), same = cands.filter(x => x.group === c.group && x.count > 0);
+      if(!c.count && same.length >= lim.foods) return;
+      if(same.reduce((n, x) => n + x.count, 0) >= lim.portions) return;
+      const s = gain(c) / (1 + c.kcal / 250) * Math.pow(0.8, c.count);
+      if(s > bestS){ bestS = s; best = c; }
+    });
+    if(!best || gain(best) < 0.03) break;
+    gaps.forEach(g => { rem[g.key] = Math.max(0, rem[g.key] - best.n[g.key]); });
+    best.count++;
+  }
+  const items = cands.filter(c => c.count > 0).map(c => {
+    // wofür das Lebensmittel auf der Liste steht: Lücken, zu denen es mindestens 5 % der Wochenmenge beiträgt
+    const helps = gaps.filter(g => c.n[g.key] * c.count / week[g.key] >= 0.05)
+      .sort((a, b) => c.n[b.key] / week[b.key] * prio(b.key) - c.n[a.key] / week[a.key] * prio(a.key)).slice(0, 3).map(g => g.label);
+    return Object.assign(c, {helps});
+  });
+  const order = SHOP_FOODS.map(f => f[0]);
+  items.sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
+  const after = gaps.map(g => ({key: g.key, label: g.label, before: g.pct, after: Math.min(100, 100 - rem[g.key] / week[g.key] * 100)}));
+  return {items, after};
+}
+function shopAmount(c){
+  if(c.name === "Jodsalz") return "statt normalem Salz";
+  const tot = c.grams * c.count;
+  return (c.count > 1 ? c.count + " × " : "") + c.label + (c.label.indexOf(" g") < 0 ? " (" + fmt(c.grams) + " g)" : "") + (c.count > 1 ? " = " + fmt(tot) + " g" : "");
+}
+// Abgehakte Einträge gelten, solange die Lücken dieselben sind
+let shopNow = null;
+function shopSig(gaps){ return gaps.map(g => g.key).join(",") + "|" + shopDiet; }
+function shopChecked(){ const s = sget("gapShopChecked", null); return s && shopNow && s.sig === shopNow.sig ? s.names : []; }
+function drawShop(){
+  const box = el("rvShop"); if(!box) return;
+  const {gaps, tracked} = shopGaps();
+  if(!gaps.length){
+    shopNow = null;
+    box.innerHTML = '<div class="empty">' + (tracked ? "Diese Woche keine auffälligen Lücken – alle Werte über 70 % der Referenz. Für die Lücken ist nichts extra nötig." :
+      "Erfasse ein paar Tage, dann stellt die App hier zusammen, was deine Lücken der Woche schließt.") + '</div>';
+    return;
+  }
+  const res = buildShop(gaps);
+  shopNow = Object.assign(res, {sig: shopSig(gaps), gaps});
+  const done = shopChecked();
+  let h = '<div class="rv-filters">' + SHOP_DIETS.map(d => '<button class="chip" data-rvshopdiet="' + d[0] + '" aria-pressed="' + (d[0] === shopDiet ? "true" : "false") + '">' + d[1] + '</button>').join("") + '</div>';
+  const chips = res.after.slice(0, 6);
+  h += '<div class="rv-gains">' + chips.map(a => '<span class="rv-gap num">' + esc(a.label) + ' ' + fmt(Math.round(a.before)) + ' % → <b>' + fmt(Math.round(a.after)) + ' %</b></span>').join("") +
+    (res.after.length > chips.length ? '<span class="rv-gap">+ ' + (res.after.length - chips.length) + ' weitere</span>' : '') + '</div>';
+  h += res.items.length ? res.items.map(c => {
+    const on = done.indexOf(c.name) >= 0;
+    return '<div class="rv-shop' + (on ? " done" : "") + '"><button class="rv-check" data-rvshopcheck="' + esc(c.name) + '" role="checkbox" aria-checked="' + on + '" aria-label="' + esc(c.name) + ' abhaken"></button>' +
+      '<span class="rv-txt"><b>' + esc(c.name) + '</b><span class="rv-meta num">' + esc(shopAmount(c)) + '</span>' +
+      (c.helps.length ? '<span class="rv-for">für ' + esc(c.helps.join(", ")) + '</span>' : '') + '</span>' +
+      (c.name !== "Jodsalz" ? '<button class="ghost rv-find" data-rvshopfind="' + esc(c.name) + '">Rezepte</button>' : '') + '</div>';
+  }).join("") : '<div class="empty">Mit dieser Auswahl lässt sich keine Lücke spürbar schließen.</div>';
+  const low = res.after.filter(a => a.after < 70 && a.key !== "vitD");
+  const notes = [];
+  if(res.after.some(a => a.key === "vitD" && a.after < 70)) notes.push("Vitamin D bildet der Körper vor allem mit Sonnenlicht – über Lebensmittel ist es kaum zu decken.");
+  if(low.length) notes.push("Auch mit dieser Liste noch unter 70 %: " + low.map(a => a.label).join(", ") + " – dafür braucht es Änderungen an den täglichen Mahlzeiten.");
+  if(notes.length) h += '<div class="small muted" style="margin-top:8px">' + esc(notes.join(" ")) + '</div>';
+  h += '<div class="small muted" style="margin-top:8px">Mengen für 7 Tage, zusätzlich zu dem, was du sonst isst. Grundlage: Schnitt aus ' + tracked + (tracked === 1 ? " erfasstem Tag" : " erfassten Tagen") +
+    (gaps.some(g => g.unsure) ? "; ein Teil deiner Einträge hat keine Vitamindaten, die Lücken sind daher unsicher" : "") + '.</div>';
+  if(res.items.length) h += '<div class="rv-tools"><button class="chip" data-rvshopshare="1">Einkaufsliste teilen</button></div>';
+  box.innerHTML = h;
+}
+function gapShopText(){
+  if(!shopNow) return "";
+  return "Einkaufsliste für meine Nährstofflücken (7 Tage)\n" + shopNow.items.map(c => "• " + c.name + ": " + shopAmount(c)).join("\n");
+}
 
 /* ---------- Rezept-Ansicht ---------- */
 const sheet = document.createElement("div");
@@ -346,14 +509,14 @@ function shoppingText(){
   return "Einkaufsliste – " + r.name + " (" + cur.cook + (cur.cook === 1 ? " Portion" : " Portionen") + ")\n" +
     r.ings.map(g => "• " + g[0] + ": " + amountTxt(g, per * cur.cook)).join("\n");
 }
-async function shareShopping(){
-  const text = shoppingText();
+async function shareShopping(text, into){
+  text = text || shoppingText();
   try{
     if(navigator.share){ await navigator.share({title: "Einkaufsliste", text}); return; }
   }catch(e){ if(e && e.name === "AbortError") return; }
   try{ await navigator.clipboard.writeText(text); toast("Einkaufsliste kopiert"); return; }catch(e){}
   // Rückfall: Text zum Markieren anzeigen
-  const b = el("rvBody");
+  const b = into || el("rvBody");
   b.insertAdjacentHTML("beforeend", '<textarea readonly rows="6" style="margin-top:10px" onclick="this.select()">' + esc(text) + '</textarea>');
 }
 
@@ -405,6 +568,26 @@ view && view.addEventListener("click", ev => {
     if(m) addRecipe(m, 1, sel ? sel.value : guessMeal());
     return;
   }
+  const sd = keyOf(t, "data-rvshopdiet");
+  if(sd){ shopDiet = sd; sset("gapShopDiet", sd); drawShop(); return; }
+  const ck = keyOf(t, "data-rvshopcheck");
+  if(ck && shopNow){
+    const names = shopChecked().slice(), j = names.indexOf(ck);
+    if(j >= 0) names.splice(j, 1); else names.push(ck);
+    sset("gapShopChecked", {sig: shopNow.sig, names});
+    drawShop(); return;
+  }
+  const fd = keyOf(t, "data-rvshopfind");
+  if(fd){
+    // Rezeptbuch nach dem Lebensmittel durchsuchen („Linsen (gekocht)“ → „Linsen“)
+    query = fd.replace(/\s*\(.*\)\s*/g, " ").replace(/,.*$/, "").replace(/\s+\d.*$/, "").trim();
+    filter = "alle"; showAll = false;
+    if(search) search.value = query;
+    renderMine();
+    book.scrollIntoView({behavior: "smooth", block: "start"});
+    return;
+  }
+  if(keyOf(t, "data-rvshopshare")){ shareShopping(gapShopText(), el("rvShop")); return; }
   const fl = keyOf(t, "data-rvfilter");
   if(fl){ filter = fl; showAll = false; renderMine(); return; }
   if(keyOf(t, "data-rvmore")){ showAll = true; renderMine(); return; }
