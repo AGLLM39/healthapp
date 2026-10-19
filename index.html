@@ -442,15 +442,21 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   // after(f): schwere Hintergrundarbeit erst starten, wenn der Startbildschirm weg ist – sonst ruckelt der Übergang
   var later = [], anim = window.NW_ANIM = {started: false, wait: [], after: function(f){ if(el.parentNode) later.push(f); else f(); }};
   function go(){ if(anim.started) return; anim.started = true; anim.wait.splice(0).forEach(function(f){ f(); }); }
+  // Protokoll des Startbildschirms; mit „?nwdebug“ in der Adresse wird es danach unten eingeblendet
+  var t00 = performance.now(), logs = window.NW_SPLASH_LOG = [];
+  function log(m){ logs.push(((performance.now() - t00) / 1000).toFixed(2) + " s  " + m); }
   function release(){
-    if(!el.parentNode) return; try{ v.pause(); v.removeAttribute("src"); v.load(); }catch(e){}
+    if(!el.parentNode) return; log("Startbildschirm entfernt");
+    if(/nwdebug/.test(location.search)){ var d = document.createElement("pre"); d.textContent = logs.join("\n");
+      d.style.cssText = "position:fixed;left:8px;right:8px;bottom:90px;z-index:400;margin:0;padding:10px;font:11px/1.4 ui-monospace,monospace;background:rgba(0,0,0,.82);color:#fff;border-radius:10px;white-space:pre-wrap";
+      d.onclick = function(){ d.remove(); }; document.body.appendChild(d); } try{ v.pause(); v.removeAttribute("src"); v.load(); }catch(e){}
     el.parentNode.removeChild(el); later.splice(0).forEach(function(f){ try{ f(); }catch(e){} });
   }
   function finish(){
     if(gone || !ready || !played) return; gone = true;
     var reduce = false; try{ reduce = matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
     if(reduce) return fade();
-    calm(function(){ zoom(function(){ if(!fly()) fade(); }); });
+    calm(function(){ zoom(function(){ var f = fly(); log(f ? "Ersatz: Flug ins Logo" : "Ersatz: Ausblenden"); if(!f) fade(); }); });
   }
   // Übergang: Die Kamera fährt in den Innenraum des „ä“, durch die wachsende Öffnung erscheint die Startseite.
   // In Blender gerendert (Hintergrund deckend, nur der Innenraum durchsichtig) – ein Video läuft auf dem iPhone
@@ -458,45 +464,24 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   // 1361,7 x 3404,3, Mitte = Bühnenmitte. Deckt das Video den Schirm nicht (Tablet, Computer), fliegt der Schriftzug wie bisher.
   var zv = el.querySelector(".ss-zoom"), ZW = 1361.70, ZH = 3404.26;
   function zoom(fail){
-    var t0 = performance.now(), stage = el.querySelector(".ss-stage");
-    if(!zv || !zv.play || zv.nwFailed || !el.animate) return fail();
-    (function wait(){
-      if(zv.readyState >= 3) return start();
-      if(zv.nwFailed || performance.now() - t0 > 1500) return fail();
-      setTimeout(wait, 50);
-    })();
-    function start(){
-      var r = stage.getBoundingClientRect(), s = el.getBoundingClientRect(), k = r.width / 1280;
-      if(!(k > 0)) return fail();
-      var w = ZW * k, h = ZH * k, x = r.left + 640 * k - w / 2, y = r.top + 360 * k - h / 2;
-      if(x > s.left + .5 || y > s.top + .5 || x + w < s.right - .5 || y + h < s.bottom - .5) return fail();
-      zv.style.width = w + "px"; zv.style.height = h + "px"; zv.style.transform = "translate(" + x.toFixed(2) + "px," + y.toFixed(2) + "px)";
-      zv.style.opacity = "1"; el.classList.add("ss-fly");
-      // Erst wenn das erste Videobild (deckungsgleich mit dem Schlussbild) zu sehen ist: Schlussbild und Grund weg
-      var bg = el.querySelector(".ss-bg"), shown = false;
-      var show = function(){ if(shown) return; shown = true; stage.style.visibility = "hidden"; if(bg) bg.style.visibility = "hidden"; };
-      if(zv.requestVideoFrameCallback) zv.requestVideoFrameCallback(show);
-      zv.addEventListener("playing", function(){ setTimeout(show, 150); }, {once: true});
-      // Blockiert die Seite, bleibt auf dem iPhone das Bild stehen, die Uhr des Videos läuft aber weiter – danach
-      // ginge es sprunghaft am Ende weiter. Darum: nach jeder Lücke Video und Startseite um die Lücke zurückstellen.
-      var last = performance.now(), anims = [];
-      var back = function(gap){
-        try{ zv.currentTime = Math.max(0, (zv.ended ? zv.duration : zv.currentTime) - gap / 1000); }catch(e){}
-        var q = zv.play(); if(q && q.catch) q.catch(function(){});
-        anims.forEach(function(a){ try{ a.currentTime = Math.max(0, (a.currentTime || 0) - gap); }catch(e){} });
-      };
-      requestAnimationFrame(function tick(){
-        if(!el.parentNode) return; var t = performance.now(), gap = t - last; last = t;
-        if(shown && gap > 120) back(gap - 17); requestAnimationFrame(tick);
-      });
-      zv.addEventListener("ended", function(){
-        if(!zv.ended) return; var gap = performance.now() - last;
-        if(gap > 120){ last = performance.now(); back(gap - 17); } else release();
-      });
-      setTimeout(release, 12000);
-      try{ zv.currentTime = 0; }catch(e){}
-      var p = zv.play(); if(p && p.catch) p.catch(function(){ if(shown) return release(); zv.style.opacity = "0"; fail(); });
-      // Die Startseite kommt aus etwas größerer Entfernung entgegen und kommt nach der Fahrt sanft zur Ruhe
+    var stage = el.querySelector(".ss-stage");
+    if(!zv || !zv.play || zv.nwFailed || !el.animate){ log("zoom: nicht möglich"); return fail(); }
+    var r = stage.getBoundingClientRect(), s = el.getBoundingClientRect(), k = r.width / 1280;
+    if(!(k > 0)){ log("zoom: Bühne ohne Größe"); return fail(); }
+    var w = ZW * k, h = ZH * k, x = r.left + 640 * k - w / 2, y = r.top + 360 * k - h / 2;
+    if(x > s.left + .5 || y > s.top + .5 || x + w < s.right - .5 || y + h < s.bottom - .5){ log("zoom: Schirm zu breit"); return fail(); }
+    // Das iPhone lädt ein Video erst, wenn es abgespielt wird – also sofort abspielen. Das Video liegt oben, ist aber
+    // durchsichtig, bis sein erstes Bild da ist; bis dahin bleibt das (deckungsgleiche) Schlussbild sichtbar.
+    zv.nwRun = true; log("zoom: Start, readyState " + zv.readyState);
+    zv.style.width = w + "px"; zv.style.height = h + "px"; zv.style.transform = "translate(" + x.toFixed(2) + "px," + y.toFixed(2) + "px)";
+    zv.style.opacity = "1"; el.classList.add("ss-fly");
+    var bg = el.querySelector(".ss-bg"), shown = false, given = false, last = performance.now(), anims = [];
+    var giveUp = function(why){ if(shown || given) return; given = true; log("zoom: aufgegeben (" + why + ")"); try{ zv.pause(); }catch(e){} zv.style.opacity = "0"; fail(); };
+    setTimeout(function(){ giveUp("kein Bild nach 3 s"); }, 3000);
+    // Erstes Videobild ist zu sehen: Schlussbild und Grund weg, Startseite kommt entgegen
+    var show = function(){
+      if(shown || given) return; shown = true; log("zoom: erstes Bild bei " + (zv.currentTime || 0).toFixed(2) + " s");
+      stage.style.visibility = "hidden"; if(bg) bg.style.visibility = "hidden"; last = performance.now();
       var de = document.documentElement, list = de.classList.contains("locked") ? [document.querySelector("#lockScreen .box")]
         : [document.querySelector(".wrap"), document.querySelector("nav.tabs")];
       list.forEach(function(e){
@@ -505,7 +490,29 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
           {duration: 2200, delay: 250, easing: "cubic-bezier(.42,0,.18,1)", fill: "backwards"}));
       });
       rewind(anims);
-    }
+    };
+    if(zv.requestVideoFrameCallback) zv.requestVideoFrameCallback(show);
+    zv.addEventListener("timeupdate", function tu(){ if(zv.currentTime > .03){ zv.removeEventListener("timeupdate", tu); requestAnimationFrame(show); } });
+    // Blockiert die Seite, bleibt auf dem iPhone das Bild stehen, die Uhr des Videos läuft aber weiter – danach
+    // ginge es sprunghaft am Ende weiter. Darum: nach jeder Lücke Video und Startseite um die Lücke zurückstellen.
+    var back = function(gap){
+      log("zoom: Lücke " + Math.round(gap) + " ms ausgeglichen");
+      try{ zv.currentTime = Math.max(0, (zv.ended ? zv.duration : zv.currentTime) - gap / 1000); }catch(e){}
+      var q = zv.play(); if(q && q.catch) q.catch(function(){});
+      anims.forEach(function(a){ try{ a.currentTime = Math.max(0, (a.currentTime || 0) - gap); }catch(e){} });
+    };
+    requestAnimationFrame(function tick(){
+      if(!el.parentNode || given) return; var t = performance.now(), gap = t - last; last = t;
+      if(shown && gap > 120) back(gap - 17); requestAnimationFrame(tick);
+    });
+    zv.addEventListener("ended", function(){
+      if(!zv.ended || given) return; var gap = performance.now() - last;
+      if(gap > 120){ last = performance.now(); back(gap - 17); } else { log("zoom: fertig"); release(); }
+    });
+    setTimeout(function(){ if(shown) release(); }, 14000);
+    try{ zv.currentTime = 0; }catch(e){}
+    try{ var p = zv.play(); if(p && p.catch) p.catch(function(err){ if(shown) return release(); giveUp("play abgelehnt: " + (err && err.name)); }); }
+    catch(e){ giveUp("play-Fehler"); }
   }
   // Erst loslegen, wenn die Seite gerade nicht rechnet (zwei ruhige Bilder hintereinander, höchstens 0,7 s warten)
   function calm(cb){
@@ -594,7 +601,10 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
     return true;
   }
   function done(){
-    if(played) return; played = true; finish();
+    if(played) return; played = true; log("Namensanimation fertig");
+    // iPhone: Video für den Übergang einmal kurz anspielen, damit es wirklich geladen wird (unsichtbar)
+    if(zv && !zv.nwRun && !gone){ try{ var pq = zv.play(); if(pq && pq.then) pq.then(function(){ if(!zv.nwRun){ zv.pause(); try{ zv.currentTime = 0; }catch(e){} } }, function(){}); }catch(e){} }
+    finish();
     setTimeout(function(){ if(!gone) el.classList.add("ss-wait"); }, 1200);
   }
   // Ersatz, wenn das Video nicht startet: Schlussbild einblenden, kurz stehen lassen
