@@ -442,11 +442,23 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   // after(f): schwere Hintergrundarbeit erst starten, wenn der Startbildschirm weg ist – sonst ruckelt der Übergang
   var later = [], anim = window.NW_ANIM = {started: false, wait: [], after: function(f){ if(el.parentNode) later.push(f); else f(); }};
   function go(){ if(anim.started) return; anim.started = true; anim.wait.splice(0).forEach(function(f){ f(); }); }
+  // Logo 1 s gedrückt halten: Protokoll des letzten Starts zeigen (zur Fehlersuche auf dem Handy)
+  (function(){ var tm = 0, q = "header.app h1, #lockScreen h1";
+    var show = function(){
+      var txt = ""; try{ txt = localStorage.getItem("nw1.splashLog") || "(noch kein Protokoll)"; }catch(e){}
+      var d = document.createElement("pre"); d.id = "nwSplashLog"; d.textContent = "Start-Protokoll (antippen zum Schließen)\n" + navigator.userAgent + "\n\n" + txt;
+      d.style.cssText = "position:fixed;left:8px;right:8px;top:60px;z-index:400;margin:0;padding:12px;font:11px/1.45 ui-monospace,monospace;background:rgba(0,0,0,.88);color:#fff;border-radius:12px;white-space:pre-wrap;max-height:70vh;overflow:auto";
+      d.onclick = function(){ d.remove(); }; document.body.appendChild(d);
+    };
+    document.addEventListener("pointerdown", function(ev){ if(ev.target.closest && ev.target.closest(q)){ clearTimeout(tm); tm = setTimeout(show, 900); } });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(function(n){ document.addEventListener(n, function(){ clearTimeout(tm); }); });
+  })();
   // Protokoll des Startbildschirms; mit „?nwdebug“ in der Adresse wird es danach unten eingeblendet
   var t00 = performance.now(), logs = window.NW_SPLASH_LOG = [];
   function log(m){ logs.push(((performance.now() - t00) / 1000).toFixed(2) + " s  " + m); }
   function release(){
     if(!el.parentNode) return; log("Startbildschirm entfernt");
+    try{ localStorage.setItem("nw1.splashLog", logs.join("\n")); }catch(e){}
     if(/nwdebug/.test(location.search)){ var d = document.createElement("pre"); d.textContent = logs.join("\n");
       d.style.cssText = "position:fixed;left:8px;right:8px;bottom:90px;z-index:400;margin:0;padding:10px;font:11px/1.4 ui-monospace,monospace;background:rgba(0,0,0,.82);color:#fff;border-radius:10px;white-space:pre-wrap";
       d.onclick = function(){ d.remove(); }; document.body.appendChild(d); } try{ v.pause(); v.removeAttribute("src"); v.load(); }catch(e){}
@@ -454,8 +466,9 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   }
   function finish(){
     if(gone || !ready || !played) return; gone = true;
+    // Auch bei „Bewegung reduzieren“ (iPhone-Bedienungshilfen) läuft die Kamerafahrt – wie die Namensanimation selbst
     var reduce = false; try{ reduce = matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
-    if(reduce) return fade();
+    if(reduce) log("Bewegung reduzieren ist an");
     calm(function(){ zoom(function(){ var f = fly(); log(f ? "Ersatz: Flug ins Logo" : "Ersatz: Ausblenden"); if(!f) fade(); }); });
   }
   // Übergang: Die Kamera fährt in den Innenraum des „ä“, durch die wachsende Öffnung erscheint die Startseite.
@@ -473,6 +486,11 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
     // Das iPhone lädt ein Video erst, wenn es abgespielt wird – also sofort abspielen. Das Video liegt oben, ist aber
     // durchsichtig, bis sein erstes Bild da ist; bis dahin bleibt das (deckungsgleiche) Schlussbild sichtbar.
     zv.nwRun = true; log("zoom: Start, readyState " + zv.readyState);
+    // Echte iPhones haben nur wenige Video-Decoder: das Intro-Video durch sein (gleiches) Schlussbild ersetzen und freigeben
+    if(img.complete && img.naturalWidth){ img.style.transition = "none"; img.style.opacity = "1";
+      var free = function(){ requestAnimationFrame(function(){ requestAnimationFrame(function(){
+        v.style.visibility = "hidden"; try{ v.pause(); v.removeAttribute("src"); v.load(); }catch(e){} log("Intro-Video freigegeben"); }); }); };
+      if(img.decode) img.decode().then(free, free); else free(); }
     zv.style.width = w + "px"; zv.style.height = h + "px"; zv.style.transform = "translate(" + x.toFixed(2) + "px," + y.toFixed(2) + "px)";
     zv.style.opacity = "1"; el.classList.add("ss-fly");
     var bg = el.querySelector(".ss-bg"), shown = false, given = false, last = performance.now(), anims = [];
@@ -603,7 +621,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   function done(){
     if(played) return; played = true; log("Namensanimation fertig");
     // iPhone: Video für den Übergang einmal kurz anspielen, damit es wirklich geladen wird (unsichtbar)
-    if(zv && !zv.nwRun && !gone){ try{ var pq = zv.play(); if(pq && pq.then) pq.then(function(){ if(!zv.nwRun){ zv.pause(); try{ zv.currentTime = 0; }catch(e){} } }, function(){}); }catch(e){} }
+    if(zv && !zv.nwRun && !gone){ try{ var pq = zv.play(); if(pq && pq.then) pq.then(function(){ log("Vorladen ok"); if(!zv.nwRun){ zv.pause(); try{ zv.currentTime = 0; }catch(e){} } }, function(err){ log("Vorladen abgelehnt: " + (err && err.name)); }); }catch(e){ log("Vorladen Fehler"); } }
     finish();
     setTimeout(function(){ if(!gone) el.classList.add("ss-wait"); }, 1200);
   }
@@ -631,7 +649,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   // Video für den Übergang schon jetzt laden (gleiche Formatwahl wie oben)
   if(zv){
     var zk = navigator.vendor === "Apple Computer, Inc." ? [".mov", ".webm"] : [".webm", ".mov"], zb = "naehrwert-zoom-" + (dark ? "dunkel" : "hell");
-    zv.addEventListener("error", function(){ if(zk.length){ zv.src = zb + zk.shift(); zv.load(); } else zv.nwFailed = true; });
+    zv.addEventListener("error", function(){ log("Zoom-Video Fehler " + (zv.error && zv.error.code) + " bei " + zv.currentSrc.split("/").pop()); if(zk.length){ zv.src = zb + zk.shift(); zv.load(); } else zv.nwFailed = true; });
     zv.src = zb + zk.shift(); try{ zv.load(); }catch(e){}
   }
   try{ var p = v.play(); if(p && p.catch) p.catch(function(){ setTimeout(function(){ if(!(v.currentTime > 0)) still(); }, 50); }); }catch(e){ still(); }
@@ -642,6 +660,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
     done();
   });
   window.addEventListener("nw:geladen", function(){
+    log("Daten geladen");
     requestAnimationFrame(function(){ requestAnimationFrame(function(){ ready = true; finish(); }); });
   });
   setTimeout(function(){ ready = true; played = true; finish(); }, 20000);
