@@ -400,7 +400,9 @@ html.app .toast{bottom:calc(74px + env(safe-area-inset-bottom))}
 <div id="splash" aria-hidden="true">
 <style>
 #splash{position:fixed; inset:0; z-index:300; display:flex; align-items:center; justify-content:center;
-  background:var(--bg); transition:opacity .45s ease}
+  transition:opacity .45s ease}
+/* Grund als eigene Ebene: blendet beim Übergang per Deckkraft aus (Grafikchip, auch wenn die Seite gerade rechnet) */
+#splash .ss-bg{position:absolute; inset:0; background:var(--bg)}
 #splash.ss-out{opacity:0; pointer-events:none}
 #splash .ss-stage{position:relative; width:min(94vw, 600px); aspect-ratio:16/9; margin-top:-4vh}
 /* Video mit durchsichtigem Hintergrund – liegt nahtlos auf der Hintergrundfarbe */
@@ -412,12 +414,13 @@ html.app .toast{bottom:calc(74px + env(safe-area-inset-bottom))}
   font-size:13.5px; color:var(--muted); opacity:0; transition:opacity .5s ease}
 #splash.ss-wait .ss-hint{opacity:1}
 /* Übergang: der Schriftzug gleitet ins Logo der Kopfzeile, der Grund wird durchsichtig */
-#splash.ss-fly{background-color:transparent; pointer-events:none; transition:background-color .5s ease}
+#splash.ss-fly{pointer-events:none}
 #splash.ss-fly .ss-hint{opacity:0; transition-duration:.2s}
 #splash .ss-stage{transform-origin:0 0}
 html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:nwMark calc(.6s * var(--nw-k, 1)) cubic-bezier(.34,1.45,.64,1) calc(.66s * var(--nw-k, 1)) both}
 @keyframes nwMark{from{opacity:0; transform:scale(.3)}}
 </style>
+  <div class="ss-bg"></div>
   <div class="ss-stage">
     <video muted autoplay playsinline webkit-playsinline preload="auto" disablepictureinpicture disableremoteplayback></video>
     <img alt="">
@@ -467,7 +470,10 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
     if(!t || !stage.animate) return false;
     var r = stage.getBoundingClientRect(); if(!(r.width > 0)) return false;
     // Ab hier das Standbild (deckungsgleich mit dem letzten Videobild) – das Video kann freigegeben werden
-    if(img.complete && img.naturalWidth){ img.style.transition = "none"; img.style.opacity = "1"; v.style.visibility = "hidden"; }
+    if(img.complete && img.naturalWidth){ img.style.transition = "none"; img.style.opacity = "1";
+      // Video erst ausblenden, wenn das Standbild sicher gemalt ist – sonst zeigt Safari ein Bild lang gar nichts
+      var hide = function(){ requestAnimationFrame(function(){ requestAnimationFrame(function(){ v.style.visibility = "hidden"; }); }); };
+      if(img.decode) img.decode().then(hide, hide); else hide(); }
     var sw = t.w / ((INK.x1 - INK.x0) * r.width), sc = t.cap / ((INK.base - INK.cap) * r.height);
     var s = sc > 0 && Math.abs(sc / sw - 1) < .15 ? (sw + sc) / 2 : sw;
     var tx = t.x0 - r.left - s * INK.x0 * r.width, ty = t.base - r.top - s * INK.base * r.height;
@@ -480,6 +486,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
     ], {duration: ALL, fill: "forwards"});
     a.onfinish = release; setTimeout(release, ALL + 1500 * k);
     t.h.animate([{opacity: 0}, {opacity: 0, offset: .86}, {opacity: 1}], {duration: FLY - 20, fill: "backwards"});
+    var bg = el.querySelector(".ss-bg"); if(bg) bg.animate([{opacity: 1}, {opacity: 0}], {duration: 500 * k, easing: "ease", fill: "forwards"});
     el.classList.add("ss-fly"); document.documentElement.style.setProperty("--nw-k", k); document.documentElement.classList.add("nw-land");
     // Startseite (bzw. Passwortfeld): von oben nach unten gestaffelt
     var de = document.documentElement, list = [];
@@ -508,7 +515,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
     if(started || el.classList.contains("ss-still")) return;
     el.classList.add("ss-still"); go(); setTimeout(done, 900);
   }
-  img.src = base + ".webp";
+  img.src = base + ".webp"; if(img.decode) img.decode().catch(function(){});  // schon vorab entpacken
   v.muted = true; v.defaultMuted = true;
   v.addEventListener("playing", function(){
     if(started) return; started = true; go();
