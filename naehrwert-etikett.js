@@ -565,7 +565,11 @@ renderAltHint = function(it){
 };
 
 // Kennzeichnung der Durchschnittswerte für die Suche vorbereiten, sobald die Daten geladen sind
-window.addEventListener("load", () => setTimeout(() => { try{ fillCodes(); }catch(e){} }, 1500));
+// Vorab aufbauen – aber erst nach dem Übergang vom Startbildschirm, sonst blockiert es dessen Animation
+window.addEventListener("load", () => {
+  const warm = () => setTimeout(() => { try{ fillCodes(); }catch(e){} }, 1500);
+  if(window.NW_ANIM && window.NW_ANIM.after) window.NW_ANIM.after(warm); else warm();
+});
 
 window.NW_ETIKETT = {isFill: o => isFill(o), fillCodes, siblingWater, looksWater, unknownHook, brandFor, openLabel, parseLabel, similarFoods, off2Find};
 })();

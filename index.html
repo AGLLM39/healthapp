@@ -436,13 +436,38 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   var base = "naehrwert-intro-" + (dark ? "dunkel" : "hell");
   var ready = false, played = false, started = false, gone = false;
   // Das Nachladen der Daten (am Ende der Seite) wartet, bis die Animation läuft
-  var anim = window.NW_ANIM = {started: false, wait: []};
+  // after(f): schwere Hintergrundarbeit erst starten, wenn der Startbildschirm weg ist – sonst ruckelt der Übergang
+  var later = [], anim = window.NW_ANIM = {started: false, wait: [], after: function(f){ if(el.parentNode) later.push(f); else f(); }};
   function go(){ if(anim.started) return; anim.started = true; anim.wait.splice(0).forEach(function(f){ f(); }); }
-  function release(){ if(!el.parentNode) return; try{ v.pause(); v.removeAttribute("src"); v.load(); }catch(e){} if(el.parentNode) el.parentNode.removeChild(el); }
+  function release(){
+    if(!el.parentNode) return; try{ v.pause(); v.removeAttribute("src"); v.load(); }catch(e){}
+    el.parentNode.removeChild(el); later.splice(0).forEach(function(f){ try{ f(); }catch(e){} });
+  }
   function finish(){
     if(gone || !ready || !played) return; gone = true;
     var reduce = false; try{ reduce = matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
-    if(reduce || !fly()){ el.classList.add("ss-out"); setTimeout(release, 520); }
+    if(reduce) return fade();
+    calm(function(){ if(!fly()) fade(); });
+  }
+  // Erst loslegen, wenn die Seite gerade nicht rechnet (zwei ruhige Bilder hintereinander, höchstens 0,7 s warten)
+  function calm(cb){
+    var t0 = performance.now(), last = 0, ok = 0;
+    requestAnimationFrame(function f(ts){
+      if(last) ok = ts - last < 40 ? ok + 1 : 0; last = ts;
+      if(ok >= 2 || performance.now() - t0 > 700) setTimeout(cb, 0); else requestAnimationFrame(f);
+    });
+  }
+  // Wurde die Seite direkt nach dem Start blockiert, war noch nichts zu sehen: dann alles auf Anfang,
+  // statt beim nächsten Bild schon am Ende zu stehen (so entstand auf dem iPhone der harte Schnitt)
+  function rewind(list){
+    var t0 = performance.now();
+    requestAnimationFrame(function(){ if(performance.now() - t0 > 100) list.forEach(function(x){ try{ x.currentTime = 0; }catch(e){} }); });
+  }
+  // Ersatz ohne Flug (z. B. „Bewegung reduzieren“): weich ausblenden
+  function fade(){
+    if(!el.animate){ el.classList.add("ss-out"); return setTimeout(release, 520); }
+    var a = el.animate([{opacity: 1}, {opacity: 0}], {duration: 450, easing: "ease", fill: "forwards"});
+    el.style.pointerEvents = "none"; a.onfinish = release; rewind([a]); setTimeout(release, 6000);
   }
   // Lage des Schriftzugs im Schlussbild der Animation (Anteile der Bildbreite/-höhe): Tintenkante links/rechts,
   // Oberkante des N und Grundlinie
@@ -484,9 +509,10 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
       {transform: to, opacity: 1, offset: land},
       {transform: to, opacity: 0}
     ], {duration: ALL, fill: "forwards"});
-    a.onfinish = release; setTimeout(release, ALL + 1500 * k);
-    t.h.animate([{opacity: 0}, {opacity: 0, offset: .86}, {opacity: 1}], {duration: FLY - 20, fill: "backwards"});
-    var bg = el.querySelector(".ss-bg"); if(bg) bg.animate([{opacity: 1}, {opacity: 0}], {duration: 500 * k, easing: "ease", fill: "forwards"});
+    a.onfinish = release; setTimeout(release, ALL + 6000 * k);
+    var anims = [a];
+    anims.push(t.h.animate([{opacity: 0}, {opacity: 0, offset: .86}, {opacity: 1}], {duration: FLY - 20, fill: "backwards"}));
+    var bg = el.querySelector(".ss-bg"); if(bg) anims.push(bg.animate([{opacity: 1}, {opacity: 0}], {duration: 500 * k, easing: "ease", fill: "forwards"}));
     el.classList.add("ss-fly"); document.documentElement.style.setProperty("--nw-k", k); document.documentElement.classList.add("nw-land");
     // Startseite (bzw. Passwortfeld): von oben nach unten gestaffelt
     var de = document.documentElement, list = [];
@@ -494,12 +520,13 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
     else{
       list = [].slice.call(document.querySelectorAll(".wrap > .view.active > *"));
       var nav = document.querySelector("nav.tabs"); if(nav) list.push(nav);
-      [".wrap > header.app .date", ".wrap > header.app .themebtn"].forEach(function(q){ var e = document.querySelector(q); if(e) e.animate([{opacity: 0, transform: "translateY(6px)"}, {opacity: 1, transform: "none"}], {duration: 520 * k, delay: 700 * k, easing: "cubic-bezier(.2,.8,.2,1)", fill: "backwards"}); });
+      [".wrap > header.app .date", ".wrap > header.app .themebtn"].forEach(function(q){ var e = document.querySelector(q); if(e) anims.push(e.animate([{opacity: 0, transform: "translateY(6px)"}, {opacity: 1, transform: "none"}], {duration: 520 * k, delay: 700 * k, easing: "cubic-bezier(.2,.8,.2,1)", fill: "backwards"})); });
     }
     list.forEach(function(e, i){
-      e.animate([{opacity: 0, transform: "translateY(26px)"}, {opacity: 1, transform: "none"}],
-        {duration: 720 * k, delay: (400 + Math.min(i, 6) * 70) * k, easing: "cubic-bezier(.2,.8,.2,1)", fill: "backwards"});
+      anims.push(e.animate([{opacity: 0, transform: "translateY(26px)"}, {opacity: 1, transform: "none"}],
+        {duration: 720 * k, delay: (400 + Math.min(i, 6) * 70) * k, easing: "cubic-bezier(.2,.8,.2,1)", fill: "backwards"}));
     });
+    rewind(anims);
     // Logo-Zeichen fertig aufgeploppt: Klasse wieder entfernen
     var mk = function(ev){ if(ev.animationName === "nwMark"){ document.removeEventListener("animationend", mk, true); de.classList.remove("nw-land"); de.style.removeProperty("--nw-k"); } };
     document.addEventListener("animationend", mk, true);
