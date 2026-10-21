@@ -953,7 +953,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   <div class="head"><h3>Sicherung</h3><button class="ghost" data-close>Schließen</button></div>
   <div class="body">
     <div class="small" style="font-weight:600;margin:4px 0">Daten sichern</div>
-    <div class="small muted" style="margin-bottom:8px">Speichere deine Einträge als Datei. Damit lässt sich alles wiederherstellen, auch wenn der Browser seine Daten löscht.</div>
+    <div class="small muted" style="margin-bottom:8px">Speichere deine Einträge als Datei. Damit lässt sich alles wiederherstellen – auch auf einem neuen Handy.</div>
     <button class="primary" id="btnDoExport" style="width:100%">Als Datei speichern</button>
     <details class="prep" style="margin-top:8px">
       <summary>Oder Text kopieren</summary>
@@ -4123,13 +4123,13 @@ function renderStorageInfo(){
     txt = "Speichern ist in diesem Fenster nicht möglich – die Daten gelten nur für diese Sitzung. Häufigste Ursache: privates Fenster oder blockierte Website-Daten.";
     farbe = "var(--over)";
   } else if(persistState === "dauerhaft"){
-    txt = "Dauerhaft gespeichert. Der Browser hat zugesagt, die Daten nicht von selbst zu löschen." + (idbOk ? " Zusätzlich liegt eine Zweitkopie in der Datenbank des Browsers." : "");
+    txt = "Dauerhaft gespeichert. Das Gerät löscht die Daten nicht von selbst." + (idbOk ? " Zusätzlich liegt eine Zweitkopie im App-Speicher." : "");
     farbe = "var(--ok)";
   } else if(persistState === "nicht garantiert"){
-    txt = "Gespeichert, aber ohne Garantie: Der Browser darf die Daten bei Platzmangel oder beim Aufräumen löschen." + (idbOk ? " Eine Zweitkopie liegt in der Datenbank des Browsers." : "") + " Lege dir gelegentlich eine Sicherung an.";
+    txt = "Gespeichert, aber ohne Garantie: Bei sehr wenig freiem Speicher darf das Gerät die Daten aufräumen." + (idbOk ? " Eine Zweitkopie liegt im App-Speicher." : "") + " Lege dir gelegentlich eine Sicherung an.";
     farbe = "var(--warn)";
   } else {
-    txt = "Gespeichert auf diesem Gerät." + (idbOk ? " Eine Zweitkopie liegt in der Datenbank des Browsers." : "") + " Ob der Browser die Daten dauerhaft behält, lässt sich hier nicht abfragen – lege dir gelegentlich eine Sicherung an.";
+    txt = "Gespeichert auf diesem Gerät." + (idbOk ? " Eine Zweitkopie liegt im App-Speicher." : "") + " Lege dir gelegentlich eine Sicherung an.";
     farbe = "var(--muted)";
   }
   let stand = "";

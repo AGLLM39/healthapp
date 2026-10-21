@@ -457,6 +457,15 @@ css.textContent = [
   "@keyframes spSpin{to{transform:rotate(360deg)}}",
   ".sp-tip{font-size:12.5px; line-height:1.45; background:var(--surface2); border-radius:12px; padding:10px 12px; margin:6px 0 10px}",
   ".sp-tip .chip{margin-top:8px}",
+  ".pm-ask{position:fixed; inset:0; z-index:250; display:flex; align-items:center; justify-content:center; padding:24px; background:rgba(0,0,0,.42); animation:pmIn .2s ease}",
+  ".pm-card{width:100%; max-width:340px; background:var(--surface); color:var(--ink); border-radius:20px; padding:22px 20px 16px; text-align:center; box-shadow:0 20px 50px -20px rgba(0,0,0,.45)}",
+  ".pm-ic{font-size:34px; line-height:1; margin-bottom:10px}",
+  ".pm-card b{display:block; font-size:18px; margin-bottom:8px}",
+  ".pm-card p{font-size:14.5px; line-height:1.45; margin:0 0 10px; color:var(--ink)}",
+  ".pm-card .pm-note{color:var(--muted); font-size:13.5px}",
+  ".pm-btns{display:flex; gap:10px; margin-top:14px}",
+  ".pm-btns button{flex:1; min-height:46px}",
+  "@keyframes pmIn{from{opacity:0}}",
   "@keyframes spPulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent)}50%{box-shadow:0 0 0 11px color-mix(in srgb, var(--accent) 0%, transparent)}}",
   "@media (prefers-reduced-motion: reduce){.sp-mic.on{animation:none; outline:3px solid var(--accent-soft)} .sp-mic.wait::after{animation:none}}",
   ".sp-in{display:flex; gap:8px; align-items:flex-start; margin:4px 0 4px}",
@@ -619,10 +628,12 @@ function addAll(){
 }
 
 /* ---------- Mikrofon- und Kamerafreigabe ----------
-   Ob der Browser eine Freigabe dauerhaft speichert, entscheidet er selbst (bzw. das iPhone) –
-   eine Webseite kann das nicht übernehmen. Die App merkt sich aber, dass die Freigabe schon einmal
-   erteilt wurde. Fragt der Browser trotzdem wieder, zeigt sie einmal, wo man „immer erlauben“
-   einstellt. Wurde der Zugriff blockiert, steht dort, wie man ihn wieder freigibt. */
+   NährWert läuft als Web-App: Ob eine Freigabe gespeichert wird, entscheidet das Gerät, nicht die App.
+   Am iPhone fragt iOS bei Web-Apps in der Regel einmal pro App-Start. Die App verhält sich wie eine
+   normale App: Vor der allerersten Abfrage erklärt ein eigener Dialog, wofür Mikrofon bzw. Kamera
+   gebraucht werden; fragt das Gerät später erneut, steht einmal kurz, warum – und wie es ganz ohne
+   Nachfrage geht (Mikrofon der Tastatur). Nur wenn der Zugriff gesperrt ist, nennt sie den Weg in
+   die Geräte-Einstellungen. Hinweise auf Browser oder Adressleiste gibt es nicht. */
 const UA = navigator.userAgent || "";
 const ANDROID = /Android/.test(UA);
 // iPadOS meldet sich wie ein Mac – erkennbar am Touchscreen
@@ -633,6 +644,8 @@ const PERM = {
   mark(k){ try{ localStorage.setItem(PERM.key(k), "1"); }catch(e){} },
   tipOff(k){ try{ return localStorage.getItem(PERM.key(k) + ".tip") === "aus"; }catch(e){ return false; } },
   setTipOff(k){ try{ localStorage.setItem(PERM.key(k) + ".tip", "aus"); }catch(e){} },
+  explained(k){ try{ return localStorage.getItem(PERM.key(k) + ".intro") === "1"; }catch(e){ return true; } },
+  setExplained(k){ try{ localStorage.setItem(PERM.key(k) + ".intro", "1"); }catch(e){} },
   // "granted" | "prompt" | "denied" | null (unbekannt)
   async state(k){
     try{
@@ -642,22 +655,19 @@ const PERM = {
     }catch(e){ return null; }
   }
 };
-function permSteps(k, blocked){
+const DEV = IOS ? "dein iPhone" : ANDROID ? "dein Handy" : "dein Gerät";
+// Gesperrter Zugriff: einziger Fall, in dem es in die Einstellungen des Geräts geht
+function permUnblock(k){
   const what = k === "mic" ? "Mikrofon" : "Kamera";
-  if(IOS) return (blocked ? "Der Zugriff auf " + (k === "mic" ? "das Mikrofon" : "die Kamera") + " ist blockiert. " : "") +
-    "Am iPhone: Einstellungen → Apps → Safari → " + what + " → „Erlauben“ (bei älteren iOS-Versionen: Einstellungen → Safari → " + what + "). " +
-    "Dann fragt das iPhone nicht mehr nach – auch nicht in der App auf dem Home-Bildschirm." +
-    (k === "mic" ? " Falls zusätzlich „Spracherkennung“ abgefragt wird: einmal erlauben, das bleibt gespeichert." : "");
-  if(ANDROID) return (blocked ? "Der Zugriff ist blockiert. " : "") +
-    "In Chrome: auf das Symbol links neben der Adresse tippen → Berechtigungen → " + what + " → „Zulassen“. " +
-    "Bei der Abfrage „Bei Besuch der Website zulassen“ wählen, nicht „Nur dieses Mal“.";
-  return (blocked ? "Der Zugriff ist blockiert. " : "") +
-    "Im Browser auf das Symbol links neben der Adresse klicken → " + what + " → „Zulassen“ bzw. „Immer erlauben“.";
+  if(IOS) return "Freigeben in den iPhone-Einstellungen: Apps → Safari → " + what + " → „Fragen“ oder „Erlauben“. Diese Einstellung gilt auch für NährWert auf dem Home-Bildschirm.";
+  if(ANDROID) return "Freigeben in den Handy-Einstellungen: Apps → NährWert (bzw. Chrome) → Berechtigungen → " + what + " → „Zulassen“.";
+  return "Freigeben in den Einstellungen deines Geräts für NährWert: " + what + " → „Zulassen“.";
 }
-function permStepsAll(){
-  if(IOS) return "Am iPhone: Einstellungen → Apps → Safari → Mikrofon und Kamera jeweils auf „Erlauben“ stellen (bei älteren iOS-Versionen: Einstellungen → Safari). Das gilt auch für die App auf dem Home-Bildschirm. Fragt das iPhone zusätzlich nach „Spracherkennung“: einmal erlauben, das bleibt gespeichert.";
-  if(ANDROID) return "In Chrome: auf das Symbol links neben der Adresse tippen → Berechtigungen → Mikrofon und Kamera auf „Zulassen“. Bei der Abfrage „Bei Besuch der Website zulassen“ wählen, nicht „Nur dieses Mal“.";
-  return "Im Browser auf das Symbol links neben der Adresse klicken und Mikrofon und Kamera auf „Zulassen“ bzw. „Immer erlauben“ stellen.";
+function permAgain(k){
+  return k === "mic"
+    ? (IOS ? "Dein iPhone fragt bei Web-Apps einmal pro App-Start nach dem Mikrofon – das lässt sich in der App nicht abschalten. Tippe einfach auf „Erlauben“. " : "Je nach Gerät wird bei jedem Start der App einmal nach dem Mikrofon gefragt. ") +
+      "Ganz ohne Nachfrage: ins Textfeld tippen und das Mikrofon der Tastatur nutzen."
+    : (IOS ? "Dein iPhone fragt bei Web-Apps einmal pro App-Start nach der Kamera – das lässt sich in der App nicht abschalten. Tippe einfach auf „Erlauben“." : "Je nach Gerät wird bei jedem Start der App einmal nach der Kamera gefragt.");
 }
 /* Hinweis-Kasten in ein Fenster setzen (einmal pro Art, „Verstanden“ blendet ihn dauerhaft aus) */
 function permTip(k, box, blocked){
@@ -666,11 +676,35 @@ function permTip(k, box, blocked){
   if(old) old.remove();
   const d = document.createElement("div");
   d.className = "sp-tip"; d.setAttribute("data-kind", k);
-  d.innerHTML = '<b>' + (blocked ? (k === "mic" ? "Mikrofon blockiert" : "Kamera blockiert") : "Damit du nicht jedes Mal zustimmen musst") + '</b><br>' + esc(permSteps(k, blocked)) +
+  d.innerHTML = '<b>' + (blocked ? (k === "mic" ? "Mikrofon gesperrt" : "Kamera gesperrt") : (k === "mic" ? "Warum wird wieder gefragt?" : "Warum wird wieder nach der Kamera gefragt?")) + '</b><br>' +
+    esc(blocked ? "NährWert darf " + (k === "mic" ? "das Mikrofon" : "die Kamera") + " gerade nicht nutzen. " + permUnblock(k) + (k === "mic" ? " Bis dahin: ins Textfeld tippen und das Mikrofon der Tastatur nutzen." : "") : permAgain(k)) +
     (blocked ? '' : '<br><button class="chip" data-tipoff="' + k + '">Verstanden</button>');
   box.appendChild(d);
   const b = d.querySelector("[data-tipoff]");
   if(b) b.addEventListener("click", ev => { ev.stopPropagation(); PERM.setTipOff(k); d.remove(); });
+}
+/* Vor der allerersten Abfrage: eigener Dialog wie in einer normalen App. „Weiter“ ist ein Tipp des
+   Nutzers – darin darf die App Mikrofon bzw. Kamera anfordern. */
+function permIntro(k, go, cancel){
+  if(PERM.had(k) || PERM.explained(k)) return go();
+  const mic = k === "mic";
+  const o = document.createElement("div");
+  o.className = "pm-ask"; o.setAttribute("role", "dialog"); o.setAttribute("aria-modal", "true");
+  o.innerHTML = '<div class="pm-card"><div class="pm-ic" aria-hidden="true">' + (mic ? "🎙️" : "📷") + '</div>' +
+    '<b>' + (mic ? "Essen einfach sagen" : "Barcode scannen") + '</b>' +
+    '<p>' + (mic ? "NährWert braucht dafür das Mikrofon. Es hört nur zu, solange du auf das Mikrofon getippt hast – deine Sprache wird nicht gespeichert."
+                 : "NährWert braucht dafür die Kamera. Sie läuft nur, solange der Scanner offen ist – es werden keine Fotos gespeichert.") + '</p>' +
+    '<p class="pm-note">Gleich fragt ' + DEV + ' einmal nach – tippe dann auf „Erlauben“.</p>' +
+    '<div class="pm-btns"><button class="ghost" data-pm="no">' + (mic ? "Lieber tippen" : "Abbrechen") + '</button><button class="primary" data-pm="ok">Weiter</button></div></div>';
+  document.body.appendChild(o);
+  o.addEventListener("click", ev => {
+    const b = ev.target.closest("[data-pm]");
+    if(!b && ev.target !== o) return;
+    o.remove();
+    if(b && b.dataset.pm === "ok"){ PERM.setExplained(k); go(); }
+    else if(cancel) cancel();
+  });
+  const ok = o.querySelector('[data-pm="ok"]'); if(ok) ok.focus();
 }
 
 /* ---------- Spracherkennung ----------
@@ -709,10 +743,10 @@ document.addEventListener("pause", () => { V.mediaAt = Date.now(); }, true);
 try{ if(SR && SR.available) SR.available({langs: ["de-DE"], processLocally: true}).then(st => { V.local = st === "available"; }).catch(() => {}); }catch(e){}
 
 const SR_ERR = {
-  "not-allowed": "Kein Zugriff aufs Mikrofon.",
+  "not-allowed": "NährWert darf das Mikrofon gerade nicht nutzen.",
   "service-not-allowed": "Die Spracherkennung ist auf diesem Gerät nicht erlaubt. Tippe ins Feld und nutze das Mikrofon der Tastatur.",
   "audio-capture": "Kein Mikrofon gefunden – oder eine andere App nutzt es gerade.",
-  "network": "Die Spracherkennung dieses Browsers braucht Internet. Offline geht es mit dem Mikrofon der Tastatur.",
+  "network": "Die Spracherkennung braucht Internet. Offline geht es mit dem Mikrofon der Tastatur.",
   "language-not-supported": "Deutsch wird von der Spracherkennung hier nicht unterstützt. Nutze das Mikrofon der Tastatur."
 };
 function stopVoice(){ if(V.state !== "idle") finishVoice(true); }
@@ -720,8 +754,12 @@ function abortVoice(){ if(V.state === "idle") return; vlog("abort"); kill(V.rec)
 
 function startVoice(isRetry){
   isRetry = isRetry === true;
+  if(!isRetry && SR && !PERM.had("mic") && !PERM.explained("mic") && V.state === "idle"){
+    permIntro("mic", () => startVoice(false), () => { el("spText").focus(); status("Tippe, was du gegessen hast – z. B. „Banane 70 g“."); });
+    return;
+  }
   if(!SR){
-    status("Dieser Browser hat keine eingebaute Spracherkennung. Tippe ins Feld und nutze das Mikrofon deiner Tastatur.");
+    status("Auf diesem Gerät gibt es keine eingebaute Spracherkennung. Tippe ins Feld und nutze das Mikrofon deiner Tastatur.");
     el("spText").focus();
     return;
   }
@@ -837,7 +875,7 @@ function endVoice(){
   }
   status("Das Mikrofon hat nicht reagiert. Tippe nochmal aufs Mikrofon – oder ins Feld und nutze das Mikrofon der Tastatur.");
 }
-/* Beim Öffnen: Fragt der Browser erneut, obwohl schon einmal erlaubt? Dann Hinweis zum dauerhaften Erlauben. */
+/* Beim Öffnen: Fragt das Gerät erneut, obwohl schon einmal erlaubt? Dann einmal kurz erklären, warum. */
 function checkMicPerm(){
   PERM.state("mic").then(st => {
     const box = el("spTips");
@@ -851,6 +889,8 @@ function checkMicPerm(){
 if(typeof openScanner === "function"){
   const baseScanner = openScanner;
   openScanner = function(){
+    const self = this, args = arguments;
+    if(!PERM.had("cam") && !PERM.explained("cam")) return permIntro("cam", () => openScanner.apply(self, args));
     const before = PERM.state("cam");                 // parallel – der Scanner startet ohne Verzögerung
     const res = baseScanner.apply(this, arguments);
     const box = document.querySelector("#scanSheet .body");
@@ -889,12 +929,14 @@ function renderPermCard(){
     card.parentNode.insertBefore(c, card.nextSibling);
   }
   Promise.all([PERM.state("mic"), PERM.state("cam")]).then(([m, k]) => {
-    const word = (s, had) => s === "granted" ? "dauerhaft erlaubt" : s === "denied" ? "blockiert" : had ? "erlaubt, fragt aber jedes Mal" : s === "prompt" ? "noch nicht gefragt" : had ? "erlaubt" : "noch nicht genutzt";
+    const word = (s, had) => s === "granted" ? "erlaubt" : s === "denied" ? "gesperrt" : had ? "erlaubt – " + (IOS ? "das iPhone fragt einmal pro App-Start" : "wird bei Bedarf kurz bestätigt") : "noch nicht genutzt";
+    const blocked = [m === "denied" ? "mic" : null, k === "denied" ? "cam" : null].filter(Boolean);
     c.innerHTML = '<h2>Mikrofon &amp; Kamera</h2>' +
-      '<div class="small muted" style="margin-bottom:8px">Die Freigabe speichert dein Browser bzw. dein Handy – nicht die App. So musst du nur einmal zustimmen:</div>' +
+      '<div class="small muted" style="margin-bottom:8px">NährWert nutzt das Mikrofon nur für die Spracheingabe und die Kamera nur für den Barcode-Scanner – jeweils nur, solange du sie gerade verwendest.</div>' +
       '<table class="avg"><tr><td>Mikrofon (Spracheingabe)</td><td>' + word(m, PERM.had("mic")) + '</td></tr>' +
       '<tr><td>Kamera (Barcode-Scanner)</td><td>' + word(k, PERM.had("cam")) + '</td></tr></table>' +
-      '<div class="small" style="margin-top:8px">' + esc(permStepsAll()) + '</div>';
+      '<div class="small" style="margin-top:8px">' + esc(blocked.length ? blocked.map(permUnblock).join(" ") :
+        (IOS ? "Bei Web-Apps fragt das iPhone einmal pro App-Start nach – tippe dann auf „Erlauben“. " : "") + "Ganz ohne Nachfrage geht die Spracheingabe auch mit dem Mikrofon der Tastatur.") + '</div>';
   });
 }
 const _switchTab = typeof switchTab === "function" ? switchTab : null;
