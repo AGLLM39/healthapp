@@ -174,7 +174,32 @@ css.textContent = [
   ".rv-shop.done .rv-check::after{content:'✓'; color:var(--on-accent); font-size:14px; font-weight:700}",
   ".rv-shop.done .rv-txt{opacity:.5}",
   ".rv-shop.done b{text-decoration:line-through}",
-  ".rv-find{flex:0 0 auto; padding:6px 10px; font-size:13px}"
+  ".rv-find{flex:0 0 auto; padding:6px 10px; font-size:13px}",
+  ".rv-shopwrap{border-bottom:1px solid var(--line)}",
+  ".rv-shopwrap:last-of-type{border-bottom:none}",
+  ".rv-shopwrap .rv-shop{border-bottom:none}",
+  ".rv-shop .rv-txt{cursor:pointer}",
+  ".rv-shop .chev{color:var(--muted); font-weight:400; display:inline-block; transition:transform .15s}",
+  ".rv-shopwrap.open .chev{transform:rotate(90deg)}",
+  ".rv-shop.off .rv-txt b, .rv-shop.off .rv-meta{opacity:.55}",
+  ".rv-sdet{margin:0 0 12px}",
+  ".rv-imp{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 10px; align-items:center; padding:7px 0; border-bottom:1px solid var(--line)}",
+  ".rv-imp .rv-il{font-size:13.5px; font-weight:600}",
+  ".rv-imp .rv-iv{font-size:13px; text-align:right}",
+  ".rv-imp .rv-iv b{color:var(--accent)}",
+  ".rv-imp .rv-bar{grid-column:1 / -1; display:block; height:8px; border-radius:999px}",
+  ".rv-imp .rv-is{grid-column:1 / -1}",
+  ".rv-step{display:flex; align-items:center; gap:8px; margin:2px 0 6px; font-size:13.5px; flex-wrap:wrap}",
+  ".rv-step > span{flex:1; color:var(--muted)}",
+  ".rv-step b{min-width:22px; text-align:center; font-size:15px}",
+  ".rv-step .mini{min-width:40px; min-height:38px; padding:0 6px; font-size:18px; line-height:1; border:1px solid var(--line); border-radius:10px; background:var(--surface)}",
+  ".rv-step .mini:disabled{opacity:.4}",
+  ".rv-step .ghost.mini{min-width:0; font-size:12.5px; border:none; background:transparent}",
+  ".rv-all{margin-top:10px; border-top:1px solid var(--line); padding-top:6px}",
+  ".rv-all > summary{cursor:pointer; font-size:13px; font-weight:600; padding:6px 0; list-style:none}",
+  ".rv-all > summary::-webkit-details-marker{display:none}",
+  ".rv-all > summary::before{content:'› '; color:var(--muted)}",
+  ".rv-all[open] > summary::before{content:'⌄ '}"
 ].join("\n");
 document.head.appendChild(css);
 
@@ -361,17 +386,78 @@ function buildShop(gaps){
   const order = SHOP_FOODS.map(f => f[0]);
   items.sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
   const after = gaps.map(g => ({key: g.key, label: g.label, before: g.pct, after: Math.min(100, 100 - rem[g.key] / week[g.key] * 100)}));
-  return {items, after};
+  return {items, after, week};
 }
 function shopAmount(c){
   if(c.name === "Jodsalz") return "statt normalem Salz";
+  if(!c.count) return "diese Woche weggelassen";
   const tot = c.grams * c.count;
-  return (c.count > 1 ? c.count + " × " : "") + c.label + (c.label.indexOf(" g") < 0 ? " (" + fmt(c.grams) + " g)" : "") + (c.count > 1 ? " = " + fmt(tot) + " g" : "");
+  return (c.count > 1 ? c.count + " × " : "") + c.label + (!/\d\s?g\b/.test(c.label) ? " (" + fmt(c.grams) + " g)" : "") + (c.count > 1 ? " = " + fmt(tot) + " g" : "");
 }
 // Abgehakte Einträge gelten, solange die Lücken dieselben sind
 let shopNow = null;
 function shopSig(gaps){ return gaps.map(g => g.key).join(",") + "|" + shopDiet; }
 function shopChecked(){ const s = sget("gapShopChecked", null); return s && shopNow && s.sig === shopNow.sig ? s.names : []; }
+// Eigene Portionszahlen (± im aufgeklappten Eintrag) gelten ebenfalls, solange die Lücken dieselben sind
+function shopCounts(sig){ const s = sget("gapShopCounts", null); return s && s.sig === sig ? s.counts : {}; }
+const shopOpen = new Set();   // aufgeklappte Einträge (nur für diese Sitzung)
+// Wie weit eine Liste die Lücken schließt: Prozent der Wochenmenge vorher und mit allen Einträgen
+function shopAfter(gaps, items, week){
+  return gaps.map(g => ({key: g.key, label: g.label, before: g.pct,
+    after: Math.min(100, g.pct + items.reduce((s, c) => s + c.count * c.n[g.key], 0) / week[g.key] * 100)}));
+}
+// Aufgeklappter Eintrag: Beitrag zu jeder Lücke (Balken: bisher | dazu) und alle Nährstoffe einer Portion
+function shopDetail(c, res){
+  const T = computeTargets(profile), sex = profile.geschlecht === "m" ? "männlich" : "weiblich";
+  const rows = res.gaps.map(g => {
+    const raw = c.count * c.n[g.key] / res.week[g.key] * 100, gap = Math.max(0, 100 - g.pct), add = Math.min(raw, gap);
+    return {g, add, raw, closes: gap > 0 ? add / gap * 100 : 0};
+  }).sort((a, b) => b.add * prio(b.g.key) - a.add * prio(a.g.key));
+  const big = rows.filter(r => r.add >= 1), small = rows.filter(r => r.add < 1);
+  let h = '<div class="entrydetail rv-sdet"><div class="dhead"><b>' + (c.name === "Jodsalz" ? "Jodsalz statt normalem Salz, 7 Tage" : c.count ? "So viel bringen " + esc(shopAmount(c)) : "Weggelassen – so viel brächte 1 × " + esc(c.label)) + '</b><span>Wochenbedarf</span></div>';
+  const show = c.count ? big : rows.map(r => Object.assign({}, r, {add: Math.min(100 - r.g.pct, c.n[r.g.key] / res.week[r.g.key] * 100)})).filter(r => r.add >= 1);
+  const step = c.name === "Jodsalz" ? "" : '<div class="rv-step"><span>Portionen pro Woche</span><button class="mini" data-rvshopstep="' + esc(c.name) + '|-1" aria-label="Eine Portion weniger"' + (c.count ? '' : ' disabled') + '>−</button><b class="num">' + c.count + '</b><button class="mini" data-rvshopstep="' + esc(c.name) + '|1" aria-label="Eine Portion mehr">+</button>' +
+    (c.count !== c.auto ? '<button class="ghost mini" data-rvshopstep="' + esc(c.name) + '|auto">Vorschlag (' + c.auto + ')</button>' : '') + '</div>';
+  h += step;
+  const line = r => {
+    const a = Math.min(100 - Math.min(100, r.g.pct), r.add);
+    // Balken: bisher (gelb) | dazu durch dieses Lebensmittel (grün) | fehlt noch (grau)
+    const w1 = Math.min(100, r.g.pct).toFixed(1), w2 = Math.min(100, r.g.pct + Math.max(0, a)).toFixed(1);
+    return '<div class="rv-imp"><span class="rv-il">' + esc(r.g.label) + '</span>' +
+      '<span class="rv-iv num">' + fmt(Math.round(r.g.pct)) + ' % → <b>' + fmt(Math.round(Math.min(100, r.g.pct + r.add))) + ' %</b></span>' +
+      '<span class="rv-bar" aria-hidden="true" style="background:linear-gradient(90deg, var(--warn) 0 ' + w1 + '%, var(--accent) ' + w1 + '% ' + w2 + '%, var(--line) ' + w2 + '% 100%)"></span>' +
+      (c.count ? '<span class="rv-is small muted">' + (r.closes >= 99.5 ? 'schließt diese Lücke ganz' + (r.raw > r.add * 1.5 ? ' – schon mit weniger' : '') : '+' + fmt(Math.round(r.add)) + ' Prozentpunkte · schließt ' + fmt(Math.round(r.closes)) + ' % dieser Lücke') + '</span>' : '') + '</div>';
+  };
+  h += show.length ? show.slice(0, 5).map(line).join("") +
+    (show.length > 5 ? '<details class="rv-all"><summary>' + (show.length - 5) + ' weitere Lücken, bei denen es hilft</summary>' + show.slice(5).map(line).join("") + '</details>' : '')
+    : '<div class="small muted">Kein nennenswerter Beitrag zu deinen Lücken.</div>';
+  if(c.count && small.length) h += '<div class="small muted" style="margin-top:4px">Kaum Beitrag (unter 1 %) zu: ' + esc(small.map(r => r.g.label).join(", ")) + '</div>';
+  // Alle Nährstoffe einer Portion – wie beim eingetragenen Essen
+  const it = shopItem(c.name), f = c.grams / 100, n = k => (it.per100[k] || 0) * f;
+  const row = (k, label, v, unit, ref, isMax, sub, na, goal) => {
+    const pct = ref ? Math.round(v / ref * 100) : 0;
+    return '<details class="nrow' + (sub ? ' sub' : '') + '"><summary><span class="nl">' + label + '</span>' +
+      (na ? '<span class="nv na">keine Angabe</span><span class="np"></span>' : '<span class="nv num">' + nVal(v) + ' ' + unit + '</span><span class="np num' + (isMax && pct > 100 ? ' over' : '') + '">' + (v > 0 && pct < 1 ? '&lt;1' : pct) + ' %</span>') +
+      '</summary>' + infoList(k, goal) + '</details>';
+  };
+  const g = (ref, unit, txt, isMax) => (isMax ? "Deine Obergrenze: höchstens " : "Dein Tagesziel: ") + fmtRef(ref) + " " + unit + (txt ? " – " + txt : "");
+  let all = '<div class="grp">Energie und Makronährstoffe</div>';
+  all += row("kcal", "Energie", n("kcal"), "kcal", T.kcal, false, false, false, g(T.kcal, "kcal"));
+  all += row("p", "Protein", n("p"), "g", T.protein, false, false, false, g(T.protein, "g"));
+  all += row("c", "Kohlenhydrate", n("c"), "g", T.kh, false, false, false, g(T.kh, "g"));
+  all += row("z", "davon Zucker", n("z"), "g", T.zuckerMax, true, true, false, g(T.zuckerMax, "g", "10 % der Energie", true));
+  all += row("f", "Fett", n("f"), "g", T.fett, false, false, false, g(T.fett, "g"));
+  all += row("sf", "davon gesättigt", n("sf"), "g", T.sfMax, true, true, false, g(T.sfMax, "g", "10 % der Energie", true));
+  all += row("b", "Ballaststoffe", n("b"), "g", T.ballast, false, false, false, g(T.ballast, "g"));
+  let grp = "";
+  MICROS.forEach(([k, label, unit, gr]) => {
+    if(gr !== grp){ grp = gr; all += '<div class="grp">' + gr + '</div>'; }
+    const isMax = k === "natrium";
+    all += row(k, label, n(k), unit, T.micros[k], isMax, false, it.per100[k] == null, g(T.micros[k], unit, (REF_NOTE[k] || "DGE-Referenzwert") + " für " + sex + ", " + T.gruppe + " Jahre", isMax));
+  });
+  h += '<details class="rv-all"><summary>Alle Nährstoffe für 1 × ' + esc(c.label) + ' (' + fmt(c.grams) + ' g) <span class="small muted">% deines Tagesziels</span></summary>' + all + '</details>';
+  return h + '</div>';
+}
 function drawShop(){
   const box = el("rvShop"); if(!box) return;
   const {gaps, tracked} = shopGaps();
@@ -381,19 +467,24 @@ function drawShop(){
       "Erfasse ein paar Tage, dann stellt die App hier zusammen, was deine Lücken der Woche schließt.") + '</div>';
     return;
   }
-  const res = buildShop(gaps);
-  shopNow = Object.assign(res, {sig: shopSig(gaps), gaps});
+  const res = buildShop(gaps), sig = shopSig(gaps), own = shopCounts(sig);
+  res.items.forEach(c => { c.auto = c.count; if(own[c.name] != null) c.count = own[c.name]; });
+  res.after = shopAfter(gaps, res.items, res.week);
+  shopNow = Object.assign(res, {sig, gaps});
   const done = shopChecked();
   let h = '<div class="rv-filters">' + SHOP_DIETS.map(d => '<button class="chip" data-rvshopdiet="' + d[0] + '" aria-pressed="' + (d[0] === shopDiet ? "true" : "false") + '">' + d[1] + '</button>').join("") + '</div>';
   const chips = res.after.slice(0, 6);
   h += '<div class="rv-gains">' + chips.map(a => '<span class="rv-gap num">' + esc(a.label) + ' ' + fmt(Math.round(a.before)) + ' % → <b>' + fmt(Math.round(a.after)) + ' %</b></span>').join("") +
     (res.after.length > chips.length ? '<span class="rv-gap">+ ' + (res.after.length - chips.length) + ' weitere</span>' : '') + '</div>';
   h += res.items.length ? res.items.map(c => {
-    const on = done.indexOf(c.name) >= 0;
-    return '<div class="rv-shop' + (on ? " done" : "") + '"><button class="rv-check" data-rvshopcheck="' + esc(c.name) + '" role="checkbox" aria-checked="' + on + '" aria-label="' + esc(c.name) + ' abhaken"></button>' +
-      '<span class="rv-txt"><b>' + esc(c.name) + '</b><span class="rv-meta num">' + esc(shopAmount(c)) + '</span>' +
-      (c.helps.length ? '<span class="rv-for">für ' + esc(c.helps.join(", ")) + '</span>' : '') + '</span>' +
-      (c.name !== "Jodsalz" ? '<button class="ghost rv-find" data-rvshopfind="' + esc(c.name) + '">Rezepte</button>' : '') + '</div>';
+    const on = done.indexOf(c.name) >= 0, op = shopOpen.has(c.name);
+    // Beitrag in Prozentpunkten zu den wichtigsten Lücken, direkt in der Zeile
+    const top = res.gaps.map(g => ({l: g.label, k: g.key, a: Math.min(100 - g.pct, c.count * c.n[g.key] / res.week[g.key] * 100)})).filter(x => x.a >= 3).sort((a, b) => b.a * prio(b.k) - a.a * prio(a.k)).slice(0, 3);
+    return '<div class="rv-shopwrap' + (op ? " open" : "") + '"><div class="rv-shop' + (on ? " done" : "") + (c.count ? "" : " off") + '"><button class="rv-check" data-rvshopcheck="' + esc(c.name) + '" role="checkbox" aria-checked="' + on + '" aria-label="' + esc(c.name) + ' abhaken"></button>' +
+      '<span class="rv-txt" data-rvshopopen="' + esc(c.name) + '" role="button" tabindex="0" aria-expanded="' + op + '" aria-label="Wirkung von ' + esc(c.name) + ' auf deine Lücken ' + (op ? "zuklappen" : "anzeigen") + '"><b>' + esc(c.name) + ' <span class="chev" aria-hidden="true">›</span></b><span class="rv-meta num">' + esc(shopAmount(c)) + '</span>' +
+      (top.length ? '<span class="rv-for num">' + top.map(x => esc(x.l) + ' +' + fmt(Math.round(x.a)) + ' %').join(" · ") + '</span>' : '') + '</span>' +
+      (c.name !== "Jodsalz" ? '<button class="ghost rv-find" data-rvshopfind="' + esc(c.name) + '">Rezepte</button>' : '') + '</div>' +
+      (op ? shopDetail(c, res) : '') + '</div>';
   }).join("") : '<div class="empty">Mit dieser Auswahl lässt sich keine Lücke spürbar schließen.</div>';
   const low = res.after.filter(a => a.after < 70 && a.key !== "vitD");
   const notes = [];
@@ -402,12 +493,12 @@ function drawShop(){
   if(notes.length) h += '<div class="small muted" style="margin-top:8px">' + esc(notes.join(" ")) + '</div>';
   h += '<div class="small muted" style="margin-top:8px">Mengen für 7 Tage, zusätzlich zu dem, was du sonst isst. Grundlage: Schnitt aus ' + tracked + (tracked === 1 ? " erfasstem Tag" : " erfassten Tagen") +
     (gaps.some(g => g.unsure) ? "; ein Teil deiner Einträge hat keine Vitamindaten, die Lücken sind daher unsicher" : "") + '.</div>';
-  if(res.items.length) h += '<div class="rv-tools"><button class="chip" data-rvshopshare="1">Einkaufsliste teilen</button></div>';
+  if(res.items.length) h += '<div class="small muted" style="margin-top:8px">Tippe auf ein Lebensmittel: Dann siehst du, wie weit es jede Lücke schließt, und kannst die Portionen ändern.</div><div class="rv-tools"><button class="chip" data-rvshopshare="1">Einkaufsliste teilen</button></div>';
   box.innerHTML = h;
 }
 function gapShopText(){
   if(!shopNow) return "";
-  return "Einkaufsliste für meine Nährstofflücken (7 Tage)\n" + shopNow.items.map(c => "• " + c.name + ": " + shopAmount(c)).join("\n");
+  return "Einkaufsliste für meine Nährstofflücken (7 Tage)\n" + shopNow.items.filter(c => c.count).map(c => "• " + c.name + ": " + shopAmount(c)).join("\n");
 }
 
 /* ---------- Rezept-Ansicht ---------- */
@@ -577,6 +668,20 @@ view && view.addEventListener("click", ev => {
     sset("gapShopChecked", {sig: shopNow.sig, names});
     drawShop(); return;
   }
+  const so = keyOf(t, "data-rvshopopen");
+  if(so){ if(shopOpen.has(so)) shopOpen.delete(so); else shopOpen.add(so); drawShop(); return; }
+  const st = keyOf(t, "data-rvshopstep");
+  if(st && shopNow){
+    const i = st.lastIndexOf("|"), name = st.slice(0, i), d = st.slice(i + 1), c = shopNow.items.find(x => x.name === name);
+    if(c){
+      const counts = Object.assign({}, shopCounts(shopNow.sig));
+      if(d === "auto") delete counts[name];
+      else counts[name] = Math.max(0, Math.min(14, c.count + (+d)));
+      sset("gapShopCounts", {sig: shopNow.sig, counts});
+      drawShop();
+    }
+    return;
+  }
   const fd = keyOf(t, "data-rvshopfind");
   if(fd){
     // Rezeptbuch nach dem Lebensmittel durchsuchen („Linsen (gekocht)“ → „Linsen“)
@@ -598,6 +703,8 @@ view && view.addEventListener("keydown", ev => {
   if(ev.key !== "Enter" && ev.key !== " ") return;
   const op = ev.target.getAttribute && ev.target.getAttribute("data-rvopen");
   if(op){ ev.preventDefault(); openView(op); }
+  const so = ev.target.getAttribute && ev.target.getAttribute("data-rvshopopen");
+  if(so){ ev.preventDefault(); ev.target.click(); }
 });
 const search = el("rvSearch");
 if(search) search.addEventListener("input", () => { query = search.value.trim(); renderMine(); });
