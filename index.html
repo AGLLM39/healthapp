@@ -441,6 +441,24 @@ nav.tabs button.tabadd svg{width:26px; height:26px}
   background:var(--surface2); border:none; color:var(--ink); font-size:15px; font-weight:650; text-align:left}
 .fabgrid button span{font-size:12.5px; font-weight:450; color:var(--muted)}
 .fabgrid button svg{width:24px; height:24px; color:var(--accent)}
+/* ---- Bildchen: Lebensmittel, Mahlzeiten, Rezept-Teller ---- */
+.ficon{flex:0 0 auto; width:38px; height:38px; border-radius:12px; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:21px; line-height:1}
+.ficon.letter{font-size:15px; font-weight:700; color:var(--muted); background:color-mix(in srgb, var(--accent-soft) 70%, var(--surface2))}
+.entry{gap:11px}
+.mealhead h3.hasico::before, .mealline h3.hasico::before{display:none}
+.mico{width:30px; height:30px; border-radius:50%; background:var(--accent-soft); display:inline-flex; align-items:center; justify-content:center; font-size:16px; line-height:1; flex:0 0 auto}
+.mealline .mico{background:var(--surface2); filter:grayscale(.35); opacity:.85}
+.plate{position:relative; display:inline-block; width:84px; height:84px; border-radius:50%; flex:0 0 auto;
+  background:radial-gradient(circle at 50% 50%, var(--surface) 0 56%, color-mix(in srgb, var(--surface) 70%, var(--line)) 57% 64%, var(--surface) 65%);
+  box-shadow:0 6px 16px color-mix(in srgb, var(--ink) 14%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--line) 80%, transparent)}
+.plate i{position:absolute; font-style:normal; line-height:1; filter:drop-shadow(0 2px 2px rgba(0,0,0,.14))}
+.plate .p0{font-size:36px; left:50%; top:50%; transform:translate(-50%,-50%)}
+.plate .p1{font-size:24px; left:6px; top:8px; transform:rotate(-12deg)}
+.plate .p2{font-size:24px; right:6px; bottom:7px; transform:rotate(10deg)}
+.plate.sm{width:44px; height:44px; box-shadow:0 2px 6px color-mix(in srgb, var(--ink) 10%, transparent), inset 0 0 0 1px var(--line)}
+.plate.sm .p0{font-size:21px} .plate.sm .p1, .plate.sm .p2{display:none}
+.plate.lg{width:132px; height:132px}
+.plate.lg .p0{font-size:56px} .plate.lg .p1{font-size:36px; left:10px; top:12px} .plate.lg .p2{font-size:36px; right:10px; bottom:10px}
 </style>
 
 <!-- ============ Startbildschirm ============
@@ -2573,13 +2591,13 @@ function renderToday(){
     const es = dayLog.filter(e=>e.meal===key);
     const prevHas = log.some(e=>e.date===prevDay && e.meal===key);
     if(!es.length){
-      html += '<div class="mealline"><h3>'+label+'</h3><span>' +
+      html += '<div class="mealline"><h3 class="hasico"><span class="mico" aria-hidden="true">'+MEAL_ICON[key]+'</span>'+label+'</h3><span>' +
         (prevHas ? '<button class="mini" data-repeatmeal="'+key+'">↺ wie Vortag</button> ' : '') +
         '<button class="mini" data-addmeal="'+key+'">+ Hinzufügen</button></span></div>';
       return;
     }
     const sum = es.reduce((s,e)=>s+e.n.kcal,0);
-    html += '<div class="mealhead"><h3>'+label+'</h3><span class="sum num">'+fmt(Math.round(sum))+' kcal</span></div>';
+    html += '<div class="mealhead"><h3 class="hasico"><span class="mico" aria-hidden="true">'+MEAL_ICON[key]+'</span>'+label+'</h3><span class="sum num">'+fmt(Math.round(sum))+' kcal</span></div>';
     html += es.map(entryRow).join("");
     html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
       '<button class="addline" style="width:auto" data-addmeal="'+key+'">+ Hinzufügen</button>' +
@@ -2617,9 +2635,65 @@ function renderToday(){
 
 const openEntries = new Set();   // aufgeklappte Einträge (nur für diese Sitzung)
 function entryAmt(e){ return e.unit==="Portion" ? fmt(e.amount, e.amount%1?1:0)+" Portion"+(e.amount!==1?"en":"") : fmt(e.amount)+" "+e.unit; }
+/* Bildchen für Lebensmittel: Emoji nach Stichwort im Namen (Reihenfolge zählt – Zusammensetzungen zuerst) */
+const FOOD_EMOJI = [
+  [/melone/,"🍉"], [/traube/,"🍇"], [/milchreis/,"🍚"], [/buttermilch/,"🥛"], [/erdnussbutter|mandelmus|nussmus/,"🥜"],
+  [/saft|nektar|smoothie|schorle/,"🧃"], [/coca|\bcola|limo|fanta|sprite|energy|eistee/,"🥤"],
+  [/kaffee|espresso|cappuccino|\blatte|americano/,"☕"], [/tee\b/,"🍵"], [/\bbier|pils|radler/,"🍺"],
+  [/kakao|milch(?!schokolade)|kefir/,"🥛"],
+  [/pizza/,"🍕"], [/burger/,"🍔"], [/sandwich/,"🥪"], [/wrap|tortilla|burrito|döner|dürüm/,"🌯"], [/suppe|eintopf/,"🍲"], [/curry/,"🍛"], [/chili/,"🌶️"],
+  [/sushi/,"🍣"], [/pommes|fritten/,"🍟"], [/falafel/,"🧆"],
+  [/lachs|forelle|thunfisch|makrele|sardine|hering|kabeljau|fisch/,"🐟"], [/garnele|shrimp|krabbe/,"🦐"], [/muschel/,"🦪"],
+  [/hähnchen|huhn|hühner|pute|chicken|geflügel/,"🍗"], [/speck|bacon|schinken|salami/,"🥓"], [/wurst|würstchen|wiener/,"🌭"],
+  [/steak|rind|hack|schwein|schnitzel|braten|\blamm|kalb|fleisch/,"🥩"], [/wein\b|sekt|prosecco/,"🍷"],
+  [/rührei|spiegelei|omelett/,"🍳"], [/\bei(er)?\b/,"🥚"],
+  [/süßkartoffel/,"🍠"], [/kartoffel|gnocchi|püree/,"🥔"], [/keks|cookie/,"🍪"],
+  [/nudel|pasta|spaghetti|penne|lasagne|bolognese|makkaroni|tortellini/,"🍝"],
+  [/haferflocken|müsli|porridge|oats|granola|cornflakes|grieß/,"🥣"],
+  [/käse|gouda|mozzarella|feta|parmesan|emmentaler|camembert|harzer/,"🧀"], [/joghurt|skyr|quark|pudding/,"🥣"],
+  [/butter|margarine/,"🧈"], [/öl\b/,"🫒"], [/honig/,"🍯"],
+  [/erdbeer/,"🍓"], [/beere|cranberr/,"🫐"], [/reis\b|risotto|couscous|quinoa|bulgur/,"🍚"],
+  [/croissant/,"🥐"], [/baguette|brötchen|semmel/,"🥖"], [/brezel/,"🥨"], [/brot|toast|knäcke/,"🍞"],
+  [/linsen|bohnen|kichererbse|hummus|edamame|tofu|tempeh/,"🫘"], [/erbse/,"🫛"],
+  [/nuss|nüsse|mandel|cashew|pistazie/,"🥜"], [/kerne|samen|chia/,"🌻"],
+  [/banane/,"🍌"], [/apfel/,"🍎"], [/birne/,"🍐"], [/orange|mandarine|clementine/,"🍊"], [/zitrone|limette/,"🍋"],
+  [/ananas/,"🍍"], [/mango(?!ld)/,"🥭"], [/kiwi/,"🥝"], [/pfirsich|nektarine|aprikose/,"🍑"], [/kirsch/,"🍒"], [/avocado/,"🥑"], [/kokos/,"🥥"],
+  [/tomate|passata/,"🍅"], [/gurke|zucchini/,"🥒"], [/paprika/,"🫑"], [/karotte|möhre/,"🥕"], [/brokkoli/,"🥦"], [/mais\b/,"🌽"],
+  [/knoblauch/,"🧄"], [/zwiebel|lauch|porree/,"🧅"], [/pilz|champignon/,"🍄"], [/aubergine/,"🍆"], [/kürbis/,"🎃"],
+  [/salat|spinat|mangold|kohl|rucola/,"🥬"],
+  [/schoko|chocolate|nutella|praline|riegel/,"🍫"], [/kuchen|torte|muffin/,"🍰"], [/eis\b|eiscreme/,"🍨"],
+  [/gummi|bonbon|zucker/,"🍬"], [/chips|popcorn/,"🍿"], [/wasser|sprudel/,"💧"]
+];
+function foodEmoji(name){
+  const s = String(name||"").toLowerCase();
+  for(const [re, em] of FOOD_EMOJI) if(re.test(s)) return em;
+  return "";
+}
+/* Rundes Bildchen; ohne passendes Emoji der Anfangsbuchstabe */
+function foodIcon(name, isDrink){
+  const em = foodEmoji(name) || (isDrink ? "🥤" : "");
+  return em ? '<span class="ficon" aria-hidden="true">'+em+'</span>'
+            : '<span class="ficon letter" aria-hidden="true">'+esc(String(name||"?").trim().charAt(0).toUpperCase())+'</span>';
+}
+/* Teller: in der Mitte das Gericht aus dem Namen, drumherum die Hauptzutaten (nach Menge); Öle und Gewürze bleiben weg */
+function plateHTML(ings, size, name){
+  const minor = /öl\b|butter|honig|salz|pfeffer|gewürz|dressing|zitrone|essig/;
+  const seen = [];
+  const main = name ? foodEmoji(name) : "";
+  if(main) seen.push(main);
+  (ings||[]).slice().sort((a,b)=>(+b[1]||0)-(+a[1]||0)).forEach(g => {
+    const n = String(g[0]).toLowerCase(); if(minor.test(n)) return;
+    const em = foodEmoji(n); if(em && seen.indexOf(em) < 0) seen.push(em);
+  });
+  const e = seen.slice(0, 3);
+  if(!e.length) e.push("🍽️");
+  return '<span class="plate'+(size ? ' '+size : '')+'" aria-hidden="true"><i class="p0">'+e[0]+'</i>' + (e[1] ? '<i class="p1">'+e[1]+'</i>' : '') + (e[2] ? '<i class="p2">'+e[2]+'</i>' : '') + '</span>';
+}
+const MEAL_ICON = {fruehstueck:"🥐", mittag:"🍲", abend:"🍽️", snack:"🍎", getraenk:"💧"};
+
 function entryRow(e){
   const open = openEntries.has(e.id);
-  return '<div class="entrywrap'+(open?' open':'')+'" data-entry="'+e.id+'"><div class="entry">' +
+  return '<div class="entrywrap'+(open?' open':'')+'" data-entry="'+e.id+'"><div class="entry">' + foodIcon(e.name, e.isDrink) +
     '<div class="name" data-expand="'+e.id+'" role="button" tabindex="0" aria-expanded="'+open+'" aria-label="Nährwerte von '+esc(e.name)+' '+(open?'zuklappen':'anzeigen')+'"><b>'+esc(e.name)+'</b><span class="num">'+entryAmt(e)+
     (e.isDrink&&e.cf?' · '+fmt(Math.round(e.cf))+' mg Koffein':'')+(entryNoMicro(e)?' · ohne Vitamine':e.est?' · Vitamine geschätzt':'')+'</span></div>' +
     '<span class="kcal num">'+fmt(Math.round(e.n.kcal))+' kcal</span><span class="chev" aria-hidden="true">›</span>' +

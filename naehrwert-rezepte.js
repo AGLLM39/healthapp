@@ -113,8 +113,10 @@ function fit(m, st, weekly){
 const css = document.createElement("style");
 css.textContent = [
   ".rv-feat{background:color-mix(in srgb, var(--surface2) 45%, var(--surface)); border:1px solid var(--line); border-radius:16px; padding:14px; margin:10px 0; cursor:pointer}",
-  ".rv-feat{position:relative}",
-  ".rv-feat h4{margin:0 0 3px; font-size:16.5px; letter-spacing:-.005em; padding-right:52px}",
+  ".rv-feat{position:relative; overflow:hidden}",
+  ".rv-feat h4{margin:0 0 3px; font-size:16.5px; letter-spacing:-.005em}",
+  ".rv-hero{margin:-14px -14px 12px; height:112px; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 90% at 30% 20%, color-mix(in srgb, var(--accent-soft) 90%, var(--surface)) 0%, color-mix(in srgb, var(--accent-soft) 45%, var(--surface2)) 100%)}",
+  ".rv-viewhero{display:flex; justify-content:center; padding:6px 0 14px; margin:0 0 6px; background:radial-gradient(60% 80% at 50% 45%, var(--accent-soft) 0%, transparent 70%)}",
   ".rv-feat .rv-gains{margin-bottom:2px}",
   ".rv-addbtn{position:absolute; top:10px; right:10px; width:44px; height:44px; padding:0; border-radius:50%; border:none; background:var(--accent); color:var(--on-accent); display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px color-mix(in srgb, var(--accent) 30%, transparent)}",
   ".rv-addbtn svg{width:22px; height:22px}",
@@ -256,8 +258,10 @@ function metaLine(m, withDiet){
   if(m.cold && withDiet) bits.push("ohne Kochen");
   return bits.filter(Boolean).join(" · ");
 }
+// Teller-Bildchen mit den Hauptzutaten (Hilfsfunktion aus index.html)
+const plate = (r, size) => typeof plateHTML === "function" ? plateHTML(r.ings, size, r.name) : "";
 function rowHTML(m){
-  return '<div class="rv-row" data-rvopen="' + esc(m.kind + m.i) + '" role="button" tabindex="0"><span class="rv-txt"><b>' + esc(m.r.name) + '</b>' +
+  return '<div class="rv-row" data-rvopen="' + esc(m.kind + m.i) + '" role="button" tabindex="0">' + plate(m.r, "sm") + '<span class="rv-txt"><b>' + esc(m.r.name) + '</b>' +
     '<span class="rv-meta num">' + esc(metaLine(m, true)) + (m.kind === "R" && (m.r.serves || 1) > 1 ? " · je Portion" : "") + '</span></span>' +
     (isSaved(m) ? '<span class="rv-star" aria-label="gemerkt">★</span>' : '') + '<span class="rv-chev">›</span></div>';
 }
@@ -278,6 +282,7 @@ function renderMine(){
     const why = p.gains.length ? p.gains.map(g => '<span class="rv-gain num">' + esc(g.label) + ' +' + fmt(Math.round(g.plus)) + ' %</span>').join("")
       : '<span class="rv-gain">' + esc((m.r.focus || []).map(f => FOCUS_LABEL[f] || f).slice(0, 2).join(" & ") || "Ausgewogen") + '</span>';
     return '<div class="rv-feat" data-rvopen="' + esc(m.kind + m.i) + '" role="button" tabindex="0">' +
+      '<div class="rv-hero">' + plate(m.r) + '</div>' +
       '<button class="rv-addbtn" data-rvadd="' + esc(m.kind + m.i) + '" aria-label="' + esc(m.r.name) + ' zu ' + esc(MEAL_LABEL[guessMeal()]) + ' eintragen" title="Zu ' + esc(MEAL_LABEL[guessMeal()]) + '">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>' +
       '<h4>' + esc(m.r.name) + '</h4><div class="rv-meta num">' + esc(metaLine(m, true)) + '</div>' +
@@ -551,7 +556,7 @@ function drawView(){
   const T = st.T;
   // Kopfzeile
   const diet = m.vegan ? "vegan" : m.veg ? "vegetarisch" : "";
-  let h = '<div class="rv-meta num">' + esc([m.min ? m.min + " Min." : "", m.cold ? "ohne Kochen" : "", diet,
+  let h = '<div class="rv-viewhero">' + plate(r, "lg") + '</div>' + '<div class="rv-meta num">' + esc([m.min ? m.min + " Min." : "", m.cold ? "ohne Kochen" : "", diet,
     m.kind === "R" && (r.serves || 1) > 1 ? "Rezept für " + r.serves + " Portionen" : ""].filter(Boolean).join(" · ")) + '</div>';
   h += '<div class="rv-tools"><button class="chip" data-rvsave="1">' + (isSaved(m) ? "★ Gemerkt" : "☆ Merken") + '</button>' +
     (m.kind === "R" ? '<button class="chip" data-rvedit="1">Bearbeiten</button><button class="chip" data-rvdel="1">Löschen</button>' : '') + '</div>';
