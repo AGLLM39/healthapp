@@ -719,7 +719,8 @@ function permIntro(k, go, cancel){
    - Safari beendet die Erkennung nicht immer von selbst: nach einer Sprechpause wird sie abgeschlossen. */
 const V = {state: "idle", rec: null, id: 0, heard: false, audio: false, speech: false, err: null, userStop: false,
   baseText: "", retries: 0, timers: [], lastResult: 0, mediaAt: 0, local: false, log: []};
-function vlog(m){ V.log.push(Math.round(performance.now()) + " " + m); if(V.log.length > 60) V.log.shift(); }
+function vlog(m){ V.log.push((performance.now() / 1000).toFixed(1) + " s  " + m); if(V.log.length > 60) V.log.shift(); }
+window.NW_VLOG = V.log;   // für das Protokoll (Logo gedrückt halten)
 function vClear(){ V.timers.forEach(clearTimeout); V.timers = []; }
 function vLater(fn, ms){ const id = V.id; V.timers.push(setTimeout(() => { if(id === V.id) fn(); }, ms)); }
 function kill(r){
@@ -742,9 +743,12 @@ document.addEventListener("pause", () => { V.mediaAt = Date.now(); }, true);
 // Chrome: Spracherkennung auf dem Gerät nutzen, wenn das deutsche Sprachpaket schon installiert ist
 try{ if(SR && SR.available) SR.available({langs: ["de-DE"], processLocally: true}).then(st => { V.local = st === "available"; }).catch(() => {}); }catch(e){}
 
+const IOS_UA = /iPad|iPhone|iPod/.test(navigator.userAgent || "") || (/Macintosh/.test(navigator.userAgent || "") && navigator.maxTouchPoints > 1);
 const SR_ERR = {
   "not-allowed": "NährWert darf das Mikrofon gerade nicht nutzen.",
-  "service-not-allowed": "Die Spracherkennung ist auf diesem Gerät nicht erlaubt. Tippe ins Feld und nutze das Mikrofon der Tastatur.",
+  "service-not-allowed": IOS_UA
+    ? "Die Spracherkennung des iPhones ist gerade nicht verfügbar. Meist ist die Diktierfunktion aus: Einstellungen → Allgemein → Tastatur → „Diktierfunktion“ einschalten. Bis dahin: ins Feld tippen und das Mikrofon der Tastatur nutzen."
+    : "Die Spracherkennung ist auf diesem Gerät nicht erlaubt. Tippe ins Feld und nutze das Mikrofon der Tastatur.",
   "audio-capture": "Kein Mikrofon gefunden – oder eine andere App nutzt es gerade.",
   "network": "Die Spracherkennung braucht Internet. Offline geht es mit dem Mikrofon der Tastatur.",
   "language-not-supported": "Deutsch wird von der Spracherkennung hier nicht unterstützt. Nutze das Mikrofon der Tastatur."
@@ -755,7 +759,8 @@ function abortVoice(){ if(V.state === "idle") return; vlog("abort"); kill(V.rec)
 function startVoice(isRetry){
   isRetry = isRetry === true;
   if(!isRetry && SR && !PERM.had("mic") && !PERM.explained("mic") && V.state === "idle"){
-    permIntro("mic", () => startVoice(false), () => { el("spText").focus(); status("Tippe, was du gegessen hast – z. B. „Banane 70 g“."); });
+    vlog("Erklär-Dialog gezeigt");
+    permIntro("mic", () => { vlog("Dialog: Weiter"); startVoice(false); }, () => { vlog("Dialog: lieber tippen"); el("spText").focus(); status("Tippe, was du gegessen hast – z. B. „Banane 70 g“."); });
     return;
   }
   if(!SR){
@@ -800,12 +805,16 @@ function startVoice(isRetry){
     // Sprechpause → abschließen (Safari hört sonst manchmal endlos weiter)
     vLater(() => { if(V.state === "listening" && Date.now() - V.lastResult >= 2100) finishVoice(false); }, 2200);
   });
-  r.onerror = mine(ev => { vlog("error " + ev.error); V.err = ev.error; });
+  r.onerror = mine(ev => {
+    vlog("error " + ev.error); V.err = ev.error;
+    // Echter Fehler: nicht auf ein Ende warten, das manchmal nie kommt – sofort abschließen und sagen, was los ist
+    if(ev.error !== "no-speech" && ev.error !== "aborted") vLater(() => { kill(r); endVoice(); }, 400);
+  });
   r.onend = mine(() => { vlog("end"); endVoice(); });
   V.state = "starting"; setMic();
   status(isRetry ? "Mikrofon wird neu gestartet …" : "Mikrofon startet …");
   try{ const ae = document.activeElement; if(ae && ae.blur) ae.blur(); }catch(e){}
-  try{ r.start(); vlog("start() " + (isRetry ? "retry" : "")); }
+  try{ r.start(); vlog("start()" + (isRetry ? " retry" : "") + (V.mediaAt ? ", Video vor " + Math.round((Date.now() - V.mediaAt) / 1000) + " s" : "")); }
   catch(e){ vlog("start() failed " + (e && e.name)); V.err = "start-failed"; endVoice(); return; }
   // Wächter: Mikrofon kommt nicht in Gang (beim ersten Mal länger warten – da steht die Freigabe-Abfrage)
   vLater(() => { if(!V.audio && !V.heard) stall("noaudio"); }, PERM.had("mic") ? 5000 : 15000);

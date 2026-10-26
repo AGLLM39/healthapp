@@ -446,7 +446,9 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   (function(){ var tm = 0, q = "header.app h1, #lockScreen h1";
     var show = function(){
       var txt = ""; try{ txt = localStorage.getItem("nw1.splashLog") || "(noch kein Protokoll)"; }catch(e){}
-      var d = document.createElement("pre"); d.id = "nwSplashLog"; d.textContent = "Start-Protokoll (antippen zum Schließen)\n" + navigator.userAgent + "\n\n" + txt;
+      var more = function(t, l){ return l && l.length ? "\n\n" + t + "\n" + l.slice(-25).join("\n") : ""; };
+      var d = document.createElement("pre"); d.id = "nwSplashLog"; d.textContent = "Protokoll (antippen zum Schließen)\n" + navigator.userAgent + "\n\nStart\n" + txt +
+        more("Mikrofon", window.NW_VLOG) + more("Scanner", window.NW_SCANLOG);
       d.style.cssText = "position:fixed;left:8px;right:8px;top:60px;z-index:400;margin:0;padding:12px;font:11px/1.45 ui-monospace,monospace;background:rgba(0,0,0,.88);color:#fff;border-radius:12px;white-space:pre-wrap;max-height:70vh;overflow:auto";
       d.onclick = function(){ d.remove(); }; document.body.appendChild(d);
     };
@@ -461,7 +463,10 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
     try{ localStorage.setItem("nw1.splashLog", logs.join("\n")); }catch(e){}
     if(/nwdebug/.test(location.search)){ var d = document.createElement("pre"); d.textContent = logs.join("\n");
       d.style.cssText = "position:fixed;left:8px;right:8px;bottom:90px;z-index:400;margin:0;padding:10px;font:11px/1.4 ui-monospace,monospace;background:rgba(0,0,0,.82);color:#fff;border-radius:10px;white-space:pre-wrap";
-      d.onclick = function(){ d.remove(); }; document.body.appendChild(d); } try{ v.pause(); v.removeAttribute("src"); v.load(); }catch(e){}
+      d.onclick = function(){ d.remove(); }; document.body.appendChild(d); }
+    // Beide Videos ganz freigeben: Ein angehaltenes, aber noch geladenes Video legt auf dem iPhone die
+    // Spracherkennung lahm (WebKit-Fehler 321436) und belegt einen Video-Decoder, den die Kamera braucht
+    [v, zv].forEach(function(x){ if(!x) return; try{ x.pause(); x.removeAttribute("src"); x.load(); }catch(e){} });
     el.parentNode.removeChild(el); later.splice(0).forEach(function(f){ try{ f(); }catch(e){} });
   }
   function finish(){

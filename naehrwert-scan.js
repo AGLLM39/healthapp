@@ -129,7 +129,11 @@ async function decodePhoto(file){
   }catch(e){}
   $("#scanStatus").textContent = "Im Foto wurde kein Barcode erkannt. Fotografiere ihn möglichst gerade und formatfüllend – oder tippe die Nummer ein.";
 }
+// Kurzes Protokoll für die Fehlersuche auf dem Handy (Logo gedrückt halten)
+const SCANLOG = window.NW_SCANLOG = [];
+function slog(m){ SCANLOG.push((performance.now() / 1000).toFixed(1) + " s  " + m); if(SCANLOG.length > 40) SCANLOG.shift(); }
 openScanner = async function(){
+  slog("Scanner geöffnet");
   $$(".sheet").forEach(x => x.classList.remove("open"));
   openSheet("scanSheet");
   scanBusy = false; torchOn = false; lastRead = "";
@@ -145,6 +149,7 @@ openScanner = async function(){
   try{
     scanStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment", width:{ideal:1920}, height:{ideal:1080}}, audio:false});
   }catch(err){
+    slog("Kamera-Fehler " + (err && err.name));
     $("#scanBox").style.display = "none";
     $("#scanStatus").textContent = "Kein Kamerazugriff (" + (err && err.name === "NotAllowedError" ? "nicht erlaubt" : "nicht verfügbar") + "). Mach ein Foto vom Barcode oder tippe die Nummer ein.";
     return;
@@ -158,9 +163,11 @@ openScanner = async function(){
   }catch(e){}
   const v = $("#scanVideo");
   v.srcObject = scanStream;
-  try{ await v.play(); }catch(e){}
+  try{ await v.play(); }catch(e){ slog("Video play-Fehler " + (e && e.name)); }
+  { const st = tr.getSettings ? tr.getSettings() : {}; slog("Kamera läuft " + (st.width || "?") + "×" + (st.height || "?") + ", Bild " + v.videoWidth + "×" + v.videoHeight); }
   $("#scanStatus").textContent = "Halte den Strichcode in den Rahmen – etwa 10 bis 20 cm Abstand.";
   const det = await detector();
+  slog(det ? "Erkennung: BarcodeDetector" : "Erkennung: ZXing");
   if(det){
     const tick = async () => {
       if(!scanStream || scanBusy) return;
@@ -174,8 +181,10 @@ openScanner = async function(){
     const Z = await zxing();
     if(!scanStream) return;
     zxReader = new Z.BrowserMultiFormatReader(zxHints(Z), 250);
-    zxReader.decodeFromStream(scanStream, v, res => { if(res && !scanBusy) handleRead(res.getText()); });
+    zxReader.decodeFromStream(scanStream, v, res => { if(res && !scanBusy){ slog("erkannt " + res.getText()); handleRead(res.getText()); } });
+    slog("ZXing läuft");
   }catch(e){
+    slog("ZXing-Fehler " + (e && (e.message || e.name)));
     $("#scanStatus").textContent = "Live-Scanner konnte nicht geladen werden. Mach ein Foto vom Barcode oder tippe die Nummer ein.";
   }
 };
