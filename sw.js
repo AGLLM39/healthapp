@@ -2,7 +2,7 @@
    App-Dateien kommen aus dem Cache und werden im Hintergrund aktualisiert.
    Anfragen an fremde Server (Open Food Facts, Scanner-Bibliothek) laufen normal
    übers Netz; die Scanner-Bibliothek wird nach dem ersten Laden mitgecacht. */
-const CACHE = "naehrwert-v36";
+const CACHE = "naehrwert-v37";
 const FILES = ["./", "index.html", "naehrwert-design.css", "naehrwert-produkte.js", "naehrwert-bls.js", "naehrwert-ch.js", "naehrwert-scan.js", "naehrwert-wasser.js", "naehrwert-offline-2.js", "naehrwert-sprache.js", "naehrwert-etikett.js", "naehrwert-rezepte.js", "manifest.webmanifest",
                "naehrwert-intro-hell.mov", "naehrwert-intro-dunkel.mov", "naehrwert-intro-hell.webm", "naehrwert-intro-dunkel.webm",
                "naehrwert-intro-hell.webp", "naehrwert-intro-dunkel.webp",

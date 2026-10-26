@@ -113,7 +113,12 @@ function fit(m, st, weekly){
 const css = document.createElement("style");
 css.textContent = [
   ".rv-feat{background:color-mix(in srgb, var(--surface2) 45%, var(--surface)); border:1px solid var(--line); border-radius:16px; padding:14px; margin:10px 0; cursor:pointer}",
-  ".rv-feat h4{margin:0 0 3px; font-size:16.5px; letter-spacing:-.005em}",
+  ".rv-feat{position:relative}",
+  ".rv-feat h4{margin:0 0 3px; font-size:16.5px; letter-spacing:-.005em; padding-right:52px}",
+  ".rv-feat .rv-gains{margin-bottom:2px}",
+  ".rv-addbtn{position:absolute; top:10px; right:10px; width:44px; height:44px; padding:0; border-radius:50%; border:none; background:var(--accent); color:var(--on-accent); display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px color-mix(in srgb, var(--accent) 30%, transparent)}",
+  ".rv-addbtn svg{width:22px; height:22px}",
+  ".rv-addbtn:active{transform:scale(.93)}",
   ".rv-meta{font-size:13.5px; color:var(--muted)}",
   ".rv-gains{display:flex; flex-wrap:wrap; gap:6px; margin:9px 0 11px}",
   ".rv-gain{font-size:13px; padding:3px 10px; border-radius:999px; background:var(--accent-soft); color:var(--accent); font-weight:600}",
@@ -273,10 +278,10 @@ function renderMine(){
     const why = p.gains.length ? p.gains.map(g => '<span class="rv-gain num">' + esc(g.label) + ' +' + fmt(Math.round(g.plus)) + ' %</span>').join("")
       : '<span class="rv-gain">' + esc((m.r.focus || []).map(f => FOCUS_LABEL[f] || f).slice(0, 2).join(" & ") || "Ausgewogen") + '</span>';
     return '<div class="rv-feat" data-rvopen="' + esc(m.kind + m.i) + '" role="button" tabindex="0">' +
+      '<button class="rv-addbtn" data-rvadd="' + esc(m.kind + m.i) + '" aria-label="' + esc(m.r.name) + ' zu ' + esc(MEAL_LABEL[guessMeal()]) + ' eintragen" title="Zu ' + esc(MEAL_LABEL[guessMeal()]) + '">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>' +
       '<h4>' + esc(m.r.name) + '</h4><div class="rv-meta num">' + esc(metaLine(m, true)) + '</div>' +
-      '<div class="rv-gains">' + why + '</div>' +
-      '<div class="rv-foot"><select data-rvmeal="' + esc(m.kind + m.i) + '" aria-label="Mahlzeit">' + MEALS.map(x => '<option value="' + x[0] + '"' + (x[0] === guessMeal() ? ' selected' : '') + '>' + x[1] + '</option>').join("") + '</select>' +
-      '<button class="primary" data-rvadd="' + esc(m.kind + m.i) + '">Eintragen</button></div></div>';
+      '<div class="rv-gains">' + why + '</div></div>';
   }).join("") || '<div class="empty">Noch keine Rezepte.</div>';
   // 2. Rezeptbuch
   el("rvFilters").innerHTML = FILTERS.map(f => '<button class="chip" data-rvfilter="' + f[0] + '" aria-pressed="' + (f[0] === filter ? "true" : "false") + '">' + esc(f[1]) + '</button>').join("");

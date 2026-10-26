@@ -389,6 +389,59 @@ html.app .toast{bottom:calc(74px + env(safe-area-inset-bottom))}
 @media (min-width:520px){ .ringrow{gap:12px} }
 </style>
 <link rel="stylesheet" href="naehrwert-design.css">
+<style>
+/* ---- Heute: ein großer Ring, drei Makro-Kacheln, Rest aufklappbar ---- */
+.hero{display:flex; flex-direction:column; align-items:center; text-align:center}
+#kcalRing .ring .center{flex-direction:column; line-height:1.05}
+#kcalRing .ring .center .hv{font-size:38px; font-weight:750; letter-spacing:-.035em}
+#kcalRing .ring .center .hu{font-size:13px; font-weight:550; color:var(--muted); letter-spacing:0; margin-top:3px}
+.herostats{margin-top:10px}
+.herostats .line{font-size:14.5px; color:var(--muted)}
+.herostats .line b{color:var(--ink); font-weight:650}
+.macrotiles{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:16px}
+.mtile{background:var(--surface2); border-radius:14px; padding:10px 10px 11px; text-align:left; min-width:0}
+.mtile .ml{font-size:12.5px; font-weight:600; color:var(--muted)}
+.mtile .mv{font-size:17px; font-weight:700; letter-spacing:-.02em; margin-top:2px; white-space:nowrap}
+.mtile .mv small{font-size:12px; font-weight:500; color:var(--muted); letter-spacing:0}
+.mbar{height:5px; border-radius:99px; background:color-mix(in srgb, var(--ink) 9%, transparent); margin-top:7px; overflow:hidden}
+.mbar i{display:block; height:100%; border-radius:99px}
+.mtile .mr{font-size:12px; color:var(--muted); margin-top:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+details.macromore{margin-top:12px; border-top:1px solid var(--line)}
+details.macromore > summary{list-style:none; cursor:pointer; display:flex; justify-content:space-between; align-items:center; min-height:44px; font-size:14px; font-weight:600; color:var(--muted)}
+details.macromore > summary::-webkit-details-marker{display:none}
+details.macromore > summary::after{content:"›"; font-size:20px; transition:transform .2s}
+details.macromore[open] > summary::after{transform:rotate(90deg)}
+.mrow{display:grid; grid-template-columns:1fr auto; gap:2px 10px; padding:6px 0 8px}
+.mrow .ml{font-size:14px}
+.mrow .mv{font-size:13.5px; color:var(--muted)}
+.mrow .mbar{grid-column:1 / -1; margin-top:3px}
+/* ---- Wochenleiste statt Pfeil-Navigation ---- */
+.weekstrip{display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin:10px 0 0}
+html.app .weekstrip{position:sticky; top:calc(env(safe-area-inset-top) + 62px); z-index:29; margin:0 -12px; padding:4px 12px 6px;
+  background:color-mix(in srgb, var(--bg) 86%, transparent); -webkit-backdrop-filter:saturate(1.6) blur(14px); backdrop-filter:saturate(1.6) blur(14px)}
+.weekstrip button{display:flex; flex-direction:column; align-items:center; gap:2px; min-height:56px; padding:6px 0 5px; border-radius:14px;
+  background:transparent; border:none; box-shadow:none; color:var(--muted); font-size:11.5px; font-weight:600}
+.weekstrip button .dn{font-size:17px; font-weight:700; color:var(--ink); letter-spacing:-.02em}
+.weekstrip button .dot{width:5px; height:5px; border-radius:50%; background:transparent}
+.weekstrip button.has .dot{background:var(--accent)}
+.weekstrip button[aria-pressed="true"]{background:var(--accent); color:color-mix(in srgb, var(--on-accent) 80%, transparent)}
+.weekstrip button[aria-pressed="true"] .dn{color:var(--on-accent)}
+.weekstrip button[aria-pressed="true"].has .dot{background:var(--on-accent)}
+/* ---- Plus-Knopf in der Tab-Leiste ---- */
+nav.tabs button.tabadd{flex:0 0 72px; justify-content:center; padding:0}
+nav.tabs button.tabadd::before{display:none}
+nav.tabs button.tabadd .plus{width:52px; height:52px; border-radius:50%; background:var(--accent); color:var(--on-accent); display:flex; align-items:center; justify-content:center;
+  box-shadow:0 6px 16px color-mix(in srgb, var(--accent) 38%, transparent); transform:translateY(-10px); transition:transform .15s}
+nav.tabs button.tabadd:active .plus{transform:translateY(-10px) scale(.94)}
+nav.tabs button.tabadd svg{width:26px; height:26px}
+.fabmeals{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; padding:2px 0 12px}
+.fabmeals .chip{padding:9px 2px; min-height:40px; font-size:13px; text-align:center; justify-content:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.fabgrid{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.fabgrid button{display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:14px; min-height:84px; border-radius:16px;
+  background:var(--surface2); border:none; color:var(--ink); font-size:15px; font-weight:650; text-align:left}
+.fabgrid button span{font-size:12.5px; font-weight:450; color:var(--muted)}
+.fabgrid button svg{width:24px; height:24px; color:var(--accent)}
+</style>
 
 <!-- ============ Startbildschirm ============
      Namensanimation als Video mit durchsichtigem Hintergrund (in Blender gerendert, je eine Fassung für
@@ -694,22 +747,21 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
 
   <!-- ================= HEUTE ================= -->
   <section class="view active" id="view-heute">
-    <div class="daynav">
-      <button class="ghost" id="dayPrev" aria-label="Vorheriger Tag">←</button>
-      <div class="dlabel" id="dayLabel">Heute</div>
-      <button class="ghost" id="dayNext" aria-label="Nächster Tag">→</button>
-    </div>
+    <div class="weekstrip" id="weekStrip" aria-label="Tag wählen"></div>
     <div id="pastNote"></div>
     <div class="card">
-      <div class="kcalrow">
-        <div class="big" id="kcalRing"></div>
-        <div class="kcalstats">
-          <div class="v num"><span id="kcalEaten">0</span> <small>kcal erfasst</small></div>
-          <div class="small muted num" id="kcalRest"></div>
-          <div class="small muted num" id="kcalDrinkShare"></div>
+      <div class="hero">
+        <div id="kcalRing"></div>
+        <div class="herostats num">
+          <div class="line"><b id="kcalEaten">0</b> <span id="kcalRest"></span></div>
+          <div class="small muted" id="kcalDrinkShare"></div>
         </div>
       </div>
-      <div class="ringrow" id="macroRings"></div>
+      <div class="macrotiles num" id="macroRings"></div>
+      <details class="macromore" id="macroMore">
+        <summary>Zucker, Fettqualität &amp; Ballaststoffe</summary>
+        <div class="num" id="macroMoreBox"></div>
+      </details>
     </div>
 
     <div class="card">
@@ -876,6 +928,8 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   <button data-tab="woche" aria-current="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V10M9.3 19V5M14.6 19v-8M20 19V8"/></svg>
     Woche</button>
+  <button class="tabadd" id="btnFab" aria-label="Hinzufügen"><span class="plus">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
   <button data-tab="rezepte" aria-current="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3v7M9 3v7M7.5 10v11M16 3c-1.7 1-2.5 3-2.5 5.5 0 2 .8 3 2.5 3s2.5-1 2.5-3C18.5 6 17.7 4 16 3zM16 11.5V21"/></svg>
     Rezepte</button>
@@ -885,6 +939,22 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
 </div></nav>
 
 <div class="overlay" id="overlay"></div>
+
+<!-- ============ Plus-Knopf: Schnellauswahl ============ -->
+<div class="sheet" id="fabSheet" role="dialog" aria-label="Eintragen">
+  <div class="grab"></div>
+  <div class="head"><h3 id="fabTitle">Eintragen</h3><button class="ghost" data-close>Schließen</button></div>
+  <div class="body">
+    <div class="fabmeals" id="fabMeals"></div>
+    <div class="fabgrid">
+      <button data-fab="suche"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Suchen<span>Lebensmittel &amp; Produkte</span></button>
+      <button data-fab="scan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 8V5h3M17 5h3v3M20 16v3h-3M7 19H4v-3M8 9v6M11 9v6M14 9v6M17 9v6"/></svg>Scannen<span>Barcode oder Etikett</span></button>
+      <button data-fab="sprache"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/></svg>Sprechen<span>„Zwei Brötchen mit Käse“</span></button>
+      <button data-fab="rezept"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 3v7M9 3v7M7.5 10v11M16 3c-1.7 1-2.5 3-2.5 5.5 0 2 .8 3 2.5 3s2.5-1 2.5-3C18.5 6 17.7 4 16 3zM16 11.5V21"/></svg>Rezept<span>Vorschläge &amp; eigene</span></button>
+      <button data-fab="getraenk" style="grid-column:1 / -1; min-height:60px; flex-direction:row; align-items:center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3.5c3 4 5.5 7 5.5 10a5.5 5.5 0 0 1-11 0c0-3 2.5-6 5.5-10z"/></svg>Getränk<span style="margin-left:auto">Wasser, Kaffee, Tee …</span></button>
+    </div>
+  </div>
+</div>
 
 <!-- ============ Add-Sheet ============ -->
 <div class="sheet" id="addSheet" role="dialog" aria-label="Lebensmittel hinzufügen">
@@ -2426,43 +2496,58 @@ function renderToday(){
   const t = dayTotals(day);
   const dayLog = log.filter(e=>e.date===day);
 
-  // Tag wechseln
-  const dd = new Date(day+"T12:00:00");
-  $("#dayLabel").innerHTML = esc(dayName(day)) + '<small>' + dd.toLocaleDateString("de-DE",{day:"numeric", month:"long"}) + '</small>';
-  $("#dayPrev").disabled = day <= minDay();
-  $("#dayNext").disabled = isToday;
+  // Wochenleiste: die letzten 7 Tage, Punkt = etwas erfasst
+  let strip = "";
+  for(let i = 6; i >= 0; i--){
+    const k = shiftKey(todayKey(), -i), kd = new Date(k+"T12:00:00");
+    const has = log.some(e=>e.date===k);
+    const wd = i===0 ? "Heute" : kd.toLocaleDateString("de-DE",{weekday:"short"}).replace(".","");
+    strip += '<button class="'+(has?"has":"")+'" data-daypick="'+k+'" aria-pressed="'+(k===day)+'" aria-label="'+esc(dayName(k)+", "+kd.toLocaleDateString("de-DE",{day:"numeric", month:"long"}))+(has?", Einträge vorhanden":"")+'">' +
+      wd + '<span class="dn num">'+kd.getDate()+'</span><span class="dot"></span></button>';
+  }
+  $("#weekStrip").innerHTML = strip;
   $("#pastNote").innerHTML = isToday ? "" :
     '<div class="pastnote"><span>Du trägst für '+esc(dayWord(day))+' nach – neue Einträge landen an diesem Tag.</span><button id="btnToToday">Zu heute</button></div>';
 
   // Kalorien-Ring
   const pct = t.kcal / T.kcal;
   const kcalColor = pct > 1.15 ? "var(--over)" : pct > 1 ? "var(--warn)" : "var(--accent)";
-  $("#kcalRing").innerHTML = ringSVG(pct, 108, 10, kcalColor, Math.round(pct*100)+"%");
-  $("#kcalEaten").textContent = fmt(Math.round(t.kcal));
   const diff = T.kcal - t.kcal;
-  $("#kcalRest").textContent = diff >= 0
-    ? "Ziel " + fmt(T.kcal) + " kcal · noch " + fmt(Math.round(diff)) + " kcal offen"
-    : "Ziel " + fmt(T.kcal) + " kcal · " + fmt(Math.round(-diff)) + " kcal darüber";
+  const ringCenter = '<span class="hv">' + fmt(Math.round(Math.abs(diff))) + '</span><span class="hu">' + (diff >= 0 ? "kcal übrig" : "kcal darüber") + '</span>';
+  $("#kcalRing").innerHTML = ringSVG(pct, 184, 15, kcalColor, ringCenter);
+  $("#kcalEaten").textContent = fmt(Math.round(t.kcal));
+  $("#kcalRest").textContent = "von " + fmt(T.kcal) + " kcal erfasst · " + Math.round(pct*100) + " %";
   $("#kcalDrinkShare").textContent = t.drinkKcal > 0 ? "davon " + fmt(Math.round(t.drinkKcal)) + " kcal aus Getränken" : "";
 
-  // Makro-Ringe
+  // Makros: drei Kacheln, der Rest aufklappbar
   // Zucker und gesättigte Fette sind Obergrenzen (rot erst, wenn überschritten – wie bei Natrium)
+  const bar = (val, goal, isMax, base) => {
+    const p = goal > 0 ? val/goal : 0;
+    const color = isMax && p > 1 ? "var(--over)" : base;
+    return '<div class="mbar"><i style="width:'+Math.min(100, p*100)+'%;background:'+color+'"></i></div>';
+  };
+  const tiles = [
+    ["Protein", t.p, T.protein, "var(--prot)"],
+    ["Kohlenhydrate", t.c, T.kh, "var(--carb)"],
+    ["Fett", t.f, T.fett, "var(--fat)"]
+  ];
+  $("#macroRings").innerHTML = tiles.map(([lbl,val,goal,base]) => {
+    const rest = goal - val;
+    return '<div class="mtile"><div class="ml">'+lbl+'</div>' +
+      '<div class="mv">'+fmt(Math.round(val))+'<small> / '+fmt(goal)+' g</small></div>' + bar(val, goal, false, base) +
+      '<div class="mr">'+(rest >= 0 ? "noch "+fmt(Math.round(rest))+" g" : fmt(Math.round(-rest))+" g darüber")+'</div></div>';
+  }).join("");
   const unsat = Math.max(0, t.f - t.sf);
-  const rings = [
-    ["Protein", t.p, T.protein, false, "var(--prot)"],
-    ["Kohlenhydrate", t.c, T.kh, false, "var(--carb)"],
+  const more = [
     ["Zucker", t.z, T.zuckerMax, true, "var(--carb)"],
-    ["Fett ungesättigt", unsat, T.fett - T.sfMax, false, "var(--fat)"],
     ["Fett gesättigt", t.sf, T.sfMax, true, "var(--fat)"],
+    ["Fett ungesättigt", unsat, T.fett - T.sfMax, false, "var(--fat)"],
     ["Ballaststoffe", t.b, T.ballast, false, "var(--accent)"]
   ];
-  $("#macroRings").innerHTML = rings.map(([lbl,val,goal,isMax,base]) => {
-    const pct = val/goal;
-    const color = isMax && pct > 1 ? "var(--over)" : base;
-    return '<div class="ringcell">' + ringSVG(pct, 62, 6, color, Math.round(pct*100)+"%") +
-      '<div class="lbl">'+lbl+'</div><div class="val num">'+fmt(Math.round(val))+' / '+(isMax?'≤':'')+fmt(goal)+' g</div>' +
-      (isMax ? '<div class="lim">Obergrenze</div>' : '') + '</div>';
-  }).join("");
+  $("#macroMoreBox").innerHTML = more.map(([lbl,val,goal,isMax,base]) =>
+    '<div class="mrow"><span class="ml">'+lbl+'</span><span class="mv">'+fmt(Math.round(val))+' / '+(isMax?'höchstens ':'')+fmt(goal)+' g</span>' +
+    bar(val, goal, isMax, base) + '</div>').join("");
+  $("#macroMore").open = (()=>{ try{ return localStorage.getItem(LS+"ui.macroMore")==="1"; }catch(e){ return false; } })();
 
   // Getränke
   const liter = t.ml/1000;
@@ -2526,7 +2611,7 @@ function renderToday(){
   $("#refLabel").textContent = (profile.geschlecht==="m"?"männlich":"weiblich") + ", " + T.gruppe + " Jahre";
   $("#microFold").open = microOpen();
 
-  const hd = new Date();
+  const hd = new Date(day+"T12:00:00");
   $("#hdrDate").textContent = hd.toLocaleDateString("de-DE",{weekday:"long", day:"numeric", month:"long", year:"numeric"});
 }
 
@@ -3768,6 +3853,17 @@ function switchTab(tab){
   window.scrollTo({top:0});
 }
 
+/* Plus-Knopf: Mahlzeit nach Uhrzeit vorgewählt, im Fenster änderbar */
+let fabMeal = "mittag";
+function renderFabMeals(){
+  $("#fabMeals").innerHTML = MEALS.map(([k,l]) => '<button class="chip" data-fabmeal="'+k+'" aria-pressed="'+(k===fabMeal)+'">'+esc(l)+'</button>').join("");
+  $("#fabTitle").textContent = curDay()===todayKey() ? "Eintragen" : "Für "+dayWord(curDay())+" eintragen";
+}
+function openFab(){ fabMeal = guessMeal(); renderFabMeals(); openSheet("fabSheet"); }
+document.addEventListener("toggle", ev => {
+  if(ev.target && ev.target.id==="macroMore"){ try{ localStorage.setItem(LS+"ui.macroMore", ev.target.open ? "1" : "0"); }catch(e){} }
+}, true);
+
 function renderAll(){ renderToday(); if($("#view-woche").classList.contains("active")) renderWeek(); }
 
 let confirmAction = null;
@@ -3800,10 +3896,20 @@ document.addEventListener("click", ev => {
   if(t.dataset.repeatmeal) return repeatMeal(t.dataset.repeatmeal);
   if(t.dataset.combo) return saveCombo(t.dataset.combo);
   if(t.dataset.gotoday){ viewDate = t.dataset.gotoday===todayKey() ? null : t.dataset.gotoday; switchTab("heute"); renderToday(); return; }
-  if(t.id==="dayPrev"||t.id==="dayNext"){
-    const k = shiftKey(curDay(), t.id==="dayPrev" ? -1 : 1);
+  if(t.dataset.daypick){
+    const k = t.dataset.daypick;
     if(k < minDay() || k > todayKey()) return;
     viewDate = k===todayKey() ? null : k; renderToday(); return;
+  }
+  if(t.id==="btnFab") return openFab();
+  if(t.dataset.fabmeal){ fabMeal = t.dataset.fabmeal; renderFabMeals(); return; }
+  if(t.dataset.fab){
+    const a = t.dataset.fab;
+    if(a==="suche"){ closeSheets(); return openAdd(fabMeal); }
+    if(a==="getraenk"){ closeSheets(); return openAdd("getraenk"); }
+    if(a==="scan"){ addCtx = {meal: fabMeal, src:"suche", sel:null, drinkOnly:false, cat:null}; return openScanner(); }
+    if(a==="sprache"){ if(window.NW_SPRACHE) return NW_SPRACHE.open(false); closeSheets(); return; }
+    if(a==="rezept"){ closeSheets(); return switchTab("rezepte"); }
   }
   if(t.id==="btnToToday"){ viewDate = null; renderToday(); return; }
   if(t.id==="btnScan") return openScanner();
