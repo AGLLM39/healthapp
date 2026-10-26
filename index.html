@@ -448,17 +448,20 @@ nav.tabs button.tabadd svg{width:26px; height:26px}
 .mealhead h3.hasico::before, .mealline h3.hasico::before{display:none}
 .mico{width:30px; height:30px; border-radius:50%; background:var(--accent-soft); display:inline-flex; align-items:center; justify-content:center; font-size:16px; line-height:1; flex:0 0 auto}
 .mealline .mico{background:var(--surface2); filter:grayscale(.35); opacity:.85}
-.plate{position:relative; display:inline-block; width:84px; height:84px; border-radius:50%; flex:0 0 auto;
-  background:radial-gradient(circle at 50% 50%, var(--surface) 0 56%, color-mix(in srgb, var(--surface) 70%, var(--line)) 57% 64%, var(--surface) 65%);
-  box-shadow:0 6px 16px color-mix(in srgb, var(--ink) 14%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--line) 80%, transparent)}
-.plate i{position:absolute; font-style:normal; line-height:1; filter:drop-shadow(0 2px 2px rgba(0,0,0,.14))}
+/* Teller: in Blender gerenderter Porzellanteller (hell/dunkel); der Teller füllt 80 % des Bildes, der Rest ist Schatten */
+:root{--plate-img:url(naehrwert-teller-hell.png)}
+@media (prefers-color-scheme: dark){ :root{--plate-img:url(naehrwert-teller-dunkel.png)} }
+:root[data-theme="light"]{--plate-img:url(naehrwert-teller-hell.png)}
+:root[data-theme="dark"]{--plate-img:url(naehrwert-teller-dunkel.png)}
+.plate{position:relative; display:inline-block; width:104px; height:104px; flex:0 0 auto; background:var(--plate-img) center / contain no-repeat}
+.plate i{position:absolute; font-style:normal; line-height:1; filter:drop-shadow(0 2px 2px rgba(0,0,0,.16))}
 .plate .p0{font-size:36px; left:50%; top:50%; transform:translate(-50%,-50%)}
-.plate .p1{font-size:24px; left:6px; top:8px; transform:rotate(-12deg)}
-.plate .p2{font-size:24px; right:6px; bottom:7px; transform:rotate(10deg)}
-.plate.sm{width:44px; height:44px; box-shadow:0 2px 6px color-mix(in srgb, var(--ink) 10%, transparent), inset 0 0 0 1px var(--line)}
+.plate .p1{font-size:24px; left:15%; top:15%; transform:rotate(-12deg)}
+.plate .p2{font-size:24px; right:15%; bottom:15%; transform:rotate(10deg)}
+.plate.sm{width:54px; height:54px; margin:-5px -3px}
 .plate.sm .p0{font-size:21px} .plate.sm .p1, .plate.sm .p2{display:none}
-.plate.lg{width:132px; height:132px}
-.plate.lg .p0{font-size:56px} .plate.lg .p1{font-size:36px; left:10px; top:12px} .plate.lg .p2{font-size:36px; right:10px; bottom:10px}
+.plate.lg{width:168px; height:168px}
+.plate.lg .p0{font-size:58px} .plate.lg .p1{font-size:38px} .plate.lg .p2{font-size:38px}
 </style>
 
 <!-- ============ Startbildschirm ============
