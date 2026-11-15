@@ -42,9 +42,9 @@ function off2Find(code){ return codeIndex()[String(code).replace(/^0+/, "")] || 
 let _fill = null;
 function fillCodes(){
   if(_fill) return _fill;
-  _fill = new Set();
   const O = window.NW_OFF2;
-  if(!O || !O.rows) return _fill;
+  if(!O || !O.rows) return new Set();      // Markenprodukte noch nicht geladen: nichts merken, später neu berechnen
+  _fill = new Set();
   // Natrium bleibt außen vor: es steht als Salz fast immer auf dem Etikett, der Rest kann aufgefüllt sein
   const F = O.meta.felder, ix = O.meta.mikro_reihenfolge.filter(k => k !== "natrium").map(k => F.indexOf(k)), iC = F.indexOf("off_code");
   const freq = new Map(), names = new Map();
@@ -564,12 +564,8 @@ renderAltHint = function(it){
   $("#btnLabelEdit", box).onclick = () => openLabel(code, it);
 };
 
-// Kennzeichnung der Durchschnittswerte für die Suche vorbereiten, sobald die Daten geladen sind
-// Vorab aufbauen – aber erst nach dem Übergang vom Startbildschirm, sonst blockiert es dessen Animation
-window.addEventListener("load", () => {
-  const warm = () => setTimeout(() => { try{ fillCodes(); }catch(e){} }, 1500);
-  if(window.NW_ANIM && window.NW_ANIM.after) window.NW_ANIM.after(warm); else warm();
-});
+// Kennzeichnung der Durchschnittswerte für die Suche vorbereiten – sobald die Markenprodukte geladen sind (sie kommen bei Bedarf nach)
+window.addEventListener("nw:off2", () => { _fill = null; setTimeout(() => { try{ fillCodes(); }catch(e){ if(window.nwErr) nwErr("Etikett-Abgleich", e); } }, 1500); });
 
 window.NW_ETIKETT = {isFill: o => isFill(o), fillCodes, siblingWater, looksWater, unknownHook, brandFor, openLabel, parseLabel, similarFoods, off2Find};
 })();

@@ -1,3 +1,5 @@
+<!doctype html>
+<html lang="de">
 <meta charset="utf-8">
 <title>NährWert – Ernährungstagebuch</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -10,6 +12,17 @@
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>
+/* Fehlerprotokoll: Fehler werden nicht mehr nur verschluckt, sondern notiert (Logo gedrückt halten zeigt sie) */
+window.NW_ERRLOG = [];
+window.nwErr = function(where, e){
+  try{
+    var m = e && (e.message || e.name) || String(e);
+    NW_ERRLOG.push((performance.now() / 1000).toFixed(1) + " s  " + where + ": " + String(m).slice(0, 160));
+    if(NW_ERRLOG.length > 40) NW_ERRLOG.shift();
+  }catch(x){}
+};
+window.addEventListener("error", function(ev){ nwErr(ev.filename ? ev.filename.split("/").pop() + ":" + ev.lineno : "Fehler", ev.error || ev.message); });
+window.addEventListener("unhandledrejection", function(ev){ nwErr("Promise", ev.reason); });
 /* Vor dem ersten Zeichnen: gewähltes Farbschema setzen und Seite sperren, bis das Passwort stimmt */
 (function(){
   try{ var th = localStorage.getItem("nw1.ui.theme"); if(th === "light" || th === "dark") document.documentElement.setAttribute("data-theme", th); }catch(e){}
@@ -139,9 +152,47 @@ textarea:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 .chart .col{flex:1; display:flex; flex-direction:column; justify-content:flex-end; height:100%; z-index:1}
 .chart .col i{display:block; background:var(--accent); opacity:.55; border-radius:6px 6px 3px 3px; min-height:2px}
 .chart .col.today i{opacity:1}
+.chart .col .v{display:block; text-align:center; font-size:10.5px; font-weight:650; color:var(--muted); margin-bottom:3px; white-space:nowrap}
+.chart .col.today .v{color:var(--accent)}
 .chartlabels{display:flex; gap:8px}
 .chartlabels span{flex:1; text-align:center; font-size:11px; color:var(--muted)}
 .chartlabels span.today{color:var(--accent); font-weight:650}
+/* Monatsansicht */
+.mnav{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px}
+.mnav button{min-width:44px; min-height:40px; font-size:22px; line-height:1; padding:0}
+.mnav button:disabled{opacity:.3}
+.mgrid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px}
+.mgrid .mh{text-align:center; font-size:11.5px; color:var(--muted); padding:2px 0}
+.mgrid .md{display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:46px; padding:3px 0; border-radius:10px;
+  background:var(--surface2); border:none; color:var(--ink); font-size:14px; font-weight:600; line-height:1.1}
+.mgrid .md small{font-size:10px; font-weight:500; color:var(--muted); margin-top:2px}
+.mgrid .md:disabled{background:transparent; color:var(--muted); opacity:.5}
+.mgrid .md.ok{background:color-mix(in srgb, var(--ok) 26%, var(--surface))}
+.mgrid .md.lo{background:color-mix(in srgb, var(--warn) 26%, var(--surface))}
+.mgrid .md.hi{background:color-mix(in srgb, var(--over) 24%, var(--surface))}
+.mgrid .md.today{box-shadow:inset 0 0 0 2px var(--accent)}
+.mlegend{display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:8px}
+.mlegend i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:4px; vertical-align:-1px}
+.mlegend i.ok{background:color-mix(in srgb, var(--ok) 45%, var(--surface))}
+.mlegend i.lo{background:color-mix(in srgb, var(--warn) 45%, var(--surface))}
+.mlegend i.hi{background:color-mix(in srgb, var(--over) 40%, var(--surface))}
+/* Gewicht */
+.wrow{display:flex; align-items:center; gap:8px; margin:6px 0 10px}
+.wrow input{flex:1; min-width:0; font-size:16px}
+.wchart svg{display:block; width:100%; height:auto}
+.wchart .wl{fill:none; stroke:var(--accent); stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round}
+.wchart .wd{fill:var(--surface); stroke:var(--accent); stroke-width:2}
+.wchart text{font-size:11px; fill:var(--muted)}
+.wchart .wg{stroke:var(--line); stroke-width:1}
+.wlist{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+.wlist span{display:inline-flex; align-items:center; gap:4px; font-size:12.5px; background:var(--surface2); border-radius:999px; padding:3px 4px 3px 10px}
+.wlist button{border:none; background:transparent; color:var(--muted); min-width:28px; min-height:28px; padding:0; font-size:13px}
+/* Hinweis auf der Heute-Seite (Profil, Sicherung) */
+.homenote{display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; background:var(--accent-soft); color:var(--ink); border-radius:12px; padding:10px 12px; margin-top:10px; font-size:13.5px; line-height:1.4}
+.homenote span{flex:1 1 200px}
+.homenote .acts{display:flex; gap:6px}
+/* Willkommen */
+#welcomeSheet .err{color:var(--over); font-size:13px; min-height:18px; margin:4px 0}
 table.avg{width:100%; border-collapse:collapse; font-size:13.5px}
 table.avg td{padding:6px 0; border-bottom:1px solid var(--line)}
 table.avg tr:last-child td{border-bottom:none}
@@ -416,7 +467,10 @@ details.macromore[open] > summary::after{transform:rotate(90deg)}
 .mrow .mv{font-size:13.5px; color:var(--muted)}
 .mrow .mbar{grid-column:1 / -1; margin-top:3px}
 /* ---- Wochenleiste statt Pfeil-Navigation ---- */
-.weekstrip{display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin:10px 0 0}
+.weekstrip{display:grid; grid-auto-flow:column; grid-auto-columns:calc((100% - 24px) / 7); gap:4px; margin:10px 0 0;
+  overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; overscroll-behavior-x:contain}
+.weekstrip::-webkit-scrollbar{display:none}
+.weekstrip button{scroll-snap-align:end}
 html.app .weekstrip{position:sticky; top:calc(env(safe-area-inset-top) + 62px); z-index:29; margin:0 -12px; padding:4px 12px 6px;
   background:color-mix(in srgb, var(--bg) 86%, transparent); -webkit-backdrop-filter:saturate(1.6) blur(14px); backdrop-filter:saturate(1.6) blur(14px)}
 .weekstrip button{display:flex; flex-direction:column; align-items:center; gap:2px; min-height:56px; padding:6px 0 5px; border-radius:14px;
@@ -522,7 +576,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
       var txt = ""; try{ txt = localStorage.getItem("nw1.splashLog") || "(noch kein Protokoll)"; }catch(e){}
       var more = function(t, l){ return l && l.length ? "\n\n" + t + "\n" + l.slice(-25).join("\n") : ""; };
       var d = document.createElement("pre"); d.id = "nwSplashLog"; d.textContent = "Protokoll (antippen zum Schließen)\n" + navigator.userAgent + "\n\nStart\n" + txt +
-        more("Mikrofon", window.NW_VLOG) + more("Scanner", window.NW_SCANLOG);
+        more("Mikrofon", window.NW_VLOG) + more("Scanner", window.NW_SCANLOG) + more("Fehler", window.NW_ERRLOG);
       d.style.cssText = "position:fixed;left:8px;right:8px;top:60px;z-index:400;margin:0;padding:12px;font:11px/1.45 ui-monospace,monospace;background:rgba(0,0,0,.88);color:#fff;border-radius:12px;white-space:pre-wrap;max-height:70vh;overflow:auto";
       d.onclick = function(){ d.remove(); }; document.body.appendChild(d);
     };
@@ -770,6 +824,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   <section class="view active" id="view-heute">
     <div class="weekstrip" id="weekStrip" aria-label="Tag wählen"></div>
     <div id="pastNote"></div>
+    <div id="homeNote"></div>
     <div class="card">
       <div class="hero">
         <div id="kcalRing"></div>
@@ -830,6 +885,18 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
       <div class="small muted">Tipp auf einen Tag öffnet ihn. Gestrichelt = nichts erfasst.</div>
       <div class="chart" id="weekChart"></div>
       <div class="chartlabels" id="weekLabels"></div>
+    </div>
+    <div class="card" id="monthCard">
+      <div class="mnav"><button class="ghost" id="btnMonthPrev" aria-label="Vorheriger Monat">‹</button><h2 id="monthTitle" style="margin:0">Monat</h2><button class="ghost" id="btnMonthNext" aria-label="Nächster Monat">›</button></div>
+      <div class="mgrid" id="monthGrid"></div>
+      <div class="mlegend small muted"><span><i class="ok"></i>im Zielbereich (80–110 %)</span><span><i class="lo"></i>darunter</span><span><i class="hi"></i>darüber</span></div>
+      <div class="small muted" id="monthNote" style="margin-top:6px"></div>
+    </div>
+    <div class="card" id="weightCard">
+      <h2>Gewicht</h2>
+      <div class="wrow"><input type="text" id="wInput" inputmode="decimal" autocomplete="off" placeholder="z. B. 76,4" aria-label="Gewicht in kg"><span class="small muted">kg</span><button class="primary" id="btnWeight">Eintragen</button></div>
+      <div id="weightChart"></div>
+      <div class="small muted" id="weightNote"></div>
     </div>
     <div class="card">
       <h2>Durchschnitt pro erfasstem Tag</h2>
@@ -1044,6 +1111,33 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
 </div>
 
 <!-- ============ Sicherung ============ -->
+<div class="sheet" id="welcomeSheet" role="dialog" aria-label="Willkommen">
+  <div class="grab"></div>
+  <div class="head"><h3>Willkommen bei NährWert</h3></div>
+  <div class="body">
+    <div class="small muted" style="margin-bottom:10px">Damit Kalorien- und Nährstoffziele zu dir passen, braucht die App ein paar Angaben. Sie bleiben auf diesem Gerät und lassen sich im Profil jederzeit ändern.</div>
+    <div class="settingrow"><label for="wSex">Geschlecht</label>
+      <select id="wSex"><option value="">bitte wählen</option><option value="w">weiblich</option><option value="m">männlich</option></select></div>
+    <div class="settingrow"><label for="wAlter">Alter</label><input type="number" id="wAlter" min="15" max="99" inputmode="numeric" placeholder="Jahre"></div>
+    <div class="settingrow"><label for="wGr">Größe (cm)</label><input type="number" id="wGr" min="120" max="230" inputmode="numeric" placeholder="cm"></div>
+    <div class="settingrow"><label for="wGw">Gewicht (kg)</label><input type="text" id="wGw" inputmode="decimal" autocomplete="off" placeholder="kg"></div>
+    <div class="settingrow"><label for="wPal">Aktivität</label>
+      <select id="wPal">
+        <option value="1.4">sitzend, kaum Sport</option>
+        <option value="1.5" selected>sitzend, 1–2× Sport pro Woche</option>
+        <option value="1.6">3× Sport pro Woche oder viel zu Fuß</option>
+        <option value="1.7">4–5× Sport pro Woche</option>
+        <option value="1.8">stehender Beruf oder fast täglich Sport</option>
+        <option value="2.0">körperliche Arbeit oder Leistungssport</option>
+      </select></div>
+    <div class="settingrow"><label for="wZiel">Ziel</label>
+      <select id="wZiel"><option value="abnehmen">Abnehmen</option><option value="halten" selected>Gewicht halten</option><option value="zunehmen">Zunehmen</option></select></div>
+    <div class="err" id="welcomeErr" role="alert"></div>
+    <button class="primary" id="btnWelcome" style="width:100%">Los geht's</button>
+    <button class="ghost" id="btnWelcomeLater" style="width:100%;margin-top:8px">Später</button>
+  </div>
+</div>
+
 <div class="sheet" id="backupSheet" role="dialog" aria-label="Sicherung">
   <div class="grab"></div>
   <div class="head"><h3>Sicherung</h3><button class="ghost" data-close>Schließen</button></div>
@@ -1114,7 +1208,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
 
 /* ---------- Speicher (localStorage mit Speicher-Fallback) ---------- */
 const LS = "nw1.";
-const KEYS = ["log","favs","recipes","profile"];
+const KEYS = ["log","favs","recipes","profile","weights","days"];
 let storageOk = true;      // localStorage nutzbar?
 let persistState = "unbekannt";  // "dauerhaft" | "nicht garantiert" | "nicht verfügbar"
 let idbOk = true;          // zweite Kopie in IndexedDB nutzbar?
@@ -1126,7 +1220,7 @@ function sget(k, d){
 }
 function sset(k, v){
   mem[k] = v;
-  try{ localStorage.setItem(LS+k, JSON.stringify(v)); }catch(e){ storageOk = false; }
+  try{ localStorage.setItem(LS+k, JSON.stringify(v)); }catch(e){ storageOk = false; nwErr("Speichern " + k, e); }
   idbSet(k, v);            // Zweitkopie, falls localStorage geleert wird
   try{ localStorage.setItem(LS+"savedAt", JSON.stringify(Date.now())); }catch(e){}
 }
@@ -1155,7 +1249,7 @@ function idbOpen(){
 function idbSet(k, v){
   idbOpen().then(function(db){
     if(!db) return;
-    try{ db.transaction("kv","readwrite").objectStore("kv").put(v, k); }catch(e){}
+    try{ db.transaction("kv","readwrite").objectStore("kv").put(v, k); }catch(e){ nwErr("Zweitkopie " + k, e); }
   });
 }
 function idbGet(db, k){
@@ -1202,6 +1296,8 @@ function restoreFromMirror(){
           else if(k === "favs") favs = mirror;
           else if(k === "recipes") recipes = mirror;
           else if(k === "profile") profile = Object.assign({}, DEFAULT_PROFILE, mirror);
+          else if(k === "weights") weights = mirror;
+          else if(k === "days") dayArchive = mirror;
           restored = true;
         }
       });
@@ -2171,6 +2267,8 @@ let profile = Object.assign({}, DEFAULT_PROFILE, sget("profile", {}));
 let log = sget("log", []);          // Einträge
 let favs = sget("favs", []);        // Item-Snapshots
 let recipes = sget("recipes", []);  // eigene Rezepte
+let weights = sget("weights", {});  // Gewicht je Tag {"2026-11-14": 76.4}
+let dayArchive = sget("days", {});  // Tagessummen für Tage, deren Einzeleinträge nicht mehr gespeichert sind
 let shuffleOffset = 0;
 let viewDate = null;                // angezeigter Tag im Heute-Tab (null = heute)
 
@@ -2201,7 +2299,10 @@ function newId(){ return Date.now()+"_"+Math.random().toString(36).slice(2,7); }
 /* Angezeigter Tag (Heute-Tab); Einträge landen immer auf diesem Tag */
 function curDay(){ return viewDate || todayKey(); }
 function shiftKey(k, delta){ const d=new Date(k+"T12:00:00"); d.setDate(d.getDate()+delta); return dateKey(d); }
-function minDay(){ return shiftKey(todayKey(), -6); }
+const KEEP_DAYS = 90;   // so lange bleiben die Einzeleinträge erhalten, ältere Tage als Tagessummen
+function minDay(){ return shiftKey(todayKey(), -(KEEP_DAYS - 1)); }
+/* Wurde an diesem Tag etwas erfasst? (Einträge oder archivierte Tagessumme) */
+function dayHas(k){ return log.some(e => e.date === k) || !!dayArchive[k]; }
 function dayName(k){
   const t = todayKey();
   if(k===t) return "Heute";
@@ -2213,11 +2314,23 @@ function dayName(k){
 function dayWord(k){ const n=dayName(k); return n==="Heute"||n==="Gestern"||n==="Vorgestern" ? n.toLowerCase() : n; }
 
 function pruneOld(){
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-6);
-  const min = dateKey(cutoff);
-  const before = log.length;
+  // Einträge älter als KEEP_DAYS werden zu Tagessummen zusammengefasst – für Monatsansicht und Rückblick
+  const min = minDay(), old = log.filter(e => e.date < min);
+  if(!old.length) return;
+  const byDay = {};
+  old.forEach(e => (byDay[e.date] = byDay[e.date] || []).push(e));
+  Object.keys(byDay).forEach(k => {
+    const t = Object.assign({}, dayArchive[k] || {});
+    byDay[k].forEach(e => {
+      ALL_KEYS.forEach(x => { if(e.n[x]) t[x] = (t[x] || 0) + e.n[x]; });
+      if(e.isDrink){ if(e.ml) t.ml = (t.ml || 0) + e.ml; if(e.cf) t.cf = (t.cf || 0) + e.cf; }
+    });
+    Object.keys(t).forEach(x => { t[x] = Math.round(t[x] * 100) / 100; });
+    t.n = ((dayArchive[k] && dayArchive[k].n) || 0) + byDay[k].length;
+    dayArchive[k] = t;
+  });
   log = log.filter(e => e.date >= min);
-  if(log.length !== before) sset("log", log);
+  sset("days", dayArchive); sset("log", log);
 }
 
 /* Item → normalisiertes Objekt {id,name,isDrink,per100:{...},portions,cf,src} */
@@ -2480,10 +2593,13 @@ function entryFromItem(item, amount, meal){
 function dayTotals(dk){
   const t = {}; ALL_KEYS.forEach(k=>t[k]=0);
   t.ml=0; t.cf=0; t.drinkKcal=0; t.drinkSugar=0;
-  log.filter(e=>e.date===dk).forEach(e => {
+  const es = log.filter(e=>e.date===dk);
+  es.forEach(e => {
     ALL_KEYS.forEach(k => t[k] += e.n[k]||0);
     if(e.isDrink){ t.ml += e.ml||0; t.cf += e.cf||0; t.drinkKcal += e.n.kcal||0; t.drinkSugar += e.n.z||0; }
   });
+  // Ältere Tage: nur die gespeicherte Tagessumme
+  if(!es.length && dayArchive[dk]){ const a = dayArchive[dk]; ALL_KEYS.concat(["ml","cf"]).forEach(k => { t[k] = a[k] || 0; }); t.archived = true; }
   return t;
 }
 
@@ -2517,16 +2633,22 @@ function renderToday(){
   const t = dayTotals(day);
   const dayLog = log.filter(e=>e.date===day);
 
-  // Wochenleiste: die letzten 7 Tage, Punkt = etwas erfasst
+  // Wochenleiste: die letzten 4 Wochen (nach links wischen = früher), Punkt = etwas erfasst
   let strip = "";
-  for(let i = 6; i >= 0; i--){
+  for(let i = 27; i >= 0; i--){
     const k = shiftKey(todayKey(), -i), kd = new Date(k+"T12:00:00");
     const has = log.some(e=>e.date===k);
     const wd = i===0 ? "Heute" : kd.toLocaleDateString("de-DE",{weekday:"short"}).replace(".","");
     strip += '<button class="'+(has?"has":"")+'" data-daypick="'+k+'" aria-pressed="'+(k===day)+'" aria-label="'+esc(dayName(k)+", "+kd.toLocaleDateString("de-DE",{day:"numeric", month:"long"}))+(has?", Einträge vorhanden":"")+'">' +
       wd + '<span class="dn num">'+kd.getDate()+'</span><span class="dot"></span></button>';
   }
-  $("#weekStrip").innerHTML = strip;
+  const ws = $("#weekStrip"), keepX = ws.dataset.ready ? ws.scrollLeft : null;
+  ws.innerHTML = strip;
+  if(keepX === null){ ws.dataset.ready = "1"; ws.scrollLeft = ws.scrollWidth; }
+  else ws.scrollLeft = keepX;
+  const cur = ws.querySelector('[aria-pressed="true"]');
+  if(cur && (cur.offsetLeft < ws.scrollLeft || cur.offsetLeft + cur.offsetWidth > ws.scrollLeft + ws.clientWidth)) cur.scrollIntoView({block:"nearest", inline:"center"});
+  renderHomeNote();
   $("#pastNote").innerHTML = isToday ? "" :
     '<div class="pastnote"><span>Du trägst für '+esc(dayWord(day))+' nach – neue Einträge landen an diesem Tag.</span><button id="btnToToday">Zu heute</button></div>';
 
@@ -2741,6 +2863,140 @@ function entryDetail(e){
   return h;
 }
 
+/* ---------- Hinweise auf der Heute-Seite: Beispielprofil, Sicherung ---------- */
+function profileSaved(){ try{ return !!localStorage.getItem(LS+"profile") || ("profile" in mem); }catch(e){ return true; } }
+function uiGet(k){ try{ return localStorage.getItem(LS+"ui."+k); }catch(e){ return null; } }
+function uiSet(k, v){ try{ localStorage.setItem(LS+"ui."+k, v); }catch(e){} }
+function markBackup(){ uiSet("lastBackup", String(Date.now())); renderHomeNote(); }
+function renderHomeNote(){
+  const box = $("#homeNote"); if(!box) return;
+  let h = "";
+  if(!profileSaved()){
+    h = '<div class="homenote"><span>Deine Ziele beruhen noch auf einem Beispielprofil (18 Jahre, männlich, 190 cm, 77 kg).</span>' +
+        '<div class="acts"><button class="chip" data-homenote="profil">Profil eintragen</button></div></div>';
+  } else {
+    const days = Array.from(new Set(log.map(e => e.date))).sort();
+    const last = +(uiGet("lastBackup") || 0), snooze = +(uiGet("backupSnooze") || 0), now = Date.now();
+    const since = last ? Math.floor((now - last) / 864e5) : (days.length ? Math.floor((now - new Date(days[0] + "T12:00:00")) / 864e5) : 0);
+    if(days.length >= 3 && since >= 14 && now > snooze){
+      h = '<div class="homenote"><span>' + (last ? "Deine letzte Sicherung ist " + since + " Tage her." : "Du hast noch keine Sicherung – deine Einträge liegen nur auf diesem Handy.") +
+          ' Mit einer Sicherungsdatei kannst du alles wiederherstellen, auch auf einem neuen Handy.</span>' +
+          '<div class="acts"><button class="chip" data-homenote="sichern">Jetzt sichern</button><button class="ghost" data-homenote="spaeter">Später</button></div></div>';
+    }
+  }
+  box.innerHTML = h;
+}
+
+/* ---------- Willkommen: Profil beim ersten Start abfragen ---------- */
+function openWelcome(){
+  $("#wSex").value = profileSaved() ? profile.geschlecht : "";
+  $("#wAlter").value = profileSaved() ? profile.alter : "";
+  $("#wGr").value = profileSaved() ? profile.groesse : "";
+  $("#wGw").value = profileSaved() ? profile.gewicht : "";
+  $("#wPal").value = profileSaved() ? profile.pal.toFixed(1) : "1.5";
+  $("#wZiel").value = profileSaved() ? profile.ziel : "halten";
+  $("#welcomeErr").textContent = "";
+  closeSheets(); openSheet("welcomeSheet");
+}
+function maybeWelcome(){
+  if(profileSaved() || uiGet("welcomeLater") === "1" || document.documentElement.classList.contains("locked")) return;
+  if(document.querySelector(".sheet.open")) return;
+  openWelcome();
+}
+function saveWelcome(){
+  const num = id => parseFloat(String($("#"+id).value).replace(",", "."));
+  const sex = $("#wSex").value, alter = Math.round(num("wAlter")), gr = Math.round(num("wGr")), gw = Math.round(num("wGw") * 10) / 10;
+  const err = !sex ? "Bitte das Geschlecht wählen." : !(alter >= 15 && alter <= 99) ? "Bitte ein Alter zwischen 15 und 99 eingeben." :
+    !(gr >= 120 && gr <= 230) ? "Bitte eine Größe zwischen 120 und 230 cm eingeben." : !(gw >= 35 && gw <= 200) ? "Bitte ein Gewicht zwischen 35 und 200 kg eingeben." : "";
+  if(err){ $("#welcomeErr").textContent = err; return; }
+  profile = Object.assign({}, profile, {geschlecht:sex, alter:alter, groesse:gr, gewicht:gw, pal:parseFloat($("#wPal").value), ziel:$("#wZiel").value});
+  sset("profile", profile);
+  weights[todayKey()] = gw; sset("weights", weights);
+  closeSheets(); renderAll(); renderProfile();
+  toast("Dein Tagesziel: " + fmt(computeTargets(profile).kcal) + " kcal");
+}
+
+/* ---------- Monatsansicht ---------- */
+let monthOff = 0;   // 0 = aktueller Monat, -1 = Vormonat …
+function firstDataKey(){
+  const ks = log.map(e => e.date).concat(Object.keys(dayArchive));
+  return ks.length ? ks.reduce((a, b) => a < b ? a : b) : todayKey();
+}
+function renderMonth(){
+  if(!$("#monthGrid")) return;
+  const T = computeTargets(profile), today = todayKey(), minK = minDay();
+  const base = new Date(); base.setDate(1); base.setMonth(base.getMonth() + monthOff);
+  const y = base.getFullYear(), m = base.getMonth(), days = new Date(y, m + 1, 0).getDate(), lead = (new Date(y, m, 1).getDay() + 6) % 7;
+  $("#monthTitle").textContent = base.toLocaleDateString("de-DE", {month:"long", year:"numeric"});
+  const first = firstDataKey();
+  $("#btnMonthPrev").disabled = dateKey(new Date(y, m, 1)) <= first.slice(0, 8) + "01";
+  $("#btnMonthNext").disabled = monthOff >= 0;
+  let h = ["Mo","Di","Mi","Do","Fr","Sa","So"].map(d => '<span class="mh">' + d + '</span>').join("") + "<span></span>".repeat(lead);
+  let sum = 0, cnt = 0, ok = 0;
+  for(let d = 1; d <= days; d++){
+    const k = dateKey(new Date(y, m, d)), fut = k > today, has = !fut && dayHas(k);
+    const t = has ? dayTotals(k) : null, p = t ? t.kcal / T.kcal : 0;
+    const lvl = !has ? "" : p < .8 ? " lo" : p > 1.1 ? " hi" : " ok";
+    if(has){ sum += t.kcal; cnt++; if(lvl === " ok") ok++; }
+    const lab = new Date(y, m, d).toLocaleDateString("de-DE", {weekday:"long", day:"numeric", month:"long"}) + (has ? ": " + fmt(Math.round(t.kcal)) + " kcal" : fut ? "" : ": nichts erfasst");
+    h += '<button class="md' + lvl + (k === today ? ' today' : '') + '" data-monthday="' + k + '"' + (fut ? ' disabled' : '') + ' aria-label="' + esc(lab) + '">' + d +
+      (has ? '<small class="num">' + fmt(Math.round(t.kcal)) + '</small>' : '') + '</button>';
+  }
+  $("#monthGrid").innerHTML = h;
+  $("#monthNote").textContent = cnt ? "Ø " + fmt(Math.round(sum / cnt)) + " kcal an " + cnt + (cnt === 1 ? " erfasstem Tag" : " erfassten Tagen") + " · " + ok + (ok === 1 ? " Tag" : " Tage") + " im Zielbereich (Ziel " + fmt(T.kcal) + " kcal). Tipp auf einen Tag öffnet ihn." +
+    (dateKey(new Date(y, m, 1)) < minK ? " Tage vor dem " + new Date(minK + "T12:00:00").toLocaleDateString("de-DE", {day:"numeric", month:"long"}) + " sind nur als Tagessumme gespeichert." : "")
+    : "In diesem Monat ist noch nichts erfasst.";
+}
+function openMonthDay(k){
+  if(k > todayKey()) return;
+  if(k < minDay()){
+    const t = dayTotals(k);
+    toast(new Date(k + "T12:00:00").toLocaleDateString("de-DE", {day:"numeric", month:"long"}) + ": " + (dayHas(k) ? fmt(Math.round(t.kcal)) + " kcal – für diesen Tag ist nur die Tagessumme gespeichert" : "nichts erfasst"));
+    return;
+  }
+  viewDate = k === todayKey() ? null : k; switchTab("heute"); renderToday();
+}
+
+/* ---------- Gewichtsverlauf ---------- */
+function renderWeight(){
+  if(!$("#weightChart")) return;
+  const ks = Object.keys(weights).filter(k => weights[k] > 0).sort();
+  if(!ks.length){
+    $("#weightChart").innerHTML = "";
+    $("#weightNote").textContent = "Noch kein Gewicht eingetragen. Am aussagekräftigsten ist es einmal pro Woche, morgens vor dem Frühstück. Dein Profil und die Tagesziele passen sich automatisch an.";
+    return;
+  }
+  const pts = ks.slice(-60), vals = pts.map(k => weights[k]);
+  const lo = Math.floor(Math.min.apply(null, vals) - .5), hi = Math.ceil(Math.max.apply(null, vals) + .5);
+  const W = 320, H = 130, L = 34, R = 8, Tp = 10, B = 22;
+  const t0 = new Date(pts[0] + "T12:00:00").getTime(), t1 = new Date(pts[pts.length - 1] + "T12:00:00").getTime(), span = Math.max(t1 - t0, 864e5);
+  const X = k => pts.length === 1 ? (L + W - R) / 2 : L + (new Date(k + "T12:00:00").getTime() - t0) / span * (W - L - R);
+  const Y = v => Tp + (hi - v) / Math.max(hi - lo, 1) * (H - Tp - B);
+  const day = k => new Date(k + "T12:00:00").toLocaleDateString("de-DE", {day:"numeric", month:"numeric"});
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Gewichtsverlauf von ' + fmt(vals[0], 1) + ' kg auf ' + fmt(vals[vals.length - 1], 1) + ' kg">';
+  [hi, (hi + lo) / 2, lo].forEach(v => { svg += '<line class="wg" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v) + '" y2="' + Y(v) + '"/><text x="' + (L - 6) + '" y="' + (Y(v) + 4) + '" text-anchor="end">' + fmt(v, v % 1 ? 1 : 0) + '</text>'; });
+  if(pts.length > 1) svg += '<polyline class="wl" points="' + pts.map(k => X(k).toFixed(1) + "," + Y(weights[k]).toFixed(1)).join(" ") + '"/>';
+  pts.forEach(k => { svg += '<circle class="wd" r="3.5" cx="' + X(k).toFixed(1) + '" cy="' + Y(weights[k]).toFixed(1) + '"/>'; });
+  svg += '<text x="' + L + '" y="' + (H - 5) + '">' + day(pts[0]) + '</text>';
+  if(pts.length > 1) svg += '<text x="' + (W - R) + '" y="' + (H - 5) + '" text-anchor="end">' + day(pts[pts.length - 1]) + '</text>';
+  svg += '</svg>';
+  const recent = ks.slice(-5).reverse();
+  $("#weightChart").innerHTML = '<div class="wchart">' + svg + '</div><div class="wlist">' + recent.map(k => '<span class="num">' + day(k) + ': ' + fmt(weights[k], 1) + ' kg<button data-wdel="' + k + '" aria-label="Eintrag vom ' + day(k) + ' löschen">✕</button></span>').join("") + '</div>';
+  const diff = vals[vals.length - 1] - vals[0];
+  $("#weightNote").textContent = pts.length > 1 ? "Seit " + day(pts[0]) + ": " + (diff > 0 ? "+" : diff < 0 ? "−" : "±") + fmt(Math.abs(diff), 1) + " kg. Das neueste Gewicht gilt auch für dein Profil und die Tagesziele." : "Das Gewicht gilt auch für dein Profil und die Tagesziele.";
+}
+function addWeight(){
+  const v = Math.round(parseFloat(String($("#wInput").value).replace(",", ".")) * 10) / 10;
+  if(!(v >= 30 && v <= 250)){ toast("Bitte ein Gewicht zwischen 30 und 250 kg eingeben"); return; }
+  weights[todayKey()] = v; sset("weights", weights);
+  $("#wInput").value = ""; $("#wInput").blur();
+  const before = computeTargets(profile).kcal;
+  if(profile.gewicht !== v && v >= 35 && v <= 200){ profile.gewicht = v; sset("profile", profile); renderProfile(); }
+  const after = computeTargets(profile).kcal;
+  renderWeight(); renderToday();
+  toast(fmt(v, 1) + " kg gespeichert" + (after !== before ? " · Tagesziel jetzt " + fmt(after) + " kcal" : ""));
+}
+
 /* ---------- Woche ---------- */
 function last7Keys(){
   const out=[];
@@ -2748,15 +3004,16 @@ function last7Keys(){
   return out;
 }
 function renderWeek(){
+  renderMonth(); renderWeight();
   const T = computeTargets(profile);
   const keys = last7Keys();
-  const days = keys.map(k => ({k, t: dayTotals(k), has: log.some(e=>e.date===k)}));
+  const days = keys.map(k => ({k, t: dayTotals(k), has: dayHas(k)}));
   const maxK = Math.max(T.kcal*1.1, ...days.map(d=>d.t.kcal), 1);
 
   $("#weekChart").innerHTML =
-    '<div class="goal" style="bottom:'+(T.kcal/maxK*100)+'%"><span>Ziel '+fmt(T.kcal)+'</span></div>' +
+    '<div class="goal" style="bottom:'+(T.kcal/maxK*84)+'%"><span>Ziel '+fmt(T.kcal)+'</span></div>' +
     days.map(d => '<button class="col'+(d.k===todayKey()?' today':'')+(d.has?'':' empty')+'" data-gotoday="'+d.k+'" aria-label="'+esc(dayName(d.k))+(d.has?': '+fmt(Math.round(d.t.kcal))+' kcal':': nichts erfasst')+'">' +
-      (d.has ? '<i style="height:'+(d.t.kcal/maxK*100)+'%"></i>' : '<span>–</span><i></i>') + '</button>').join("");
+      (d.has ? '<b class="v num">'+fmt(Math.round(d.t.kcal))+'</b><i style="height:'+(d.t.kcal/maxK*84)+'%"></i>' : '<span>–</span><i></i>') + '</button>').join("");
   $("#weekLabels").innerHTML = keys.map(k => {
     const d = new Date(k+"T12:00:00");
     return '<span class="'+(k===todayKey()?'today':'')+'">'+d.toLocaleDateString("de-DE",{weekday:"short"})+'</span>';
@@ -3358,7 +3615,7 @@ async function offCategoryNames(tags){
       const res = await fetch("https://world.openfoodfacts.org/api/v2/taxonomy?tagtype=categories&lc=de&fields=name&tags=" + encodeURIComponent(en.join(",")), {signal: ctl.signal});
       const d = res.ok ? await res.json() : {};
       en.forEach(x => { const nm = d[x] && d[x].name && d[x].name.de; if(nm && out.indexOf(nm) < 0) out.push(nm); });
-    } catch(e){} finally { clearTimeout(kill); }
+    } catch(e){ nwErr("Kategorien online", e); } finally { clearTimeout(kill); }
   }
   return out;
 }
@@ -3766,7 +4023,7 @@ async function openScanner(){
       const det = new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"]});
       const tick = async () => {
         if(!scanStream) return;
-        try{ const r = await det.detect(v); if(r.length) return onCode(r[0].rawValue); }catch(e){}
+        try{ const r = await det.detect(v); if(r.length) return onCode(r[0].rawValue); }catch(e){ nwErr("Barcode-Erkennung", e); }
         scanLoop = setTimeout(tick, 250);
       };
       tick();
@@ -3797,6 +4054,7 @@ async function onCode(code){
   stopScanner();
   try{ if(navigator.vibrate) navigator.vibrate(60); }catch(e){}
   $("#scanStatus").textContent = "Barcode " + code + " – suche …";
+  if(window.NW_OFF2_READY && !window.NW_OFF2_DONE) await NW_OFF2_READY();
   let it = productByCode(code);
   if(!it){
     try{
@@ -3811,7 +4069,7 @@ async function onCode(code){
         const drink = offIsDrink(tags);
         it = {id:"O"+code, code, name:nm + (pr.brands ? " (" + pr.brands.split(",")[0].trim() + ")" : ""), isDrink:drink, per100, portions:[], cf:0, src:"Open Food Facts", isProduct:true, missing:[], labelMicros:lm};
       }
-    }catch(e){}
+    }catch(e){ nwErr("Barcode online", e); }
   }
   scanBusy = false;
   if(!it){
@@ -3918,14 +4176,15 @@ function unlockScroll(){
   b.position = ""; b.top = ""; b.left = ""; b.right = ""; b.width = "";
   window.scrollTo({top: y, left: 0, behavior: "instant"});
 }
-function openSheet(id){ lockScroll(); $("#overlay").classList.add("open"); $("#"+id).classList.add("open"); }
+const OFF2_SHEETS = ["addSheet", "scanSheet", "speakSheet", "fabSheet", "recipeSheet"];
+function openSheet(id){ if(OFF2_SHEETS.indexOf(id) >= 0 && window.NW_OFF2_LOAD) NW_OFF2_LOAD(); lockScroll(); $("#overlay").classList.add("open"); $("#"+id).classList.add("open"); }
 function closeSheets(){ stopScanner(); $("#overlay").classList.remove("open"); $$(".sheet").forEach(s=>s.classList.remove("open")); unlockScroll(); }
 
 function switchTab(tab){
   $$("nav.tabs button").forEach(b=>b.setAttribute("aria-current", b.dataset.tab===tab ? "true":"false"));
   $$(".view").forEach(v=>v.classList.toggle("active", v.id==="view-"+tab));
   if(tab==="woche") renderWeek();
-  if(tab==="rezepte") renderRecipes();
+  if(tab==="rezepte"){ renderRecipes(); if(recipes.length && window.NW_OFF2_LOAD) NW_OFF2_LOAD(); }
   if(tab==="profil"){ renderProfile(); renderInstallInfo(); }
   window.scrollTo({top:0});
 }
@@ -3972,6 +4231,19 @@ document.addEventListener("click", ev => {
   if(t.dataset.quick!=null) return quickDrink(+t.dataset.quick);
   if(t.dataset.repeatmeal) return repeatMeal(t.dataset.repeatmeal);
   if(t.dataset.combo) return saveCombo(t.dataset.combo);
+  if(t.dataset.monthday) return openMonthDay(t.dataset.monthday);
+  if(t.id === "btnMonthPrev"){ monthOff--; return renderMonth(); }
+  if(t.id === "btnMonthNext"){ if(monthOff < 0) monthOff++; return renderMonth(); }
+  if(t.id === "btnWeight") return addWeight();
+  if(t.dataset.wdel){ delete weights[t.dataset.wdel]; sset("weights", weights); return renderWeight(); }
+  if(t.dataset.homenote){
+    const a = t.dataset.homenote;
+    if(a === "profil") return openWelcome();
+    if(a === "sichern") return exportBackup();
+    if(a === "spaeter"){ uiSet("backupSnooze", String(Date.now() + 7 * 864e5)); return renderHomeNote(); }
+  }
+  if(t.id === "btnWelcome") return saveWelcome();
+  if(t.id === "btnWelcomeLater"){ uiSet("welcomeLater", "1"); closeSheets(); return renderHomeNote(); }
   if(t.dataset.gotoday){ viewDate = t.dataset.gotoday===todayKey() ? null : t.dataset.gotoday; switchTab("heute"); renderToday(); return; }
   if(t.dataset.daypick){
     const k = t.dataset.daypick;
@@ -4171,6 +4443,7 @@ function applyProfileField(id, key, min, max, parse, final){
   const before = computeTargets(profile);
   profile[key] = v;
   sset("profile", profile);
+  if(key === "gewicht" && final){ weights[todayKey()] = v; sset("weights", weights); }
   renderProfile(before); renderToday();
   const after = lastTargets;
   clearTimeout(profileToastTimer);
@@ -4204,7 +4477,7 @@ PROFILE_FIELDS.forEach(([id,key,min,max,parse]) => {
 function backupJSON(){
   return JSON.stringify({
     app:"naehrwert", version:1, exportedAt:new Date().toISOString(),
-    profile:profile, log:log, favs:favs, recipes:recipes
+    profile:profile, log:log, favs:favs, recipes:recipes, weights:weights, days:dayArchive
   }, null, 2);
 }
 function backupName(){ return "naehrwert-sicherung-" + todayKey() + ".json"; }
@@ -4213,7 +4486,7 @@ function exportBackup(){
   const data = backupJSON(), name = backupName();
   if(window.claude && window.claude.downloads){
     window.claude.downloads.save({filename:name, data:data}).then(function(){
-      toast("Sicherung gespeichert");
+      markBackup(); toast("Sicherung gespeichert");
     }).catch(function(err){
       const code = err && err.code;
       if(code === "declined") return;
@@ -4232,8 +4505,8 @@ function blobDownload(name, data){
     a.href = url; a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
-    toast("Sicherung gespeichert");
-  }catch(e){ textFallback(); }
+    markBackup(); toast("Sicherung gespeichert");
+  }catch(e){ nwErr("Sicherung herunterladen", e); textFallback(); }
 }
 /* Wenn der Browser oder die Umgebung keinen Download zulässt: Text zum Kopieren zeigen */
 function textFallback(){
@@ -4255,7 +4528,10 @@ function applyBackup(obj){
     function(){
       log = neuLog; favs = neuFavs; recipes = neuRec;
       if(obj.profile) profile = Object.assign({}, DEFAULT_PROFILE, obj.profile);
+      if(obj.weights && typeof obj.weights === "object") weights = obj.weights;
+      if(obj.days && typeof obj.days === "object") dayArchive = obj.days;
       sset("log", log); sset("favs", favs); sset("recipes", recipes); sset("profile", profile);
+      sset("weights", weights); sset("days", dayArchive);
       pruneOld();
       renderAll(); renderProfile(); renderRecipes(); renderStorageInfo();
       toast("Sicherung wiederhergestellt");
@@ -4406,6 +4682,7 @@ $("#lockForm").addEventListener("submit", function(ev){
     }catch(e){}
     document.documentElement.classList.remove("locked");
     $("#lockInput").value = ""; $("#lockErr").textContent = "";
+    setTimeout(maybeWelcome, 1400);
   } else {
     $("#lockErr").textContent = "Das Passwort stimmt nicht.";
     $("#lockInput").select();
@@ -4505,6 +4782,15 @@ window.addEventListener("nw:geladen", function(){
   if($("#addSheet").classList.contains("open") && $("#searchInput").value.trim()) doSearch($("#searchInput").value);
 });
 
+/* Markenprodukte nachgeladen: Zwischenspeicher leeren, offene Suche und Ansichten neu zeichnen */
+window.addEventListener("nw:off2", function(){
+  _prodCache = null; _blsCache = null; _codeIndex = null; _localCache = null; _blsCodeIndex = null;
+  Object.keys(_matchCache).forEach(k => delete _matchCache[k]);
+  renderSourceInfo();
+  if($("#addSheet").classList.contains("open") && $("#searchInput").value.trim()) doSearch($("#searchInput").value);
+  if($("#view-rezepte").classList.contains("active")) renderRecipes();
+});
+
 /* Dauerhaften Speicher anfordern und ggf. aus der Zweitkopie wiederherstellen */
 requestPersistence().then(renderStorageInfo);
 restoreFromMirror().then(function(restored){
@@ -4518,10 +4804,13 @@ restoreFromMirror().then(function(restored){
 
 /* Beim Verlassen der Seite den aktuellen Stand sicherheitshalber erneut schreiben */
 window.addEventListener("pagehide", function(){
-  try{ KEYS.forEach(function(k){ idbSet(k, k==="log"?log : k==="favs"?favs : k==="recipes"?recipes : profile); }); }catch(e){}
+  try{ const cur = {log:log, favs:favs, recipes:recipes, profile:profile, weights:weights, days:dayArchive}; KEYS.forEach(function(k){ idbSet(k, cur[k]); }); }catch(e){ nwErr("Zweitkopie beim Schließen", e); }
 });
 
 if(!storageOk) toast("Hinweis: Speichern nicht verfügbar – Daten gelten nur für diese Sitzung");
+$("#wInput").addEventListener("keydown", ev => { if(ev.key === "Enter"){ ev.preventDefault(); addWeight(); } });
+// Willkommen: erst wenn der Startbildschirm weg und die App entsperrt ist
+if(window.NW_ANIM && window.NW_ANIM.after) window.NW_ANIM.after(() => setTimeout(maybeWelcome, 400)); else setTimeout(maybeWelcome, 400);
 </script>
 <script>
 /* Datenbanken und Module nachladen – erst, wenn die Startanimation läuft.
@@ -4529,8 +4818,9 @@ if(!storageOk) toast("Hinweis: Speichern nicht verfügbar – Daten gelten nur f
    spielt dabei flüssig weiter, ein noch nicht gestartetes aber nicht. Die Reihenfolge bleibt wie bisher:
    spätere Dateien ergänzen und erweitern frühere. Danach kommt das Ereignis „nw:geladen“. */
 (function(){
+  // Die rund 100.000 Markenprodukte (naehrwert-offline-2.js, 21 MB) kommen erst, wenn sie gebraucht werden – s. NW_OFF2_LOAD
   var files = ["naehrwert-bls.js", "naehrwert-ch.js", "naehrwert-produkte.js", "naehrwert-scan.js", "naehrwert-wasser.js",
-               "naehrwert-offline-2.js", "naehrwert-sprache.js", "naehrwert-etikett.js", "naehrwert-rezepte.js"];
+               "naehrwert-sprache.js", "naehrwert-etikett.js", "naehrwert-rezepte.js"];
   var begun = false;
   function go(){
     if(begun) return; begun = true;
@@ -4551,5 +4841,30 @@ if(!storageOk) toast("Hinweis: Speichern nicht verfügbar – Daten gelten nur f
   var a = window.NW_ANIM;
   if(!a || a.started) go();
   else { a.wait.push(go); setTimeout(go, 800); }
+
+  /* Markenprodukte bei Bedarf: beim Öffnen von Suche, Scanner, Spracheingabe oder eigenen Rezepten.
+     Spart beim Start Ladezeit und Arbeitsspeicher; danach meldet das Ereignis „nw:off2“, dass sie da sind. */
+  var off2 = {state: 0, cbs: [], waiting: false};
+  window.NW_OFF2_LOAD = function(cb){
+    if(off2.state === 2){ if(cb) cb(); return; }
+    if(cb) off2.cbs.push(cb);
+    if(off2.state === 1) return;
+    if(!window.NW_GELADEN){
+      if(!off2.waiting){ off2.waiting = true; window.addEventListener("nw:geladen", function(){ window.NW_OFF2_LOAD(); }, {once: true}); }
+      return;
+    }
+    off2.state = 1;
+    var s = document.createElement("script"), t0 = performance.now();
+    s.src = "naehrwert-offline-2.js";
+    s.onload = s.onerror = function(ev){
+      off2.state = 2; window.NW_OFF2_DONE = true;
+      if(ev && ev.type === "error") nwErr("Markenprodukte laden", "Datei nicht erreichbar");
+      window.NW_OFF2_MS = Math.round(performance.now() - t0);
+      window.dispatchEvent(new Event("nw:off2"));
+      off2.cbs.splice(0).forEach(function(f){ try{ f(); }catch(e){ nwErr("Markenprodukte", e); } });
+    };
+    document.body.appendChild(s);
+  };
+  window.NW_OFF2_READY = function(){ return new Promise(function(res){ window.NW_OFF2_LOAD(res); }); };
 })();
 </script>

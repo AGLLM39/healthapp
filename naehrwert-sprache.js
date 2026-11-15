@@ -960,6 +960,8 @@ el("spText").addEventListener("keydown", ev => {
   if(ev.key === "Enter" && !ev.shiftKey){ ev.preventDefault(); parseNow(); ev.target.blur(); }
 });
 el("spAdd").addEventListener("click", addAll);
+// Markenprodukte kommen erst beim Öffnen nach – danach den Text noch einmal zuordnen
+window.addEventListener("nw:off2", () => { if(sheet.classList.contains("open") && el("spText").value.trim()) parseNow(); });
 sheet.addEventListener("click", ev => {
   const t = ev.target.closest("button");
   if(!t) return;

@@ -260,6 +260,8 @@ onCode = async function(raw){
   try{ if(navigator.vibrate) navigator.vibrate(60); }catch(e){}
   if($("#scanUnknown")) $("#scanUnknown").innerHTML = "";
   $("#scanStatus").textContent = "Barcode " + code + " – suche …";
+  // Die Markenprodukte werden beim Öffnen des Scanners nachgeladen – falls noch nicht fertig, kurz warten
+  if(window.NW_OFF2_READY && !window.NW_OFF2_DONE) await NW_OFF2_READY();
   let it = codeMapGet(code) || productByCode(code), offline = false;
   if(!it){
     // 13-stellig mit führender 0 = UPC-A; beide Schreibweisen probieren
