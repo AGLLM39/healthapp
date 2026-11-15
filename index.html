@@ -193,6 +193,7 @@ textarea:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 .homenote .acts{display:flex; gap:6px}
 /* Willkommen */
 #welcomeSheet .err{color:var(--over); font-size:13px; min-height:18px; margin:4px 0}
+#welcomeSheet .wl-hero{display:block; width:100%; max-width:300px; height:auto; margin:-4px auto 8px}
 table.avg{width:100%; border-collapse:collapse; font-size:13.5px}
 table.avg td{padding:6px 0; border-bottom:1px solid var(--line)}
 table.avg tr:last-child td{border-bottom:none}
@@ -1115,6 +1116,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   <div class="grab"></div>
   <div class="head"><h3>Willkommen bei NährWert</h3></div>
   <div class="body">
+    <img class="wl-hero" src="naehrwert-willkommen.webp" alt="" width="635" height="365" decoding="async">
     <div class="small muted" style="margin-bottom:10px">Damit Kalorien- und Nährstoffziele zu dir passen, braucht die App ein paar Angaben. Sie bleiben auf diesem Gerät und lassen sich im Profil jederzeit ändern.</div>
     <div class="settingrow"><label for="wSex">Geschlecht</label>
       <select id="wSex"><option value="">bitte wählen</option><option value="w">weiblich</option><option value="m">männlich</option></select></div>
@@ -1124,8 +1126,8 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
     <div class="settingrow"><label for="wPal">Aktivität</label>
       <select id="wPal">
         <option value="1.4">sitzend, kaum Sport</option>
-        <option value="1.5" selected>sitzend, 1–2× Sport pro Woche</option>
-        <option value="1.6">3× Sport pro Woche oder viel zu Fuß</option>
+        <option value="1.5">sitzend, 1–2× Sport pro Woche</option>
+        <option value="1.6" selected>3× Sport pro Woche oder viel zu Fuß</option>
         <option value="1.7">4–5× Sport pro Woche</option>
         <option value="1.8">stehender Beruf oder fast täglich Sport</option>
         <option value="2.0">körperliche Arbeit oder Leistungssport</option>
@@ -2262,7 +2264,7 @@ SUGGESTIONS.forEach(function(r){
 });
 
 /* ---------- Zustand ---------- */
-const DEFAULT_PROFILE = {alter:18, geschlecht:"m", groesse:190, gewicht:77, pal:1.6, ziel:"halten"};
+const DEFAULT_PROFILE = {alter:18, geschlecht:"m", groesse:180, gewicht:70, pal:1.6, ziel:"halten"};
 let profile = Object.assign({}, DEFAULT_PROFILE, sget("profile", {}));
 let log = sget("log", []);          // Einträge
 let favs = sget("favs", []);        // Item-Snapshots
@@ -2872,7 +2874,8 @@ function renderHomeNote(){
   const box = $("#homeNote"); if(!box) return;
   let h = "";
   if(!profileSaved()){
-    h = '<div class="homenote"><span>Deine Ziele beruhen noch auf einem Beispielprofil (18 Jahre, männlich, 190 cm, 77 kg).</span>' +
+    const D = DEFAULT_PROFILE;
+    h = '<div class="homenote"><span>Deine Ziele beruhen noch auf einem Beispielprofil (' + D.alter + ' Jahre, ' + (D.geschlecht === "m" ? "männlich" : "weiblich") + ', ' + D.groesse + ' cm, ' + D.gewicht + ' kg).</span>' +
         '<div class="acts"><button class="chip" data-homenote="profil">Profil eintragen</button></div></div>';
   } else {
     const days = Array.from(new Set(log.map(e => e.date))).sort();
@@ -2891,9 +2894,9 @@ function renderHomeNote(){
 function openWelcome(){
   $("#wSex").value = profileSaved() ? profile.geschlecht : "";
   $("#wAlter").value = profileSaved() ? profile.alter : "";
-  $("#wGr").value = profileSaved() ? profile.groesse : "";
-  $("#wGw").value = profileSaved() ? profile.gewicht : "";
-  $("#wPal").value = profileSaved() ? profile.pal.toFixed(1) : "1.5";
+  $("#wGr").value = profileSaved() ? profile.groesse : DEFAULT_PROFILE.groesse;
+  $("#wGw").value = String(profileSaved() ? profile.gewicht : DEFAULT_PROFILE.gewicht).replace(".", ",");
+  $("#wPal").value = (profileSaved() ? profile.pal : DEFAULT_PROFILE.pal).toFixed(1);
   $("#wZiel").value = profileSaved() ? profile.ziel : "halten";
   $("#welcomeErr").textContent = "";
   closeSheets(); openSheet("welcomeSheet");
