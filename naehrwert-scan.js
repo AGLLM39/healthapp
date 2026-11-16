@@ -160,12 +160,18 @@ openScanner = async function(){
     const cap = tr.getCapabilities ? tr.getCapabilities() : {};
     if(cap.focusMode && cap.focusMode.indexOf("continuous") >= 0) tr.applyConstraints({advanced: [{focusMode: "continuous"}]}).catch(() => {});
     if(cap.torch) $("#btnTorch").style.display = "";
+    // Neuere iPhones stellen mit der Hauptkamera erst ab etwa 15–20 cm scharf. Mit 2-fach-Zoom hält man das Handy
+    // weiter weg (scharf), und der Strichcode ist trotzdem groß im Bild.
+    if(cap.zoom && cap.zoom.max >= 1.5){
+      const z = Math.min(cap.zoom.max, 2);
+      tr.applyConstraints({advanced: [{zoom: z}]}).then(() => slog("Zoom " + z)).catch(e => slog("Zoom-Fehler " + (e && e.name)));
+    }
   }catch(e){}
   const v = $("#scanVideo");
   v.srcObject = scanStream;
   try{ await v.play(); }catch(e){ slog("Video play-Fehler " + (e && e.name)); }
   { const st = tr.getSettings ? tr.getSettings() : {}; slog("Kamera läuft " + (st.width || "?") + "×" + (st.height || "?") + ", Bild " + v.videoWidth + "×" + v.videoHeight); }
-  $("#scanStatus").textContent = "Halte den Strichcode in den Rahmen – etwa 10 bis 20 cm Abstand.";
+  $("#scanStatus").textContent = "Halte den Strichcode quer in den Rahmen, etwa 20–30 cm entfernt. Wird das Bild unscharf, etwas weiter weg halten.";
   const det = await detector();
   slog(det ? "Erkennung: BarcodeDetector" : "Erkennung: ZXing");
   if(det){
@@ -180,14 +186,50 @@ openScanner = async function(){
   try{
     const Z = await zxing();
     if(!scanStream) return;
-    zxReader = new Z.BrowserMultiFormatReader(zxHints(Z), 250);
-    zxReader.decodeFromStream(scanStream, v, res => { if(res && !scanBusy){ slog("erkannt " + res.getText()); handleRead(res.getText()); } });
+    zxLoop(Z, v);
     slog("ZXing läuft");
   }catch(e){
     slog("ZXing-Fehler " + (e && (e.message || e.name)));
     $("#scanStatus").textContent = "Live-Scanner konnte nicht geladen werden. Mach ein Foto vom Barcode oder tippe die Nummer ein.";
   }
 };
+
+/* iPhone (kein BarcodeDetector): ZXing liest nicht mehr das ganze Kamerabild mit allen Formaten, sondern
+   – nur den Bereich um den Rahmen, in voller Auflösung (im Test doppelt so viele Treffer wie vorher, und schneller),
+   – nur mit den Strichcode-Lesern (EAN/UPC, Code 128, ITF), die auf Lebensmitteln stehen,
+   – abwechselnd mit zwei Kontrast-Verfahren (eines kommt besser mit Unschärfe, das andere mit Spiegelungen zurecht).
+   Jeder vierte Versuch nimmt das ganze Bild mit allen Formaten (auch QR- und DataMatrix-Codes). */
+function zxLoop(Z, v){
+  const F = Z.BarcodeFormat;
+  const oneD = new Z.MultiFormatReader(), all = new Z.MultiFormatReader();
+  const h1 = new Map(); h1.set(Z.DecodeHintType.POSSIBLE_FORMATS, [F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E, F.CODE_128, F.ITF]); h1.set(Z.DecodeHintType.TRY_HARDER, true);
+  oneD.setHints(h1); all.setHints(zxHints(Z));
+  const cv = document.createElement("canvas"), cx = cv.getContext("2d", {willReadFrequently: true});
+  let n = 0, t0 = performance.now(), tries = 0;
+  const tick = () => {
+    if(!scanStream || scanBusy) return;
+    const W = v.videoWidth, H = v.videoHeight;
+    if(W && H){
+      const mode = n++ % 4, full = mode === 3;
+      // Rahmen im Bild: mittlere 80 % der Breite, 45 % der Höhe (etwas mehr als der weiße Rahmen)
+      const sw = full ? W : Math.round(W * .8), sh = full ? H : Math.round(H * .45);
+      const sx = Math.round((W - sw) / 2), sy = Math.round((H - sh) / 2);
+      const k = Math.min(1, 1920 / sw), tw = Math.round(sw * k), th = Math.round(sh * k);   // nicht verkleinern: feine Striche bleiben erkennbar
+      if(cv.width !== tw) cv.width = tw;
+      if(cv.height !== th) cv.height = th;
+      cx.drawImage(v, sx, sy, sw, sh, 0, 0, tw, th);
+      try{
+        const src = new Z.HTMLCanvasElementLuminanceSource(cv);
+        const bin = mode % 2 ? new Z.HybridBinarizer(src) : new Z.GlobalHistogramBinarizer(src);
+        const r = (full ? all : oneD).decodeWithState(new Z.BinaryBitmap(bin));
+        tries++;
+        if(r){ slog("erkannt " + r.getText() + " nach " + tries + " Versuchen, " + ((performance.now() - t0) / 1000).toFixed(1) + " s"); if(handleRead(r.getText())) return; }
+      }catch(e){ tries++; }   // „nichts gefunden“ – nächstes Bild
+    }
+    scanLoop = setTimeout(tick, 40);
+  };
+  tick();
+}
 
 /* ---------- Produkt aus Open Food Facts – auch mit lückenhaften Nährwerten ---------- */
 const OFF_MACRO = {kcal:"energy-kcal_100g", p:"proteins_100g", c:"carbohydrates_100g", z:"sugars_100g", f:"fat_100g", sf:"saturated-fat_100g", b:"fiber_100g"};

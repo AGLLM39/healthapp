@@ -193,7 +193,11 @@ textarea:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 .homenote .acts{display:flex; gap:6px}
 /* Willkommen */
 #welcomeSheet .err{color:var(--over); font-size:13px; min-height:18px; margin:4px 0}
-#welcomeSheet .wl-hero{display:block; width:100%; max-width:300px; height:auto; margin:-4px auto 8px}
+#welcomeSheet .wl-hero{position:relative; width:100%; max-width:300px; aspect-ratio:638 / 388; margin:-4px auto 8px}
+#welcomeSheet .wl-hero img, #welcomeSheet .wl-hero video{position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:transparent}
+#welcomeSheet .wl-hero video{opacity:0}
+#welcomeSheet .wl-hero.anim video{opacity:1}
+#welcomeSheet .wl-hero.anim img, #welcomeSheet .wl-hero.wait img{opacity:0}
 table.avg{width:100%; border-collapse:collapse; font-size:13.5px}
 table.avg td{padding:6px 0; border-bottom:1px solid var(--line)}
 table.avg tr:last-child td{border-bottom:none}
@@ -1116,7 +1120,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   <div class="grab"></div>
   <div class="head"><h3>Willkommen bei NährWert</h3></div>
   <div class="body">
-    <img class="wl-hero" src="naehrwert-willkommen.webp" alt="" width="635" height="365" decoding="async">
+    <div class="wl-hero" id="wlHero"><img src="naehrwert-willkommen.webp" alt="" decoding="async"><video muted playsinline webkit-playsinline preload="none" disablepictureinpicture disableremoteplayback aria-hidden="true"></video></div>
     <div class="small muted" style="margin-bottom:10px">Damit Kalorien- und Nährstoffziele zu dir passen, braucht die App ein paar Angaben. Sie bleiben auf diesem Gerät und lassen sich im Profil jederzeit ändern.</div>
     <div class="settingrow"><label for="wSex">Geschlecht</label>
       <select id="wSex"><option value="">bitte wählen</option><option value="w">weiblich</option><option value="m">männlich</option></select></div>
@@ -2325,7 +2329,8 @@ function pruneOld(){
     const t = Object.assign({}, dayArchive[k] || {});
     byDay[k].forEach(e => {
       ALL_KEYS.forEach(x => { if(e.n[x]) t[x] = (t[x] || 0) + e.n[x]; });
-      if(e.isDrink){ if(e.ml) t.ml = (t.ml || 0) + e.ml; if(e.cf) t.cf = (t.cf || 0) + e.cf; }
+      const ml = entryMl(e); if(ml) t.ml = (t.ml || 0) + ml;
+      if(e.isDrink && e.cf) t.cf = (t.cf || 0) + e.cf;
     });
     Object.keys(t).forEach(x => { t[x] = Math.round(t[x] * 100) / 100; });
     t.n = ((dayArchive[k] && dayArchive[k].n) || 0) + byDay[k].length;
@@ -2592,6 +2597,17 @@ function entryFromItem(item, amount, meal){
   };
 }
 
+/* Flüssiges, das als Lebensmittel eingetragen ist (Saft, Smoothie, Milch, Haferdrink …): bleibt bei den Mahlzeiten,
+   zählt aber zur Trinkmenge. Viele Markenprodukte sind in der Datenbank nicht als Getränk markiert. */
+const LIQUID_RE = /(saft|nektar|smoothie|schorle|limonade|\blimo\b|cola|eistee|kefir|buttermilch|ayran|molke|drink|getränk|shake|kakao(?!pulver|bohne|nibs)|\bbier|wein\b|sekt\b|\bmilch\b|\bvollmilch|\bmagermilch|fettarme milch|wasser\b|\btee\b|kaffee(?!pulver|bohne)|espresso|cappuccino|latte macchiato|energy)/i;
+const NOT_LIQUID_RE = /(schokolade|reis|pulver|pudding|brötchen|brot|wurst|schinken|melone|bonbon|gummi|eis\b|speiseeis|kuchen|creme|joghurt(?!drink)|quark|käse|riegel|müsli|flocken|pastille|konzentrat|sirup|brei\b|weinbrand|essig|gedünstet|gekocht|gebraten|gegart|gebacken|überbacken|\bmit\b|\bin\b)/i;
+function isLiquidFood(e){
+  if(e.isDrink || e.unit !== "g" || !LIQUID_RE.test(e.name)) return false;
+  // „Saft aus Orangensaftkonzentrat“ ist Saft – nur das Konzentrat selbst zählt nicht
+  return !NOT_LIQUID_RE.test(e.name.replace(/\baus\s+\S*konzentrat/gi, ""));
+}
+function entryMl(e){ return e.isDrink ? (e.ml || 0) : isLiquidFood(e) ? e.amount : 0; }
+
 function dayTotals(dk){
   const t = {}; ALL_KEYS.forEach(k=>t[k]=0);
   t.ml=0; t.cf=0; t.drinkKcal=0; t.drinkSugar=0;
@@ -2599,6 +2615,7 @@ function dayTotals(dk){
   es.forEach(e => {
     ALL_KEYS.forEach(k => t[k] += e.n[k]||0);
     if(e.isDrink){ t.ml += e.ml||0; t.cf += e.cf||0; t.drinkKcal += e.n.kcal||0; t.drinkSugar += e.n.z||0; }
+    else if(isLiquidFood(e)){ t.ml += e.amount; t.drinkKcal += e.n.kcal||0; t.drinkSugar += e.n.z||0; }
   });
   // Ältere Tage: nur die gespeicherte Tagessumme
   if(!es.length && dayArchive[dk]){ const a = dayArchive[dk]; ALL_KEYS.concat(["ml","cf"]).forEach(k => { t[k] = a[k] || 0; }); t.archived = true; }
@@ -2860,6 +2877,7 @@ function entryDetail(e){
     h += row(k, label, n[k]||0, unit, T.micros[k], isMax, false, (nm && !isMax && !n[k]) || n[k] == null, g(T.micros[k], unit, txt, isMax), !!e.est && (e.estKeys ? e.estKeys.indexOf(k) >= 0 : k !== "natrium"));
   });
   if(e.isDrink) h += '<div class="small muted" style="margin-top:6px">'+fmt(e.ml||0)+' ml Flüssigkeit'+(e.cf?' · '+fmt(Math.round(e.cf))+' mg Koffein':'')+'</div>';
+  else if(isLiquidFood(e)) h += '<div class="small muted" style="margin-top:6px">Zählt mit etwa '+fmt(e.amount)+' ml zur Trinkmenge des Tages.</div>';
   h += '<div class="dfoot"><span class="small muted">Tippe auf einen Nährstoff für Hintergründe.</span>' +
     '<button class="chip" data-edit="'+e.id+'">✎ Menge oder Mahlzeit ändern</button></div></div>';
   return h;
@@ -2900,6 +2918,31 @@ function openWelcome(){
   $("#wZiel").value = profileSaved() ? profile.ziel : "halten";
   $("#welcomeErr").textContent = "";
   closeSheets(); openSheet("welcomeSheet");
+  playWelcomeAnim();
+}
+/* Übergang ins Fenster: in Blender gerenderte Animation (Kachel richtet sich auf, Obst fällt dazu).
+   Das letzte Bild entspricht genau dem Standbild – danach wird das Video durch das Bild ersetzt und
+   freigegeben (ein geladenes Video stört auf dem iPhone sonst Spracherkennung und Kamera). */
+function playWelcomeAnim(){
+  const hero = $("#wlHero"), v = hero && hero.querySelector("video");
+  if(!v || !v.play) return;
+  let done = false;
+  const toStill = () => {
+    if(done) return; done = true;
+    hero.classList.remove("anim", "wait");
+    try{ v.pause(); v.removeAttribute("src"); v.load(); }catch(e){}
+  };
+  const kinds = navigator.vendor === "Apple Computer, Inc." ? [".mov", ".webm"] : [".webm", ".mov"];
+  v.onerror = () => { if(kinds.length && !v.dataset.shown){ v.src = "naehrwert-willkommen" + kinds.shift(); v.play().catch(toStill); } else toStill(); };
+  v.onended = toStill;
+  v.onplaying = () => { v.dataset.shown = "1"; hero.classList.add("anim"); hero.classList.remove("wait"); };
+  delete v.dataset.shown;
+  hero.classList.add("wait");   // Standbild erst zeigen, wenn das Video nicht startet – sonst springt das Bild
+  v.src = "naehrwert-willkommen" + kinds.shift();
+  try{ v.currentTime = 0; }catch(e){}
+  // kurz warten, bis das Fenster hochgefahren ist – dann sieht man die Animation ganz
+  setTimeout(() => { const q = v.play(); if(q && q.catch) q.catch(err => { nwErr("Willkommens-Video", err); toStill(); }); }, 220);
+  setTimeout(() => { if(!v.dataset.shown) toStill(); }, 1200);   // startet es nicht, erscheint einfach das Standbild
 }
 function maybeWelcome(){
   if(profileSaved() || uiGet("welcomeLater") === "1" || document.documentElement.classList.contains("locked")) return;
@@ -3932,6 +3975,34 @@ function saveCombo(meal){
 const NUTR_UNIT = Object.fromEntries(MICROS.map(m=>[m[0], m[2]]).concat([["b","g"],["p","g"]]));
 const NUTR_NAME = Object.fromEntries(MICROS.map(m=>[m[0], m[1]]).concat([["b","Ballaststoffe"],["p","Protein"]]));
 function nutrRef(k, T){ return k==="b" ? T.ballast : k==="p" ? T.protein : T.micros[k]; }
+/* Lebensmittel aus der Grunddatenbank (ohne die 100.000 Markenprodukte), die je üblicher Portion viel von
+   einem Nährstoff liefern – je Anfangswort nur eines. Einmal berechnet, bis sich die Datenbank ändert.
+   (Vorher wurde bei jedem Antippen die ganze Liste quadratisch durchsucht – mit geladenen Markenprodukten
+   hing die App dabei.) */
+const _richCache = {};
+function richFoods(k){
+  const base = blsBase(), sig = base.length + "|" + allLocalItems().length;
+  if(_richCache[k] && _richCache[k].sig === sig) return _richCache[k].foods;
+  const seenF = new Set(), firstW = new Set(), cand = [];
+  allLocalItems().filter(it => it.cat !== "gericht")
+    .concat(base.filter(it => "XYR".indexOf(it.blsGroup) < 0 && !/pulver|getrocknet|mehl|extrakt|lecithin|kaviar|rogen|öl\b/i.test(it.name) || /öl$/i.test(it.name)))
+    .forEach(it => {
+      if(it.isDrink || !((it.per100[k] || 0) > 0) || seenF.has(it.name)) return;
+      seenF.add(it.name);
+      const g = it.portions.length ? it.portions[0][1] : 100;
+      cand.push({it, v: (it.per100[k] || 0) * g / 100, pl: it.portions.length ? it.portions[0][0] + " (" + g + " g)" : "100 g"});
+    });
+  cand.sort((a, b) => b.v - a.v);
+  const foods = [];
+  for(const f of cand){
+    const w = f.it.name.split(/[ ,(]/)[0];
+    if(firstW.has(w)) continue;
+    firstW.add(w); foods.push(f);
+    if(foods.length >= 8) break;
+  }
+  _richCache[k] = {sig, foods};
+  return foods;
+}
 function openSources(k, scope){
   const T = computeTargets(profile), ref = nutrRef(k, T), unit = NUTR_UNIT[k], name = NUTR_NAME[k];
   const week = scope === "woche";
@@ -3957,15 +4028,7 @@ function openSources(k, scope){
   if(k === "natrium"){
     html += '<div class="small muted" style="margin-top:12px">Natrium steckt vor allem in Salz, Brot, Käse, Wurst und Fertiggerichten. Der Referenzwert ist eine Obergrenze, kein Ziel.</div>';
   } else {
-    // Lebensmittel aus der Grunddatenbank, die je üblicher Portion viel liefern
-    const seenF = {};
-    const pool = allLocalItems().filter(it => it.cat!=="gericht")
-      .concat(blsItems().filter(it => "XYR".indexOf(it.blsGroup) < 0 && !/pulver|getrocknet|mehl|extrakt|lecithin|kaviar|rogen|öl\b/i.test(it.name) || /öl$/i.test(it.name)));
-    const foods = pool.filter(it => !it.isDrink && (it.per100[k]||0) > 0 && !seenF[it.name] && (seenF[it.name] = 1)).map(it => {
-      const g = it.portions.length ? it.portions[0][1] : 100;
-      const pl = it.portions.length ? it.portions[0][0] + " (" + g + " g)" : "100 g";
-      return {it, v:(it.per100[k]||0)*g/100, pl};
-    }).sort((a,b)=>b.v-a.v).filter((f,i,arr)=>arr.findIndex(g=>g.it.name.split(/[ ,(]/)[0]===f.it.name.split(/[ ,(]/)[0])===i).slice(0,8);
+    const foods = richFoods(k);
     html += '<div class="small" style="font-weight:600;margin:14px 0 2px">Liefert viel ' + esc(name) + '</div>';
     html += foods.map(f => '<div class="result" data-srcpick="' + esc(f.it.name) + '" role="button" tabindex="0"><div class="name"><b>' + esc(f.it.name) + '</b>' +
       '<span class="num">' + esc(f.pl) + ' → ' + d(f.v) + ' ' + unit + ' · ' + Math.round(f.v/ref*100) + ' % des Tagesbedarfs</span></div><span class="k">+ eintragen</span></div>').join("");
