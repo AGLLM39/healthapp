@@ -182,6 +182,27 @@ css.textContent = [
   ".rv-shop.done .rv-txt{opacity:.5}",
   ".rv-shop.done b{text-decoration:line-through}",
   ".rv-find{flex:0 0 auto; padding:6px 10px; font-size:13px}",
+  ".rv-planner{background:var(--surface2); border-radius:12px; padding:10px 12px; margin:8px 0}",
+  ".rv-plan{display:flex; flex-direction:column; gap:2px; margin-top:8px}",
+  ".rv-pday{display:grid; grid-template-columns:76px 1fr; gap:8px; align-items:start; padding:7px 0; border-bottom:1px solid var(--line)}",
+  ".rv-pday:last-child{border-bottom:none}",
+  ".rv-pd{font-size:13px; font-weight:650; color:var(--muted); padding-top:3px}",
+  ".rv-pitems{display:flex; flex-direction:column; gap:4px; min-width:0}",
+  ".rv-pitem{display:flex; align-items:center; gap:6px; flex-wrap:wrap}",
+  ".rv-pitem.done{opacity:.5}",
+  ".rv-plink{background:transparent; border:none; padding:0; font-size:14.5px; font-weight:600; color:var(--ink); text-align:left}",
+  ".rv-pitem small{font-size:12px; color:var(--muted)}",
+  ".rv-px{margin-left:auto; background:transparent; border:none; color:var(--muted); min-width:32px; min-height:32px; padding:0}",
+  ".rv-ptrow{display:flex; align-items:center; gap:10px; padding:6px 0}",
+  ".rv-plate-sm{flex:0 0 auto; width:44px; height:44px; display:flex; align-items:center; justify-content:center}",
+  ".rv-pttxt{flex:1; min-width:0}",
+  ".rv-pttxt b{display:block; font-size:15px}",
+  ".rv-pttxt small{color:var(--muted); font-size:12.5px}",
+  ".rv-ptadd{flex:0 0 auto; padding:8px 14px}",
+  ".rv-complete > summary{display:flex; justify-content:space-between; align-items:center; cursor:pointer; list-style:none}",
+  ".rv-complete > summary::-webkit-details-marker{display:none}",
+  ".rv-complete > summary h2{margin:0}",
+  ".rv-complete .state{font-size:13px; color:var(--muted)}",
   ".rv-shopwrap{border-bottom:1px solid var(--line)}",
   ".rv-shopwrap:last-of-type{border-bottom:none}",
   ".rv-shopwrap .rv-shop{border-bottom:none}",
@@ -224,6 +245,10 @@ book.innerHTML = '<h2>Rezeptbuch</h2>' +
   '<input type="search" id="rvSearch" class="rv-search" placeholder="Rezept oder Zutat suchen …" autocomplete="off">' +
   '<div class="rv-filters" id="rvFilters"></div><div id="rvList"></div>';
 if(sugCard && sugCard.parentNode) sugCard.parentNode.insertBefore(book, ownCard || null);
+const planCard = document.createElement("div");
+planCard.className = "card"; planCard.id = "mealPlan";
+planCard.innerHTML = '<h2>Essensplan</h2><div class="small muted" style="margin-top:-2px">Rezepte für die nächsten Tage einplanen – öffne ein Rezept und tippe auf „📅 Planen“. Am Tag selbst trägst du sie mit einem Tipp ein.</div><div id="rvPlan"></div>';
+if(sugCard && sugCard.parentNode) sugCard.parentNode.insertBefore(planCard, sugCard.nextSibling);
 const shopCard = document.createElement("div");
 shopCard.className = "card"; shopCard.id = "gapShop";
 shopCard.innerHTML = '<h2>Einkaufsliste für deine Lücken</h2><div class="small muted" style="margin-top:-2px">Lebensmittel, die deine Nährstofflücken der letzten 7 Tage schließen.</div><div id="rvShop"></div>';
@@ -300,6 +325,8 @@ function renderMine(){
   if(own) own.innerHTML = recipes.length ? allOwn().map(rowHTML).join("") : '<div class="empty">Noch keine eigenen Rezepte. Mit „+ Neu“ anlegen – die Zutaten auch per Satz, z. B. „60 g Haferflocken, 200 ml Milch, eine Banane“.</div>';
   // 4. Einkaufsliste für die Lücken der Woche
   drawShop();
+  // 5. Essensplan
+  drawPlan();
 }
 // Wird überall aufgerufen, wo die App die Rezepte neu zeichnet
 renderRecipes = function(){ try{ renderMine(); }catch(e){ console.error(e); } };
@@ -511,6 +538,174 @@ function gapShopText(){
   return "Einkaufsliste für meine Nährstofflücken (7 Tage)\n" + shopNow.items.filter(c => c.count).map(c => "• " + c.name + ": " + shopAmount(c)).join("\n");
 }
 
+/* ---------- Essensplan ----------
+   {"2026-11-18": [{id: "S:Linsen-Bolognese", por: 1, meal: "abend", done: false}, …]} – Rezepte aus dem Rezeptbuch
+   oder eigene. Am geplanten Tag erscheinen sie auf der Heute-Seite zum Eintragen; die Zutaten aller kommenden
+   Pläne ergeben eine gemeinsame Einkaufsliste. */
+let plan = sget("mealPlan", {});
+function planSave(){ sset("mealPlan", plan); }
+function planClean(){
+  const min = shiftKey(todayKey(), -1); let ch = false;
+  Object.keys(plan).forEach(k => { if(k < min || !plan[k] || !plan[k].length){ delete plan[k]; ch = true; } });
+  if(ch) planSave();
+}
+function metaById(id){ return allBook().concat(allOwn()).find(m => m.id === id) || null; }
+function planDays(){ return [0, 1, 2, 3, 4, 5, 6].map(i => shiftKey(todayKey(), i)); }
+function dayShort(k){
+  if(k === todayKey()) return "Heute";
+  if(k === shiftKey(todayKey(), 1)) return "Morgen";
+  return new Date(k + "T12:00:00").toLocaleDateString("de-DE", {weekday: "short", day: "numeric", month: "numeric"});
+}
+function planAdd(m, day, meal, por){
+  (plan[day] = plan[day] || []).push({id: m.id, por: por || 1, meal: meal || "abend"});
+  planSave();
+  toast(m.r.name + " eingeplant: " + dayShort(day) + ", " + MEAL_LABEL[meal || "abend"]);
+  const box = el("rvPlanner"); if(box) box.remove();
+  drawPlan(); if(typeof renderToday === "function") renderToday();
+}
+// Mahlzeit für einen geplanten Tag: nach Art des Rezepts, nicht nach der aktuellen Uhrzeit
+function planMeal(m){ return m.breakfast ? "fruehstueck" : m.brotzeit ? "snack" : cur && cur.meal && cur.meal !== guessMeal() ? cur.meal : "abend"; }
+function togglePlanner(){
+  const old = el("rvPlanner"); if(old){ old.remove(); return; }
+  const tools = el("rvBody").querySelector(".rv-tools");
+  if(!tools) return;
+  tools.insertAdjacentHTML("afterend", '<div class="rv-planner" id="rvPlanner"><div class="small" style="margin-bottom:6px">Für welchen Tag? (' +
+    esc(MEAL_LABEL[planMeal(cur.m)]) + ', ' + (cur.eat === 1 ? "1 Portion" : String(cur.eat).replace(".", ",") + " Portionen") + ').</div><div class="rv-filters">' +
+    planDays().map(k => '<button class="chip" data-rvplanday="' + k + '">' + esc(dayShort(k)) + ((plan[k] || []).length ? " · " + plan[k].length : "") + '</button>').join("") + '</div></div>');
+}
+// Zutaten aller noch offenen Pläne (ab heute), Mengen je Portion × geplante Portionen
+function planIngredients(){
+  const sum = new Map();
+  planDays().forEach(k => (plan[k] || []).forEach(x => {
+    if(x.done) return;
+    const m = metaById(x.id); if(!m) return;
+    const per = (m.kind === "R" ? 1 / (m.r.serves || 1) : 1) * (x.por || 1);
+    m.r.ings.forEach(g => { const n = String(g[0]); sum.set(n, (sum.get(n) || 0) + (+g[1] || 0) * per); });
+  }));
+  return Array.from(sum.entries()).sort((a, b) => a[0].localeCompare(b[0], "de"));
+}
+function planShopText(){
+  return "Einkaufsliste – Essensplan\n" + planIngredients().map(([n, g]) => "• " + n + ": " + amountTxt([n, g], 1)).join("\n");
+}
+function drawPlan(){
+  const box = el("rvPlan"); if(!box) return;
+  planClean();
+  const days = planDays(), any = days.some(k => (plan[k] || []).length);
+  let h = '<div class="rv-plan">' + days.map(k => {
+    const xs = plan[k] || [];
+    return '<div class="rv-pday"><span class="rv-pd">' + esc(dayShort(k)) + '</span><span class="rv-pitems">' +
+      (xs.length ? xs.map((x, i) => {
+        const m = metaById(x.id);
+        return '<span class="rv-pitem' + (x.done ? ' done' : '') + '"><button class="rv-plink" data-rvopen="' + (m ? m.kind + m.i : "") + '">' + esc(m ? m.r.name : "(gelöscht)") +
+          '</button><small>' + esc(MEAL_LABEL[x.meal] || "") + (x.por !== 1 ? ' · ' + String(x.por).replace(".", ",") + '×' : '') + (x.done ? ' · eingetragen' : '') + '</small>' +
+          '<button class="rv-px" data-rvplandel="' + k + '|' + i + '" aria-label="Aus dem Plan nehmen">✕</button></span>';
+      }).join("") : '<span class="small muted">–</span>') + '</span></div>';
+  }).join("") + '</div>';
+  if(any){
+    const ings = planIngredients();
+    h += ings.length ? '<details class="prep" style="margin-top:8px"><summary>Einkaufsliste für den Plan (' + ings.length + ' Zutaten)</summary>' +
+      ings.map(([n, g]) => '<div class="rv-ing"><span>' + esc(n) + '</span><span>' + esc(amountTxt([n, g], 1)) + '</span></div>').join("") +
+      '<div class="rv-tools"><button class="chip" data-rvplanshop="1">Einkaufsliste teilen</button></div></details>' : '';
+  }
+  box.innerHTML = h;
+}
+function planDel(key){
+  const [k, i] = key.split("|");
+  if(plan[k]){ plan[k].splice(+i, 1); planSave(); }
+  drawPlan(); if(typeof renderToday === "function") renderToday();
+}
+
+/* ---------- Tag vervollständigen ----------
+   Abends die Frage „Was fehlt mir heute noch?“: bis zu drei Lebensmittel aus der Einkaufslisten-Auswahl, die die
+   heutigen Lücken am stärksten schließen und zusammen ins restliche Kalorienbudget passen. */
+function completeDay(){
+  const st = todayState(), R = st.remKcal;
+  if(R < 120) return {full: true, R};
+  const need = {}, goal = {};
+  FIT_KEYS().forEach(k => { const g = goalOf(k, st.T); if(g > 0){ goal[k] = g; need[k] = Math.max(0, g - (st.t[k] || 0)); } });
+  const cands = SHOP_FOODS.filter(f => dietOk(shopDiet, f[5]) && f[0] !== "Jodsalz").map(f => {
+    const it = shopItem(f[0]); if(!it || !it.per100) return null;
+    const n = {}; Object.keys(goal).forEach(k => n[k] = (it.per100[k] || 0) * f[1] / 100);
+    return {f, it, n, kcal: (it.per100.kcal || 0) * f[1] / 100};
+  }).filter(Boolean);
+  const picks = [], groups = new Set(); let budget = R + 60;
+  for(let step = 0; step < 3; step++){
+    let best = null, bestS = 0;
+    cands.forEach(c => {
+      if(picks.indexOf(c) >= 0 || groups.has(c.f[4]) || c.kcal > budget) return;
+      const g = Object.keys(goal).reduce((s, k) => s + prio(k) * Math.min(c.n[k], need[k]) / goal[k], 0);
+      const sc = g / (1 + c.kcal / 200);
+      if(sc > bestS){ bestS = sc; best = c; }
+    });
+    if(!best || bestS < 0.04) break;
+    best.gains = Object.keys(goal).map(k => ({k, label: microLabel(k), plus: Math.min(best.n[k], need[k]) / goal[k] * 100}))
+      .filter(x => x.plus >= 4).sort((a, b) => b.plus * prio(b.k) - a.plus * prio(a.k)).slice(0, 3);
+    Object.keys(need).forEach(k => need[k] = Math.max(0, need[k] - best.n[k]));
+    picks.push(best); groups.add(best.f[4]); budget -= best.kcal;
+  }
+  return {picks, R, st};
+}
+const doneToday = new Set();   // in dieser Sitzung schon eingetragene Vorschläge
+function drawTodayExtras(){
+  const meals = el("mealsBox"), card = meals && meals.closest(".card");
+  if(!card) return;
+  const day = curDay(), isToday = day === todayKey();
+  // a) Geplant für den angezeigten Tag
+  let pb = el("planToday");
+  if(!pb){ pb = document.createElement("div"); pb.id = "planToday"; card.parentNode.insertBefore(pb, card); }
+  const xs = (plan[day] || []).map((x, i) => Object.assign({i, m: metaById(x.id)}, x)).filter(x => x.m && !x.done);
+  pb.innerHTML = xs.length ? '<div class="card rv-plantoday"><h2>Geplant für ' + esc(isToday ? "heute" : dayWord(day)) + '</h2>' + xs.map(x =>
+    '<div class="rv-ptrow"><span class="rv-plate-sm">' + plate(x.m.r, "sm") + '</span><span class="rv-pttxt"><b>' + esc(x.m.r.name) + '</b><small class="num">' +
+    esc(MEAL_LABEL[x.meal]) + ' · ' + fmt(Math.round(x.m.item.totals.kcal * (x.por || 1))) + ' kcal</small></span>' +
+    '<button class="primary rv-ptadd" data-plandone="' + day + '|' + x.i + '">Eintragen</button></div>').join("") + '</div>' : "";
+  // b) Tag vervollständigen – nur für heute und wenn schon etwas erfasst ist
+  let cb = el("completeBox");
+  if(!cb){ cb = document.createElement("div"); cb.id = "completeBox"; card.parentNode.insertBefore(cb, card.nextSibling); }
+  if(!isToday || !log.some(e => e.date === day)){ cb.innerHTML = ""; return; }
+  const res = completeDay();
+  if(res.full || !res.picks.length){ cb.innerHTML = ""; return; }
+  const after = (res.st.t.kcal || 0) + res.picks.reduce((s, c) => s + c.kcal, 0);
+  const openNow = new Date().getHours() >= 15;
+  const wasOpen = cb.querySelector("details");
+  cb.innerHTML = '<details class="card rv-complete"' + ((wasOpen ? wasOpen.open : openNow) ? ' open' : '') + '><summary><h2>Tag vervollständigen</h2><span class="state num">noch ' + fmt(Math.round(res.R)) + ' kcal</span></summary>' +
+    '<div class="small muted" style="margin:2px 0 8px">Diese Lebensmittel schließen heute deine größten Lücken und passen zusammen in dein Restbudget.</div>' +
+    res.picks.map(c => '<div class="rv-shop"><span class="rv-txt"><b>' + esc(c.f[0]) + '</b><span class="rv-meta num">' + esc(c.f[2]) + (/\d\s?g\b/.test(c.f[2]) ? '' : ' (' + fmt(c.f[1]) + ' g)') + ' · ' + fmt(Math.round(c.kcal)) + ' kcal</span>' +
+      (c.gains.length ? '<span class="rv-for num">' + c.gains.map(g => esc(g.label) + ' +' + fmt(Math.round(g.plus)) + ' %').join(" · ") + '</span>' : '') + '</span>' +
+      (doneToday.has(c.f[0]) ? '<span class="small muted">eingetragen</span>' : '<button class="ghost rv-find" data-completeadd="' + esc(c.f[0]) + '">+ Eintragen</button>') + '</div>').join("") +
+    '<div class="small muted" style="margin-top:8px">Alle zusammen: danach ' + fmt(Math.round(after)) + ' von ' + fmt(res.st.T.kcal) + ' kcal.</div></details>';
+}
+document.addEventListener("click", ev => {
+  const t = ev.target.closest("[data-plandone],[data-completeadd]");
+  if(!t) return;
+  if(t.dataset.plandone){
+    const [k, i] = t.dataset.plandone.split("|"), x = plan[k] && plan[k][+i], m = x && metaById(x.id);
+    if(!m) return;
+    addRecipe(m, x.por || 1, x.meal); x.done = true; planSave(); drawPlan(); renderToday();
+    return;
+  }
+  const name = t.dataset.completeadd, f = SHOP_FOODS.find(x => x[0] === name), it = f && shopItem(name);
+  if(!it) return;
+  const e = entryFromItem(it, f[1], guessMeal());
+  log.push(e); sset("log", log); doneToday.add(name);
+  toast(name + " → " + MEAL_LABEL[e.meal], undoAdd(e.id)); renderAll();
+});
+// Für den Wochenrückblick: welches Lebensmittel hilft bei einer Lücke am meisten (je üblicher Portion)?
+function tipFor(k){
+  const T = computeTargets(profile), g = goalOf(k, T); if(!(g > 0)) return null;
+  let best = null;
+  SHOP_FOODS.filter(f => dietOk(shopDiet, f[5]) && f[0] !== "Jodsalz").forEach(f => {
+    const it = shopItem(f[0]); if(!it || !it.per100) return;
+    const v = (it.per100[k] || 0) * f[1] / 100, kcal = (it.per100.kcal || 0) * f[1] / 100, sc = v / g / (1 + kcal / 300);
+    if(!best || sc > best.sc) best = {sc, name: f[0], label: f[2], grams: f[1], pct: v / g * 100, maxWeek: f[3]};
+  });
+  return best && best.pct >= 5 ? best : null;
+}
+// Heute-Seite nach jedem Neuzeichnen ergänzen
+if(typeof renderToday === "function"){
+  const baseToday = renderToday;
+  renderToday = function(){ const r = baseToday.apply(this, arguments); try{ drawTodayExtras(); }catch(e){ if(window.nwErr) nwErr("Heute-Ergänzungen", e); } return r; };
+}
+
 /* ---------- Rezept-Ansicht ---------- */
 const sheet = document.createElement("div");
 sheet.className = "sheet"; sheet.id = "recipeView";
@@ -559,6 +754,7 @@ function drawView(){
   let h = '<div class="rv-viewhero">' + plate(r, "lg") + '</div>' + '<div class="rv-meta num">' + esc([m.min ? m.min + " Min." : "", m.cold ? "ohne Kochen" : "", diet,
     m.kind === "R" && (r.serves || 1) > 1 ? "Rezept für " + r.serves + " Portionen" : ""].filter(Boolean).join(" · ")) + '</div>';
   h += '<div class="rv-tools"><button class="chip" data-rvsave="1">' + (isSaved(m) ? "★ Gemerkt" : "☆ Merken") + '</button>' +
+    '<button class="chip" data-rvplan="1">📅 Planen</button>' +
     (m.kind === "R" ? '<button class="chip" data-rvedit="1">Bearbeiten</button><button class="chip" data-rvdel="1">Löschen</button>' : '') + '</div>';
   // Je Portion
   h += '<div class="rv-sec">Je Portion</div><div class="rv-stats num">' +
@@ -703,6 +899,9 @@ view && view.addEventListener("click", ev => {
     return;
   }
   if(keyOf(t, "data-rvshopshare")){ shareShopping(gapShopText(), el("rvShop")); return; }
+  const pd = keyOf(t, "data-rvplandel");
+  if(pd){ planDel(pd); return; }
+  if(keyOf(t, "data-rvplanshop")){ shareShopping(planShopText(), el("rvPlan")); return; }
   const fl = keyOf(t, "data-rvfilter");
   if(fl){ filter = fl; showAll = false; renderMine(); return; }
   if(keyOf(t, "data-rvmore")){ showAll = true; renderMine(); return; }
@@ -737,6 +936,8 @@ sheet.addEventListener("click", ev => {
   if(t.dataset.rvmealpick){ cur.meal = t.dataset.rvmealpick; drawView(); return; }
   if(t.dataset.rvsave){ const on = toggleSaved(m); toast(on ? "Gemerkt" : "Nicht mehr gemerkt"); drawView(); renderMine(); return; }
   if(t.dataset.rvshop){ shareShopping(); return; }
+  if(t.dataset.rvplan){ togglePlanner(); return; }
+  if(t.dataset.rvplanday){ planAdd(m, t.dataset.rvplanday, planMeal(m), cur.eat); return; }
   if(t.dataset.rvaddcur){ const amt = cur.eat, meal = cur.meal; closeSheets(); addRecipe(m, amt, meal); return; }
   if(t.dataset.rvedit){ const i = m.i; closeSheets(); openRecipeEditor(i); return; }
   if(t.dataset.rvdel){
@@ -748,5 +949,5 @@ sheet.addEventListener("click", ev => {
   }
 });
 
-window.NW_REZEPTE = {open: openView, fit, recMeta, render: renderMine};
+window.NW_REZEPTE = {open: openView, fit, recMeta, render: renderMine, tipFor, completeDay};
 })();

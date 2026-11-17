@@ -2581,6 +2581,7 @@ function entryFromItem(item, amount, meal){
   return {
     id: newId(),
     date: curDay(),
+    t: curDay() === todayKey() ? Date.now() : undefined,   // Uhrzeit (für die Koffein-Kurve); nachgetragene Tage ohne
     meal: item.isDrink ? "getraenk" : meal,
     name: item.name,
     amount, unit: item.isRecipe ? "Portion" : (item.isDrink ? "ml" : "g"),
@@ -4886,7 +4887,7 @@ if(window.NW_ANIM && window.NW_ANIM.after) window.NW_ANIM.after(() => setTimeout
 (function(){
   // Die rund 100.000 Markenprodukte (naehrwert-offline-2.js, 21 MB) kommen erst, wenn sie gebraucht werden – s. NW_OFF2_LOAD
   var files = ["naehrwert-bls.js", "naehrwert-ch.js", "naehrwert-produkte.js", "naehrwert-scan.js", "naehrwert-wasser.js",
-               "naehrwert-sprache.js", "naehrwert-etikett.js", "naehrwert-rezepte.js"];
+               "naehrwert-sprache.js", "naehrwert-etikett.js", "naehrwert-rezepte.js", "naehrwert-extras.js"];
   var begun = false;
   function go(){
     if(begun) return; begun = true;

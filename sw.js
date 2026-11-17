@@ -2,12 +2,13 @@
    App-Dateien kommen aus dem Cache und werden im Hintergrund aktualisiert.
    Anfragen an fremde Server (Open Food Facts, Scanner-Bibliothek) laufen normal
    übers Netz; die Scanner-Bibliothek wird nach dem ersten Laden mitgecacht. */
-const CACHE = "naehrwert-v44";
-const FILES = ["./", "index.html", "naehrwert-design.css", "naehrwert-produkte.js", "naehrwert-bls.js", "naehrwert-ch.js", "naehrwert-scan.js", "naehrwert-wasser.js", "naehrwert-offline-2.js", "naehrwert-sprache.js", "naehrwert-etikett.js", "naehrwert-rezepte.js", "manifest.webmanifest",
+const CACHE = "naehrwert-v45";
+const FILES = ["./", "index.html", "naehrwert-design.css", "naehrwert-produkte.js", "naehrwert-bls.js", "naehrwert-ch.js", "naehrwert-scan.js", "naehrwert-wasser.js", "naehrwert-offline-2.js", "naehrwert-sprache.js", "naehrwert-etikett.js", "naehrwert-rezepte.js", "naehrwert-extras.js", "manifest.webmanifest",
                "naehrwert-intro-hell.mov", "naehrwert-intro-dunkel.mov", "naehrwert-intro-hell.webm", "naehrwert-intro-dunkel.webm",
                "naehrwert-intro-hell.webp", "naehrwert-intro-dunkel.webp",
                "naehrwert-zoom-hell.mov", "naehrwert-zoom-dunkel.mov", "naehrwert-zoom-hell.webm", "naehrwert-zoom-dunkel.webm",
                "naehrwert-teller-hell.png", "naehrwert-teller-dunkel.png", "naehrwert-willkommen.webp", "naehrwert-willkommen.mov", "naehrwert-willkommen.webm",
+               "naehrwert-portion-el.webp", "naehrwert-portion-tl.webp", "naehrwert-portion-handvoll.webp", "naehrwert-portion-scheibe.webp", "naehrwert-portion-glas.webp", "naehrwert-portion-tasse.webp", "naehrwert-portion-teller.webp",
                "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", ev => {

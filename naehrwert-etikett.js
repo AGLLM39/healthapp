@@ -315,6 +315,19 @@ function saveLabel(){
 }
 /* Texterkennung: Nährwerttabelle vom Foto lesen und die Felder vorbelegen */
 let _tess = null;
+// Foto aufbereiten: Handyfotos sind 12 MP und farbig – Tesseract liest besser (und viel schneller) bei etwa
+// 1800 px Kantenlänge in Graustufen mit kräftigem Kontrast
+async function prepImage(file){
+  try{
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+    const cv = document.createElement("canvas"); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+    const cx = cv.getContext("2d", {willReadFrequently: true});
+    cx.filter = "grayscale(1) contrast(1.6)";
+    cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+    return cv;
+  }catch(e){ return file; }
+}
 async function ocrLabel(file){
   const st = $("#lblOcr");
   st.textContent = "Texterkennung wird geladen (einmalig etwa 2 MB) …";
@@ -325,7 +338,7 @@ async function ocrLabel(file){
       corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1",
       langPath: "https://cdn.jsdelivr.net/npm/@tesseract.js-data/deu@1.0.0/4.0.0_best_int"});
     st.textContent = "Etikett wird gelesen …";
-    const r = await _tess.recognize(file);
+    const r = await _tess.recognize(await prepImage(file));
     const found = parseLabel(r.data.text || "");
     let n = 0;
     Object.keys(found).forEach(k => {
@@ -336,6 +349,7 @@ async function ocrLabel(file){
     if(Object.keys(found).some(k => LBL_MICROS.indexOf(k) >= 0)) $("#labelBody details").open = true;
     st.textContent = n ? n + " Werte erkannt – bitte kurz mit dem Etikett vergleichen und dann übernehmen." : "Keine Werte erkannt. Fotografiere die Nährwerttabelle möglichst gerade und formatfüllend – oder tippe die Werte ab.";
   }catch(e){
+    if(window.nwErr) nwErr("Etikett-Texterkennung", e);
     st.textContent = "Texterkennung nicht verfügbar (Internet nötig). Tippe die Werte bitte ab.";
   }
 }
@@ -363,8 +377,40 @@ function parseLabel(text){
       else if(u === "µg" && want === "mg") v /= 1000; else if(u === "mg" && want === "g") v /= 1000;
     }
     out[k] = sigE(v);
+    // Texterkennung liest das „g“ oft als „9“: „12 g“ → „129g“, „7,5 g“ → „7,59“. Dann gibt es eine zweite Lesart ohne die 9.
+    const raw = m[1].replace(/[<\s]/g, "");
+    if(LBL_MACROS.some(x => x[0] === k) && k !== "kcal" && /9$/.test(raw) && raw.length >= 2 && (!m[2] || m[2] === "g")){
+      const alt = parseFloat(raw.slice(0, -1).replace(/\.$/, ""));
+      if(!isNaN(alt)){
+        (out._alt = out._alt || {})[k] = sigE(alt);
+        // „7,59“ ohne Einheit: zwei Nachkommastellen bei Fett, Kohlenhydraten, Eiweiß sind auf Etiketten unüblich
+        if(!m[2] && /\.\d9$/.test(raw) && k !== "salz") (out._likely = out._likely || {})[k] = true;
+      }
+    }
   });
+  resolveNines(out);
+  delete out._alt; delete out._likely;
   return out;
+}
+// Unter allen Lesarten die wählen, die zusammenpasst: je 100 g höchstens 100 g, „davon“ nicht mehr als das Ganze,
+// und die Energie aus Fett, Kohlenhydraten, Eiweiß und Ballaststoffen möglichst nah an den angegebenen kcal
+function resolveNines(o){
+  const alts = Object.keys(o._alt || {}); if(!alts.length) return;
+  let best = null;
+  for(let mask = 0; mask < (1 << alts.length); mask++){
+    const c = Object.assign({}, o);
+    alts.forEach((k, i) => { if(mask & (1 << i)) c[k] = o._alt[k]; });
+    let pen = 0;
+    ["f", "sf", "c", "z", "p", "b"].forEach(k => { if(c[k] > 100) pen += 1000; });
+    if(c.sf > (c.f || 0) + .01) pen += 500;
+    if(c.z > (c.c || 0) + .01) pen += 500;
+    if(((c.f || 0) + (c.c || 0) + (c.p || 0) + (c.b || 0)) > 102) pen += 500;
+    if(c.kcal > 0) pen += Math.abs(9 * (c.f || 0) + 4 * (c.c || 0) + 4 * (c.p || 0) + 2 * (c.b || 0) - c.kcal) / Math.max(40, c.kcal) * 100;
+    alts.forEach((k, i) => { const on = !!(mask & (1 << i)), likely = !!(o._likely && o._likely[k]);
+      pen += likely ? (on ? 0 : 3) : (on ? .5 : 0); });   // im Zweifel die gelesene Zahl lassen – außer bei „7,59“ ohne Einheit
+    if(!best || pen < best.pen) best = {pen, c};
+  }
+  alts.forEach(k => { o[k] = best.c[k]; });
 }
 
 /* ---------- 4. Letzte Schätzstufe: ähnliche Lebensmittel und Gerichte ---------- */
