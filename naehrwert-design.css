@@ -262,7 +262,7 @@ header.app .date, html.app header.app .date{font-size:13.5px}
 .entry .kcal, .result .k{font-size:14px}
 .micro .lbl{font-size:14px}
 .micro .val{font-size:13px}
-.micro{grid-template-columns:104px 1fr 112px}
+.micro{grid-template-columns:136px 1fr 108px}
 .chart .goal span, .chart .col.empty span, .chartlabels span{font-size:13px}
 .gaplist .tag{font-size:13.5px}
 .recipecard .why{font-size:13px}

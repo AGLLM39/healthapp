@@ -151,8 +151,11 @@ textarea:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 /* ---------- Mikro-Balken ---------- */
 .mgrp{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:12px 0 2px}
 .mgrp:first-child{margin-top:4px}
-.micro{display:grid; grid-template-columns:96px 1fr 104px; gap:8px; align-items:center; padding:5px 0}
-.micro .lbl{font-size:13px}
+.micro{display:grid; grid-template-columns:124px 1fr 104px; gap:8px; align-items:center; padding:5px 0}
+.micro .lbl{font-size:13px; display:flex; align-items:center; gap:6px; min-width:0}
+/* Nährstoff-Icons: Lebensmittel als Symbol, transparent, 256 px WebP */
+.nico{width:26px; height:26px; flex:0 0 auto; object-fit:contain}
+.srcico{float:right; width:64px; height:64px; object-fit:contain; margin:-4px 0 4px 10px}
 .micro .bar{height:8px; background:var(--surface2); border-radius:999px; overflow:hidden}
 .micro .bar{display:flex}
 .micro .bar i{display:block; height:100%; border-radius:999px; transition:width .4s ease}
@@ -1473,6 +1476,10 @@ const MICROS = [
 ];
 /* Seit Oktober 2026 ergänzt. Ältere Einträge und Lebensmittel ohne Angabe haben diese Werte nicht –
    sie gelten dann als „keine Angabe“ statt als 0. */
+/* Icon je Nährstoff: naehrwert-naehrstoff-<key>.webp (rein schmückend, daher alt="") */
+function nutrIcon(k, cls){
+  return MICROS.some(m => m[0] === k) ? '<img class="'+cls+'" src="naehrwert-naehrstoff-'+k+'.webp" alt="" width="64" height="64" loading="lazy" decoding="async">' : '';
+}
 const NEW_MICROS = ["vitK","b1","b2","niacin","b6","pantothen","biotin","phosphor","kupfer","mangan","selen"];
 /* Herkunft des Referenzwerts, wo es kein DGE-Referenzwert im engeren Sinn ist */
 const REF_NOTE = {vitE:"DGE-Schätzwert", vitK:"DGE-Schätzwert", pantothen:"DGE-Schätzwert", biotin:"DGE-Schätzwert",
@@ -2930,7 +2937,7 @@ function renderToday(){
     let color = p100 < 70 ? "var(--warn)" : "var(--ok)";
     if(k==="natrium") color = p100 > 100 ? "var(--over)" : "var(--ok)";
     if(k==="natrium" ? p100 <= 100 : p100 >= 70) inTarget++;
-    return head + '<div class="micro" data-nutr="'+k+'" role="button" tabindex="0"><span class="lbl">'+label+'</span>' +
+    return head + '<div class="micro" data-nutr="'+k+'" role="button" tabindex="0"><span class="lbl">'+nutrIcon(k, "nico")+'<span>'+label+'</span></span>' +
       '<span class="bar"><i style="width:'+(wAll-wEst)+'%;background:'+color+'"></i>' +
       (wEst > 0 ? '<i class="est" style="width:'+wEst+'%;background-color:'+color+'"></i>' : '') + '</span>' +
       '<span class="val num"'+(estShare > 0 ? ' title="'+Math.round(estShare*100)+' % davon geschätzt"' : '')+'>'+(estShare >= 0.5 ? '≈ ' : '')+fmt(val, val<10?1:0)+' / '+fmtRef(ref)+' '+unit+'</span></div>';
@@ -4231,7 +4238,7 @@ function openSources(k, scope){
   const total = Object.values(agg).reduce((a,b)=>a+b,0);
   const top = Object.entries(agg).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const d = v => fmt(v, v<10?1:0);
-  let html = '<div class="small muted" style="margin-bottom:6px">' + (week
+  let html = nutrIcon(k, "srcico") + '<div class="small muted" style="margin-bottom:6px">' + (week
     ? "Letzte 7 Tage · Ø " + d(total) + " von " + fmtRef(ref) + " " + unit + " pro erfasstem Tag"
     : dayName(curDay()) + " · " + d(total) + " von " + fmtRef(ref) + " " + unit + " (" + Math.round(total/ref*100) + " %)") + '</div>';
   html += '<details class="prep"><summary>Warum ist ' + esc(name) + ' wichtig?</summary>' + infoList(k) + '</details>';

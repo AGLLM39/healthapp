@@ -3,7 +3,7 @@
    Anfragen an fremde Server (Open Food Facts, USDA) laufen normal übers Netz und
    werden nie gecacht. Scanner- und Texterkennungs-Bibliotheken liegen unter vendor/
    und werden beim ersten Gebrauch mitgecacht. */
-const CACHE = "naehrwert-v53";
+const CACHE = "naehrwert-v54";
 const FILES = ["./", "index.html", "naehrwert-design.css", "naehrwert-produkte.js", "naehrwert-bls.js", "naehrwert-ch.js", "naehrwert-scan.js", "naehrwert-wasser.js", "naehrwert-offline-2.js", "naehrwert-sprache.js", "naehrwert-etikett.js", "naehrwert-rezepte.js", "naehrwert-extras.js", "manifest.webmanifest",
                "naehrwert-intro-hell.mov", "naehrwert-intro-dunkel.mov", "naehrwert-intro-hell.webm", "naehrwert-intro-dunkel.webm",
                "naehrwert-intro-hell.webp", "naehrwert-intro-dunkel.webp",
