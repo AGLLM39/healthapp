@@ -92,6 +92,19 @@ button.ghost{background:transparent; border:1px solid var(--line)}
 button.danger{background:var(--over); color:var(--on-over); font-weight:600}
 button:disabled{opacity:.35; cursor:default}
 button.chip{padding:6px 11px; border-radius:999px; font-size:13px; border:1px solid var(--line); background:var(--surface)}
+.legal h4{margin:16px 0 4px; font-size:14px}
+.legal p, .legal li{font-size:13.5px; line-height:1.5}
+.legal p{margin:0 0 8px}
+.legal ul{margin:0 0 8px; padding-left:18px}
+.legal a{color:var(--accent)}
+.legal li{margin-bottom:4px}
+.legaltabs{display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 6px; position:sticky; top:0; background:var(--surface); padding:4px 0 6px; z-index:1}
+#legalSheet{z-index:53}
+html.locked #legalSheet.open{display:flex !important; z-index:120}
+html.locked #overlay.open{display:block !important; z-index:110}
+#lockScreen .legallinks{margin-top:16px}
+.legallinks{display:flex; flex-wrap:wrap; gap:6px 14px; justify-content:center; margin-top:12px; font-size:12.5px}
+.legallinks a{color:var(--muted)}
 button.chip[aria-pressed="true"]{background:var(--accent-soft); border-color:var(--accent); color:var(--accent); font-weight:600}
 input[type=text],input[type=number],input[type=search],input[type=password],select,textarea{
   font:inherit; color:inherit; background:var(--surface); border:1px solid var(--line);
@@ -816,6 +829,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
     <div class="err" id="lockErr" role="alert"></div>
     <label class="remember"><input type="checkbox" id="lockRemember"> Auf diesem Gerät angemeldet bleiben</label>
     <button class="primary" type="submit" style="width:100%">Öffnen</button>
+    <div class="legallinks"><a href="#impressum" data-legal="impressum">Impressum</a><a href="#datenschutz" data-legal="datenschutz">Datenschutz</a><a href="#hinweis" data-legal="hinweis">Hinweis zur Nutzung</a></div>
   </form>
 </div>
 
@@ -881,7 +895,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
         <span><i style="background:var(--warn)"></i>unter 70 %</span>
         <span><i style="background:var(--over)"></i>Natrium über Referenz</span>
       </div>
-      <div class="small muted" style="margin-top:8px">Referenz: DGE-Referenzwerte (<span id="refLabel"></span>). Tipp auf einen Nährstoff zeigt, woher er kommt.</div>
+      <div class="small muted" style="margin-top:8px">Referenz: DGE-Referenzwerte (<span id="refLabel"></span>). Tipp auf einen Nährstoff zeigt, woher er kommt. Kein Ersatz für ärztliche Beratung – <a href="#hinweis" data-legal="hinweis">mehr</a>.</div>
       </div>
     </details>
   </section>
@@ -1012,6 +1026,16 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
     <div class="card">
       <h2>Datenquellen</h2>
       <div class="small muted" id="sourceInfo"></div>
+    </div>
+    <div class="card">
+      <h2>Rechtliches</h2>
+      <div class="small muted" style="margin-bottom:10px">NährWert dient der allgemeinen Information und ersetzt keine ärztliche oder ernährungsfachliche Beratung.</div>
+      <div class="legaltabs" style="position:static;padding:0">
+        <button class="chip" data-legal="impressum">Impressum</button>
+        <button class="chip" data-legal="datenschutz">Datenschutz</button>
+        <button class="chip" data-legal="hinweis">Hinweis zur Nutzung</button>
+        <button class="chip" data-legal="quellen">Quellen &amp; Lizenzen</button>
+      </div>
     </div>
   </section>
 </div>
@@ -1145,6 +1169,8 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
     <div class="err" id="welcomeErr" role="alert"></div>
     <button class="primary" id="btnWelcome" style="width:100%">Los geht's</button>
     <button class="ghost" id="btnWelcomeLater" style="width:100%;margin-top:8px">Später</button>
+    <div class="small muted" style="margin-top:12px;text-align:center">NährWert ersetzt keine ärztliche Beratung.</div>
+    <div class="legallinks"><a href="#hinweis" data-legal="hinweis">Hinweis zur Nutzung</a><a href="#datenschutz" data-legal="datenschutz">Datenschutz</a><a href="#impressum" data-legal="impressum">Impressum</a></div>
   </div>
 </div>
 
@@ -1192,6 +1218,107 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
   <div class="grab"></div>
   <div class="head"><h3 id="srcTitle">Woher kommt's?</h3><button class="ghost" data-close>Schließen</button></div>
   <div class="body" id="srcBody"></div>
+</div>
+
+<!-- ============ Rechtliches: Impressum, Datenschutz, Hinweis, Quellen ============
+     Persönliche Angaben stehen nur an einer Stelle: NW_BETREIBER im Skript unten. -->
+<div class="sheet" id="legalSheet" role="dialog" aria-label="Rechtliches">
+  <div class="grab"></div>
+  <div class="head"><h3 id="legalTitle">Rechtliches</h3><button class="ghost" id="legalClose">Schließen</button></div>
+  <div class="body legal">
+    <div class="legaltabs" role="tablist">
+      <button class="chip" data-legal="impressum">Impressum</button>
+      <button class="chip" data-legal="datenschutz">Datenschutz</button>
+      <button class="chip" data-legal="hinweis">Hinweis</button>
+      <button class="chip" data-legal="quellen">Quellen</button>
+    </div>
+
+    <section data-legalpage="impressum" data-title="Impressum">
+      <h4>Angaben gemäß § 5 DDG</h4>
+      <p><span data-op="name"></span><br><span data-op="strasse"></span><br><span data-op="ort"></span><br>Deutschland</p>
+      <h4>Kontakt</h4>
+      <p>E-Mail: <span data-op="email"></span></p>
+      <h4>Über die App</h4>
+      <p>NährWert ist ein privates, nicht-kommerzielles Projekt. Die App ist kostenlos und enthält keine Werbung.</p>
+    </section>
+
+    <section data-legalpage="datenschutz" data-title="Datenschutz">
+      <p class="muted">Stand: <span data-op="stand"></span></p>
+      <h4>1. Kurz gesagt</h4>
+      <ul>
+        <li>NährWert hat <b>kein Benutzerkonto und keinen eigenen Server</b>. Alles, was du einträgst (Mahlzeiten, Getränke, Profil mit Größe, Gewicht, Alter, Geschlecht, Aktivität), wird <b>nur auf deinem Gerät</b> im Browser gespeichert. Ich als Betreiber sehe diese Daten nie.</li>
+        <li>Es gibt <b>keine Cookies, keine Werbung, kein Tracking und keine Analyse-Tools</b>.</li>
+        <li>Nur wenn du bestimmte Funktionen nutzt, ruft dein Browser Dienste Dritter auf (Open Food Facts, USDA, ggf. die Spracherkennung deines Browsers). Dabei wird deine IP-Adresse übertragen. Was genau, steht unten.</li>
+      </ul>
+      <h4>2. Verantwortlicher</h4>
+      <p><span data-op="name"></span>, <span data-op="strasse"></span>, <span data-op="ort"></span><br>E-Mail: <span data-op="email"></span><br>Ein Datenschutzbeauftragter ist nicht bestellt und nicht vorgeschrieben.</p>
+      <h4>3. Hosting über GitHub Pages</h4>
+      <p>Die App wird über GitHub Pages bereitgestellt, einen Dienst der GitHub Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, USA. Beim Aufruf verarbeitet GitHub technisch notwendige Daten, insbesondere IP-Adresse, Datum und Uhrzeit, die aufgerufene Datei, Browser-Typ und Betriebssystem, und speichert sie in Server-Logs, um den Dienst sicher und stabil zu betreiben. Ich habe darauf keinen Zugriff. Auch die Programmbibliotheken für Barcode-Scanner und Texterkennung kommen von dort; es wird kein weiteres Content Delivery Network genutzt.</p>
+      <p>Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer sicheren und erreichbaren Bereitstellung). GitHub ist nach dem EU-U.S. Data Privacy Framework zertifiziert (Angemessenheitsbeschluss, Art. 45 DSGVO). Mehr: <a href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Privacy Statement</a>.</p>
+      <h4>4. Speicherung auf deinem Gerät</h4>
+      <p>NährWert speichert Einträge, Profil, Einstellungen, eigene Rezepte und Produkte sowie zwischengespeicherte Online-Ergebnisse im lokalen Speicher deines Browsers (localStorage und IndexedDB). Damit die App offline funktioniert, legt ein Service Worker die Programmdateien im Browser-Cache ab.</p>
+      <ul>
+        <li>Diese Daten verlassen dein Gerät nicht und werden nicht an mich übertragen. Angaben wie Gewicht, Alter oder Ernährung können Gesundheitsdaten sein; da sie nur bei dir liegen, verarbeite ich sie nicht.</li>
+        <li>Rechtsgrundlage für das Speichern im Browser: § 25 Abs. 2 Nr. 2 TDDDG, weil es für die von dir gewünschte Funktion unbedingt erforderlich ist.</li>
+        <li><b>Löschen:</b> im Profil über „Alles zurücksetzen …“ oder indem du die Website-Daten im Browser löschst. Gelöschte Daten lassen sich nur aus einer eigenen Sicherung wiederherstellen.</li>
+        <li><b>Sicherung:</b> Eine Sicherungsdatei liegt dort, wo du sie speicherst; für ihren Schutz bist du selbst verantwortlich.</li>
+        <li><b>Sperre:</b> Die Passwort-Sperre verhindert nur, dass jemand die App auf deinem Gerät einfach öffnet. Sie verschlüsselt die Daten nicht.</li>
+      </ul>
+      <h4>5. Kamera und Mikrofon</h4>
+      <p>Kamera (Barcode-Scanner, Etikett-Foto) und Mikrofon (Spracheingabe) werden nur nach deiner Freigabe im Browser und nur während der jeweiligen Funktion verwendet.</p>
+      <ul>
+        <li><b>Barcode und Etikett:</b> Bilder werden auf deinem Gerät ausgewertet, nicht gespeichert und nicht hochgeladen. Übertragen wird höchstens die erkannte Barcode-Nummer an Open Food Facts (Nr. 6).</li>
+        <li><b>Spracheingabe:</b> Die App nutzt die Spracherkennung deines Browsers (Web Speech API). Wo der Browser es anbietet, läuft sie auf dem Gerät. Andernfalls schickt der Browser die Aufnahme zur Umwandlung in Text an seinen Hersteller, z. B. <b>Google</b> (Chrome, Android) oder <b>Apple</b> (Safari). Das geschieht durch deinen Browser, nicht durch NährWert; ich erhalte weder Audio noch Text. Es gelten die Datenschutzbestimmungen des Browser-Herstellers. Wenn du das nicht möchtest, nutze die Texteingabe. Den erkannten Satz wertet NährWert nur auf deinem Gerät aus.</li>
+        <li>Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (deine Einwilligung durch die Freigabe im Browser), jederzeit in den Browser-Einstellungen widerrufbar.</li>
+      </ul>
+      <h4>6. Open Food Facts</h4>
+      <p>Wenn du online nach Produkten suchst, einen Barcode scannst, der nicht in der Offline-Datenbank steht, oder fehlende Nährwerte ergänzt werden, ruft dein Browser die Schnittstelle von Open Food Facts auf (gemeinnütziger Verein Open Food Facts, Frankreich). Übertragen werden IP-Adresse, technische Browserdaten sowie Suchbegriff, Barcode-Nummer oder Kategorie- und Zutatenbezeichnungen des Produkts, aber keine Profil- oder Tagebuchdaten.</p>
+      <p>Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse, dir die angefragten Produktdaten anzuzeigen). Mehr: <a href="https://world.openfoodfacts.org/privacy" target="_blank" rel="noopener">Datenschutz bei Open Food Facts</a>.</p>
+      <h4>7. USDA FoodData Central</h4>
+      <p>Fehlen danach noch Vitamin- oder Mineralstoffwerte, fragt die App die Nährstoffdatenbank des US-Landwirtschaftsministeriums ab (U.S. Department of Agriculture, National Agricultural Library, USA). Übertragen werden IP-Adresse, technische Browserdaten, der Lebensmittelname und ein API-Schlüssel. Ohne eigenen Schlüssel nutzt die App den öffentlichen Demo-Schlüssel „DEMO_KEY“. Ein eigener Schlüssel wird nur auf deinem Gerät gespeichert und bei jeder Abfrage an USDA gesendet; USDA kann die Abfragen dann der beim Schlüssel hinterlegten E-Mail-Adresse zuordnen.</p>
+      <p>Die USA haben für US-Behörden keinen Angemessenheitsbeschluss. Ein mit dem europäischen vergleichbares Datenschutzniveau ist nicht garantiert; insbesondere können US-Behörden auf die Daten zugreifen. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse, dir möglichst vollständige Nährstoffwerte anzuzeigen). Übertragen wird nur ein Lebensmittelname, keine Tagebuch- oder Profildaten. Mehr: <a href="https://www.usda.gov/privacy-policy" target="_blank" rel="noopener">USDA Privacy Policy</a>.</p>
+      <h4>8. Links zu anderen Websites</h4>
+      <p>Erst wenn du einen Link zu einer Datenquelle antippst, wird die fremde Seite aufgerufen; dort gilt deren Datenschutzerklärung.</p>
+      <h4>9. Deine Rechte</h4>
+      <p>Du hast das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch gegen Verarbeitungen auf Grundlage berechtigter Interessen (Art. 21). Eine Einwilligung kannst du jederzeit mit Wirkung für die Zukunft widerrufen (Art. 7 Abs. 3).</p>
+      <p>Da ich deine Tagebuchdaten nicht erhalte, kann ich dazu weder Auskunft geben noch sie löschen; das kannst du jederzeit selbst auf deinem Gerät tun. Für die Verarbeitung durch GitHub, Open Food Facts, USDA und Browser-Hersteller wende dich bitte direkt an diese.</p>
+      <p>Du kannst dich bei einer Datenschutz-Aufsichtsbehörde beschweren, z. B. bei der für mich zuständigen: <span data-op="aufsicht"></span>.</p>
+      <h4>10. Änderungen</h4>
+      <p>Ich passe diese Erklärung an, wenn sich die App ändert. Es gilt die jeweils in der App angezeigte Fassung.</p>
+    </section>
+
+    <section data-legalpage="hinweis" data-title="Hinweis zur Nutzung">
+      <p>NährWert ist ein Ernährungstagebuch zur allgemeinen Information. Die App <b>ersetzt keine ärztliche Beratung, Diagnose oder Behandlung</b> und keine Ernährungsberatung durch Fachpersonal.</p>
+      <ul>
+        <li>Die Referenzwerte stammen von der Deutschen Gesellschaft für Ernährung (DGE) und gelten für <b>gesunde Menschen</b>. Bei Krankheit, Schwangerschaft und Stillzeit, Essstörungen, für Kinder oder bei Einnahme von Medikamenten kann der Bedarf deutlich abweichen.</li>
+        <li>Nährwerte sind Durchschnittswerte aus Datenbanken. Echte Lebensmittel weichen davon ab. Mit „≈“ markierte Werte sind Schätzungen, z. B. aus ähnlichen Produkten oder der Zutatenliste, und können ungenau sein.</li>
+        <li>Ein niedriger oder hoher Wert in der App ist kein Hinweis auf einen Mangel oder eine Überversorgung. Ob ein Mangel vorliegt, kann nur ärztlich festgestellt werden, z. B. per Blutuntersuchung.</li>
+        <li>Nimm Nahrungsergänzungsmittel nicht allein aufgrund der App ein. Einige Vitamine und Mineralstoffe (z. B. Vitamin A, Vitamin D, Eisen, Jod) können in hoher Dosis schaden.</li>
+        <li>Wenn dich das Tracken unter Druck setzt oder dein Essverhalten belastet, sprich mit deiner Hausärztin, deinem Hausarzt oder einer Beratungsstelle für Essstörungen.</li>
+      </ul>
+      <p>Alle Angaben ohne Gewähr. Für Entscheidungen, die du auf Grundlage der App triffst, wird keine Haftung übernommen, soweit gesetzlich zulässig.</p>
+    </section>
+
+    <section data-legalpage="quellen" data-title="Quellen und Lizenzen">
+      <h4>Bundeslebensmittelschlüssel (BLS) 4.0</h4>
+      <p>Max Rubner-Institut (2025): Bundeslebensmittelschlüssel (BLS), Version 4.0 – Deutsche Nährstoffdatenbank. Karlsruhe. DOI <a href="https://doi.org/10.25826/Data20251217-134202-0" target="_blank" rel="noopener">10.25826/Data20251217-134202-0</a>, <a href="https://blsdb.de" target="_blank" rel="noopener">blsdb.de</a>. Lizenz: <a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>. Für NährWert auf 21 Nährstoffe reduziert, gerundet sowie um Portionsgrößen und Koffein-Richtwerte ergänzt. Vitamin E und Omega-3 der Grundnahrungsmittel stammen ebenfalls aus dem BLS. Das Max Rubner-Institut ist nicht für die Bearbeitung verantwortlich und unterstützt NährWert nicht.</p>
+      <h4>Schweizer Nährwertdatenbank</h4>
+      <p>Schweizer Nährwertdatenbank V 7.1 (01.07.2026), Bundesamt für Lebensmittelsicherheit und Veterinärwesen BLV, <a href="https://naehrwertdaten.ch" target="_blank" rel="noopener">naehrwertdaten.ch</a>. Für NährWert auf 21 Nährstoffe reduziert, Getränke über die Dichte auf 100 ml umgerechnet, Portionsgrößen und Koffein ergänzt.</p>
+      <h4>Open Food Facts</h4>
+      <p>Enthält Informationen aus <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a>, die unter der <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">Open Database License (ODbL) 1.0</a> bereitgestellt werden. Einzelne Inhalte stehen unter der <a href="https://opendatacommons.org/licenses/dbcl/1-0/" target="_blank" rel="noopener">Database Contents License (DbCL) 1.0</a>.</p>
+      <p><b>Abgeleitete Datenbank:</b> NährWert hat die Open-Food-Facts-Daten bearbeitet: Einheiten umgerechnet, Koffein und Portionsgrößen aus der Produktkategorie abgeleitet und fehlende Vitamin- und Mineralstoffwerte durch den Median ähnlicher Produkte derselben Gruppe geschätzt (in der App mit „≈“ markiert). Diese bearbeiteten Daten stehen ebenfalls unter der ODbL 1.0 und lassen sich vollständig herunterladen: <a href="naehrwert-produkte.js" download>naehrwert-produkte.js</a>, <a href="naehrwert-offline-2.js" download>naehrwert-offline-2.js</a> (auch im <a href="https://github.com/AGLLM39/healthapp" target="_blank" rel="noopener">GitHub-Repository</a>).</p>
+      <h4>USDA FoodData Central</h4>
+      <p>U.S. Department of Agriculture, Agricultural Research Service: FoodData Central, <a href="https://fdc.nal.usda.gov" target="_blank" rel="noopener">fdc.nal.usda.gov</a>. Gemeinfrei (CC0 1.0).</p>
+      <h4>Referenzwerte</h4>
+      <p>Deutsche Gesellschaft für Ernährung e. V. (DGE): Referenzwerte für die Nährstoffzufuhr, <a href="https://www.dge.de/wissenschaft/referenzwerte/" target="_blank" rel="noopener">dge.de</a>. Mangan: Schätzwert der Europäischen Behörde für Lebensmittelsicherheit (EFSA). Die Werte wurden nach Alter und Geschlecht zugeordnet. DGE und EFSA stehen in keiner Verbindung zu NährWert.</p>
+      <h4>Software</h4>
+      <ul>
+        <li><a href="https://github.com/zxing-js/library" target="_blank" rel="noopener">ZXing-js</a> 0.21.3 (Barcode-Erkennung), <a href="vendor/zxing/LICENSE" target="_blank">Apache License 2.0</a></li>
+        <li><a href="https://github.com/naptha/tesseract.js" target="_blank" rel="noopener">Tesseract.js</a> 5.1.1 und tesseract.js-core (Texterkennung), <a href="vendor/tesseract/LICENSE.md" target="_blank">Apache License 2.0</a></li>
+        <li>Deutsche Sprachdaten aus <a href="https://github.com/tesseract-ocr/tessdata_best" target="_blank" rel="noopener">tessdata_best</a> (Apache License 2.0), verpackt von @tesseract.js-data/deu (MIT)</li>
+      </ul>
+    </section>
+  </div>
 </div>
 
 <!-- ============ Bestätigen ============ -->
@@ -4130,7 +4257,7 @@ async function openScanner(){
     }catch(e){}
   }
   try{
-    if(!window.ZXing) await loadScript("https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js");
+    if(!window.ZXing) await loadScript("vendor/zxing/index.min.js");
     if(!scanStream) return;
     const hints = new Map();
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8, ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E]);
@@ -4686,7 +4813,7 @@ function renderSourceInfo(){
       ? '<p style="margin:0">Markenprodukte: <b>' + productItems().length.toLocaleString("de-DE") + '</b> in Deutschland verkaufte Produkte aus ' +
         '<a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a>, Stand ' + esc(productStand()) + '. ' +
         'Die Daten stehen unter der <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">Open Database License</a>. ' +
-        'Koffein und Portionsgrößen sind aus der Produktkategorie abgeleitet.</p>'
+        'Koffein und Portionsgrößen sind aus der Produktkategorie abgeleitet, fehlende Mikronährstoffe teils geschätzt (≈). Diese abgeleitete Datenbank steht ebenfalls unter der ODbL: <a href="#quellen" data-legal="quellen">Details und Download</a>.</p>'
       : '<p style="margin:0">Markenprodukte: Die Datei <code>naehrwert-produkte.js</code> wurde nicht gefunden. Lege sie in denselben Ordner wie diese Seite.</p>');
 }
 
@@ -4978,5 +5105,56 @@ if(window.NW_ANIM && window.NW_ANIM.after) window.NW_ANIM.after(() => setTimeout
     document.body.appendChild(s);
   };
   window.NW_OFF2_READY = function(){ return new Promise(function(res){ window.NW_OFF2_LOAD(res); }); };
+})();
+</script>
+
+<script>
+/* Rechtliches: Impressum, Datenschutz, Hinweis zur Nutzung, Quellen.
+   Persönliche Angaben NUR HIER eintragen – sie erscheinen in Impressum und Datenschutzerklärung.
+   Direkt verlinkbar: …/#impressum, #datenschutz, #hinweis, #quellen */
+var NW_BETREIBER = {
+  name:     "[VORNAME NACHNAME]",
+  strasse:  "[STRASSE HAUSNUMMER]",
+  ort:      "[PLZ ORT]",
+  email:    "[E-MAIL-ADRESSE]",
+  aufsicht: "[DATENSCHUTZ-AUFSICHTSBEHÖRDE DES BUNDESLANDS]",
+  stand:    "25.11.2026"
+};
+(function(){
+  var sheet = document.getElementById("legalSheet");
+  if(!sheet) return;
+  sheet.querySelectorAll("[data-op]").forEach(function(s){ s.textContent = NW_BETREIBER[s.dataset.op] || ""; });
+  var pages = ["impressum", "datenschutz", "hinweis", "quellen"];
+  function show(name){
+    sheet.querySelectorAll("[data-legalpage]").forEach(function(p){
+      var on = p.dataset.legalpage === name;
+      p.hidden = !on;
+      if(on) document.getElementById("legalTitle").textContent = p.dataset.title;
+    });
+    sheet.querySelectorAll(".legaltabs [data-legal]").forEach(function(b){ b.setAttribute("aria-pressed", b.dataset.legal === name ? "true" : "false"); });
+    sheet.querySelector(".body").scrollTop = 0;
+  }
+  function open(name){
+    show(name);
+    if(sheet.classList.contains("open")) return;
+    var other = document.querySelector(".sheet.open");
+    if(!other && typeof lockScroll === "function") lockScroll();
+    document.getElementById("overlay").classList.add("open");
+    sheet.classList.add("open");
+  }
+  function close(){
+    sheet.classList.remove("open");
+    if(location.hash && pages.indexOf(location.hash.slice(1)) >= 0) history.replaceState(null, "", location.pathname + location.search);
+    if(!document.querySelector(".sheet.open") && typeof closeSheets === "function") closeSheets();
+  }
+  window.nwOpenLegal = open;
+  document.addEventListener("click", function(e){
+    var t = e.target.closest && e.target.closest("[data-legal]");
+    if(t){ e.preventDefault(); e.stopPropagation(); open(t.dataset.legal); return; }
+    if(e.target.id === "legalClose"){ e.stopPropagation(); close(); }
+  }, true);
+  function fromHash(){ var h = location.hash.slice(1); if(pages.indexOf(h) >= 0) open(h); }
+  window.addEventListener("hashchange", fromHash);
+  fromHash();
 })();
 </script>

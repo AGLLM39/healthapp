@@ -1,8 +1,9 @@
 /* NährWert – Service Worker: macht die App offline nutzbar.
    App-Dateien kommen aus dem Cache und werden im Hintergrund aktualisiert.
-   Anfragen an fremde Server (Open Food Facts, Scanner-Bibliothek) laufen normal
-   übers Netz; die Scanner-Bibliothek wird nach dem ersten Laden mitgecacht. */
-const CACHE = "naehrwert-v46";
+   Anfragen an fremde Server (Open Food Facts, USDA) laufen normal übers Netz und
+   werden nie gecacht. Scanner- und Texterkennungs-Bibliotheken liegen unter vendor/
+   und werden beim ersten Gebrauch mitgecacht. */
+const CACHE = "naehrwert-v47";
 const FILES = ["./", "index.html", "naehrwert-design.css", "naehrwert-produkte.js", "naehrwert-bls.js", "naehrwert-ch.js", "naehrwert-scan.js", "naehrwert-wasser.js", "naehrwert-offline-2.js", "naehrwert-sprache.js", "naehrwert-etikett.js", "naehrwert-rezepte.js", "naehrwert-extras.js", "manifest.webmanifest",
                "naehrwert-intro-hell.mov", "naehrwert-intro-dunkel.mov", "naehrwert-intro-hell.webm", "naehrwert-intro-dunkel.webm",
                "naehrwert-intro-hell.webp", "naehrwert-intro-dunkel.webp",
@@ -25,8 +26,7 @@ self.addEventListener("fetch", ev => {
   if(req.method !== "GET") return;
   const url = new URL(req.url);
   const own = url.origin === location.origin;
-  const zxing = url.hostname === "cdn.jsdelivr.net" && url.pathname.indexOf("/@zxing/") >= 0;
-  if(!own && !zxing) return;            // Open Food Facts usw. nie cachen
+  if(!own) return;                      // Open Food Facts, USDA usw. nie cachen
   // Die Seite selbst: zuerst aus dem Netz (damit Updates sofort ankommen), offline aus dem Cache
   if(req.mode === "navigate"){
     ev.respondWith(fetch(req).then(res => {
