@@ -119,13 +119,15 @@ const SYN = {
   "hafermilch":"Haferdrink (ungesüßt)", "sojamilch":"Sojadrink (ungesüßt)", "mandelmilch":"Mandeldrink (ungesüßt)", "tomatensauce":"Tomatensauce (Passata)",
   "tomatensosse":"Tomatensauce (Passata)", "sosse":"Tomatensauce (Passata)", "weintraube":"Weintrauben", "trauben":"Weintrauben", "ol":"Olivenöl",
   "nusse":["Walnüsse","Haselnüsse","Mandeln","Cashewkerne","Erdnüsse","Studentenfutter"], "nuss":["Walnüsse","Haselnüsse","Mandeln"],
-  "obst":["Apfel","Banane","Orange"], "gemuse":["Tiefkühl-Gemüsemischung","Brokkoli","Karotte"], "beeren":["Blaubeeren","Erdbeeren","Himbeeren"]
+  "obst":["Apfel","Banane","Orange"], "gemuse":["Tiefkühl-Gemüsemischung","Brokkoli","Karotte"], "beeren":["Blaubeeren","Erdbeeren","Himbeeren"],
+  "heidelbeeren":"Blaubeeren", "heidelbeere":"Blaubeeren"
 };
 // Beilagen nach „mit“: übliche Menge in g, true = je Scheibe/Stück des Hauptlebensmittels
 const ADDON = [[/butter|margarine/,10,true],[/marmelade|konfiture|gelee/,20,true],[/honig/,10,true],[/nutella|nuss nougat|nougat|schokocreme/,15,true],
   [/frischkase/,20,true],[/kase|gouda|emmentaler|camembert|feta/,20,true],[/salami|schinken|wurst|mortadella|aufschnitt/,15,true],
   [/milch|drink/,150],[/zucker|sussstoff/,5],[/sahne/,20],[/ketchup|mayo|senf|remoulade/,15],[/pesto/,30],[/sosse|sauce|sugo|passata/,100],[/dressing/,20],
-  [/\bol\b|olivenol|rapsol/,10],[/quark|joghurt|skyr/,100]];
+  [/\bol\b|olivenol|rapsol/,10],[/quark|joghurt|skyr/,100],
+  [/gurke/,40],[/tomate/,60],[/paprika/,40],[/zwiebel/,20],[/radieschen/,30],[/schnittlauch|petersilie|krauter/,3]];
 
 /* ---------- Satz zerlegen ---------- */
 function prep(text){
@@ -137,7 +139,54 @@ function prep(text){
     .replace(/([a-zA-ZäöüÄÖÜß])(\d)/g, "$1 $2")
     .replace(/\s*&\s*/g, " und ");
 }
-const SPLIT = /\s+(?:und|sowie|plus|dazu|ausserdem|außerdem|danach|dann|anschließend|anschliessend|zusätzlich|zusatzlich)\s+/i;
+const SPLIT = /\s+(?:und|sowie|plus|dazu|ausserdem|außerdem|danach|dann|anschließend|anschliessend|zusätzlich|zusatzlich|in\s+(?:den|die|das|meinen|meine|meinem)|ins)\s+/i;
+
+/* Wortart für das Zerlegen ohne „und“/Komma (die Spracherkennung setzt oft keine Kommas) */
+function wordKind(tok){
+  const w = normalize(tok.replace(/^[„"'(]+|[“"'),:]+$/g, "")).replace(/[^a-z0-9§%-]/g, "");
+  if(!w) return "skip";
+  if(/^\d+(§\d+)?$/.test(w) || wordNum(w) != null) return "num";
+  if(w === "mit") return "mit";
+  if(w in FRACTION || w in SIZE || FEW.has(w) || FILL.has(w) || w === "hand" || w === "voll" || w === "à") return "skip";
+  if(UNIT_WORDS[w]) return "unit";
+  return "food";
+}
+/* „drei Eier zwei Scheiben Toast“ → „drei Eier“ | „zwei Scheiben Toast“.
+   Neuer Eintrag, wenn nach einem Lebensmittel eine Mengenangabe kommt, auf die wieder ein Lebensmittel folgt.
+   „Banane 70 Gramm“ und „Brot mit 2 Scheiben Käse“ bleiben zusammen. */
+function splitByQty(text){
+  const toks = text.split(/\s+/).filter(Boolean), kinds = toks.map(wordKind);
+  const out = [];
+  let cur = [], hasFood = false, prev = "";
+  for(let i = 0; i < toks.length; i++){
+    const k = kinds[i];
+    if(k === "num" && hasFood && prev !== "mit"){
+      let j = i + 1;
+      while(j < kinds.length && (kinds[j] === "num" || kinds[j] === "unit" || kinds[j] === "skip")) j++;
+      if(j < kinds.length && kinds[j] === "food"){ out.push(cur.join(" ")); cur = []; hasFood = false; }
+    }
+    cur.push(toks[i]);
+    if(k === "food") hasFood = true;
+    if(k !== "skip") prev = k;
+  }
+  if(cur.length) out.push(cur.join(" "));
+  return out;
+}
+/* „Tomaten Gurke Feta“ → drei Lebensmittel, wenn jedes Wort für sich genau ein Lebensmittel ist
+   und es keinen Namen für die ganze Wendung gibt („Spaghetti Bolognese“, „Milch Reis“ → Milchreis bleiben) */
+function splitList(phrase){
+  const ws = phrase.split(/\s+/).filter(w => wordKind(w) !== "skip");
+  if(ws.length < 2 || ws.length > 5 || ws.some(w => wordKind(w) !== "food")) return null;
+  const q = normalize(ws.join(" ")).replace(/[^a-z0-9%]+/g, " ").trim();
+  const whole = findCandidates(q);
+  if(whole.length){
+    const n = whole[0].it; vname(n);
+    const qs = q.split(" ").sort().join(" ");
+    if(n._vn === q || n._vn === q.replace(/ /g, "") || n._vn.split(" ").sort().join(" ") === qs) return null;
+  }
+  const hits = ws.map(w => findCandidates(w)[0]);
+  return hits.every(h => h && h.s >= 100) ? ws : null;
+}
 
 /* Ein Satzteil → {food, qty, unit, size, few} */
 function parseSpec(raw){
@@ -263,6 +312,7 @@ function scoreItem(it, q, qw){
   s -= Math.max(0, it._vc - qw.length) * 4;
   const h = history().c[it.name];
   if(h) s += Math.min(20, 4 * h);
+  if(/(^| )roh$/.test(it._vn) && qw.indexOf("roh") < 0) s += 5;   // rohes Grundlebensmittel vor „gezuckert“, „gedünstet“
   return s + srcBonus(it) - it.name.length * 0.01;   // bei Gleichstand der kürzere Name
 }
 /* Kandidaten für einen Namen, beste zuerst */
@@ -398,21 +448,38 @@ function parseText(text){
   const out = [];
   let meal = null;
   const clauses = [];
-  prep(text).split(/[;,.!?:\n]+/).forEach(c => c.split(SPLIT).forEach(x => clauses.push(x)));
-  clauses.forEach(clause => {
+  // first: erster Teil nach einem Komma; danach gehört „und Marmelade“ noch zum „Brot mit Butter“ davor
+  prep(text).split(/[;,.!?:\n]+/).forEach(c => c.split(SPLIT).forEach((x, i) => clauses.push({x, first: i === 0})));
+  let carry = null;
+  clauses.forEach(({x: clause, first}) => {
+    if(first) carry = null;
     const c = " " + clause.trim() + " ";
     MEAL_WORDS.forEach(([k, rx]) => { if(rx.test(c)) meal = k; });
-    const keep = c.replace(MEAL_STRIP, "$1").replace(/\s+ohne\s.*$/i, "").trim();
-    if(!keep) return;
-    const parts = keep.split(/\s+mit\s+/i);
+    const keep0 = c.replace(MEAL_STRIP, "$1").replace(/\s+ohne\s.*$/i, "").trim();
+    if(!keep0) return;
+    splitByQty(keep0).forEach(keep => { carry = parsePart(keep, meal, out, carry); });
+  });
+  return out;
+}
+/* gibt das Hauptlebensmittel zurück, wenn der Teil Beilagen hatte („Brot mit Butter“) */
+function parsePart(keep, meal, out, carry){
+    let parts = keep.split(/\s+mit\s+/i);
+    // „Salat mit Tomaten Gurke“: Aufzählung ohne „und“ in Einzelteile
+    if(parts.length > 1) parts = parts.slice(0, 1).concat([].concat.apply([], parts.slice(1).map(p => splitList(p) || [p])));
+    else { const l = splitList(keep); if(l){ l.forEach(w => { carry = parsePart(w, meal, out, carry); }); return carry; } }
     const specs = parts.map(parseSpec);
-    if(!specs[0].food && specs.length === 1) return;
+    if(!specs[0].food && specs.length === 1) return carry;
+    // „… mit Butter und Marmelade“: weitere Beilage ohne eigene Menge
+    if(carry && parts.length === 1 && specs[0].qty == null && !specs[0].unit && addonGrams(specs[0].food)){
+      out.push(makeRow(parts[0], specs[0], meal, carry));
+      return carry;
+    }
     // Ganze Wendung behalten („Kaffee mit Milch“, „Müsli mit Milch & Obst“)?
     if(parts.length > 1 && specs.slice(1).every(s => s.qty == null && !s.unit)){
       const whole = strictWhole(specs.map(s => s.food).join(" mit "));
       if(whole){
         out.push(makeRow(parts.join(" mit "), Object.assign({}, specs[0], {food: specs.map(s => s.food).join(" mit ")}), meal, null, whole));
-        return;
+        return null;
       }
     }
     let main = null;
@@ -422,8 +489,7 @@ function parseText(text){
       out.push(row);
       if(i === 0) main = row;
     });
-  });
-  return out;
+    return parts.length > 1 ? main : null;
 }
 function makeRow(phrase, spec, meal, main, forced){
   const cands = findCandidates(spec.food);
