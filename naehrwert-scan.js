@@ -92,7 +92,7 @@ function toggleTorch(){
   $("#btnTorch").textContent = torchOn ? "Licht aus" : "Licht an";
 }
 async function zxing(){
-  if(!window.ZXing) await loadScript("https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js");
+  if(!window.ZXing) await loadScript("vendor/zxing/index.min.js");
   return window.ZXing;
 }
 function zxHints(Z){
