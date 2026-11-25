@@ -1316,7 +1316,12 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
       <p>Schweizer Nährwertdatenbank V 7.1 (01.07.2026), Bundesamt für Lebensmittelsicherheit und Veterinärwesen BLV, <a href="https://naehrwertdaten.ch" target="_blank" rel="noopener">naehrwertdaten.ch</a>. Für NährWert auf 22 Nährstoffe reduziert; Selen auch für gleichnamige Lebensmittel des Bundeslebensmittelschlüssels übernommen, Getränke über die Dichte auf 100 ml umgerechnet, Portionsgrößen und Koffein ergänzt.</p>
       <h4>Open Food Facts</h4>
       <p>Enthält Informationen aus <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a>, die unter der <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">Open Database License (ODbL) 1.0</a> bereitgestellt werden. Einzelne Inhalte stehen unter der <a href="https://opendatacommons.org/licenses/dbcl/1-0/" target="_blank" rel="noopener">Database Contents License (DbCL) 1.0</a>.</p>
-      <p><b>Abgeleitete Datenbank:</b> NährWert hat die Open-Food-Facts-Daten bearbeitet: Einheiten umgerechnet, Koffein und Portionsgrößen aus der Produktkategorie abgeleitet und fehlende Vitamin- und Mineralstoffwerte durch den Median ähnlicher Produkte derselben Gruppe geschätzt (in der App mit „≈“ markiert). Diese bearbeiteten Daten stehen ebenfalls unter der ODbL 1.0 und lassen sich vollständig herunterladen: <a href="naehrwert-produkte.js" download>naehrwert-produkte.js</a>, <a href="naehrwert-offline-2.js" download>naehrwert-offline-2.js</a> (auch im <a href="https://github.com/AGLLM39/healthapp" target="_blank" rel="noopener">GitHub-Repository</a>).</p>
+      <p><b>Abgeleitete Datenbank:</b> NährWert hat die Open-Food-Facts-Daten bearbeitet: Einheiten umgerechnet, Koffein und Portionsgrößen aus der Produktkategorie abgeleitet und fehlende Vitamin- und Mineralstoffwerte durch den Median ähnlicher Produkte derselben Gruppe geschätzt (in der App mit „≈“ markiert). Diese bearbeiteten Daten stehen ebenfalls unter der ODbL 1.0 und lassen sich vollständig herunterladen:</p>
+      <ul>
+        <li><a href="naehrwert-produkte.js" download>naehrwert-produkte.js</a> (ca. 5 MB)</li>
+        <li><a href="naehrwert-offline-2.js" download>naehrwert-offline-2.js</a> (ca. 21 MB)</li>
+      </ul>
+      <p>Format: JSON-Daten in einer JavaScript-Datei, Felder und Bearbeitungsschritte sind im Dateikopf beschrieben. Beide Dateien liegen auch im <a href="https://github.com/AGLLM39/healthapp" target="_blank" rel="noopener">GitHub-Repository</a>. Wer sie weitergibt oder verändert, muss sie ebenfalls unter der ODbL 1.0 anbieten.</p>
       <h4>USDA FoodData Central</h4>
       <p>U.S. Department of Agriculture, Agricultural Research Service: FoodData Central, <a href="https://fdc.nal.usda.gov" target="_blank" rel="noopener">fdc.nal.usda.gov</a>. Gemeinfrei (CC0 1.0).</p>
       <h4>Referenzwerte</h4>
@@ -4858,7 +4863,8 @@ function renderSourceInfo(){
       ? '<p style="margin:0">Markenprodukte: <b>' + productItems().length.toLocaleString("de-DE") + '</b> in Deutschland verkaufte Produkte aus ' +
         '<a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a>, Stand ' + esc(productStand()) + '. ' +
         'Die Daten stehen unter der <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">Open Database License</a>. ' +
-        'Koffein und Portionsgrößen sind aus der Produktkategorie abgeleitet, fehlende Mikronährstoffe teils geschätzt (≈). Diese abgeleitete Datenbank steht ebenfalls unter der ODbL: <a href="#quellen" data-legal="quellen">Details und Download</a>.</p>'
+        'Koffein und Portionsgrößen sind aus der Produktkategorie abgeleitet, fehlende Mikronährstoffe teils geschätzt (≈). Diese abgeleitete Datenbank steht ebenfalls unter der ODbL und lässt sich herunterladen: ' +
+        '<a href="naehrwert-produkte.js" download>naehrwert-produkte.js</a> (ca. 5 MB), <a href="naehrwert-offline-2.js" download>naehrwert-offline-2.js</a> (ca. 21 MB). <a href="#quellen" data-legal="quellen">Details</a>.</p>'
       : '<p style="margin:0">Markenprodukte: Die Datei <code>naehrwert-produkte.js</code> wurde nicht gefunden. Lege sie in denselben Ordner wie diese Seite.</p>');
 }
 

@@ -606,7 +606,12 @@ renderAltHint = function(it){
   const raw = it.raw || it, code = raw.code || addCtx.pendingCode;
   const box = $("#altHint");
   const txt = raw.userLabel ? "Etikettwerte selbst eingetragen – ändern" : it.simEst ? "Nur grob geschätzt – Werte vom Etikett eintragen" : "Werte vom Etikett eintragen oder korrigieren";
-  box.insertAdjacentHTML("beforeend", '<div style="margin:-4px 0 10px"><button class="chip" id="btnLabelEdit">' + txt + '</button></div>');
+  const chip = '<button class="chip" id="btnLabelEdit">' + txt + '</button>';
+  // Fehlen Vitaminwerte, sind sie nur grob geschätzt oder selbst eingetragen, steht der Knopf direkt da; sonst unter „Mehr“
+  const hasMicros = it.est || it.labelMicros || (raw.labelMicros);
+  box.insertAdjacentHTML("beforeend", raw.userLabel || it.simEst || !hasMicros
+    ? '<div style="margin:-4px 0 10px">' + chip + '</div>'
+    : '<details class="prep" style="margin:-6px 0 8px"><summary>Mehr</summary>' + chip + '</details>');
   $("#btnLabelEdit", box).onclick = () => openLabel(code, it);
 };
 

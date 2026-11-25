@@ -3,7 +3,8 @@
    2. Fokus-Nährstoffe: bis zu zwei Nährstoffe als Kacheln neben Protein, Kohlenhydraten und Fett
    3. Koffein-Kurve: wie viel Koffein heute noch im Körper ist und was davon beim Schlafengehen übrig bleibt
    4. Wochenrückblick: eine Karte oben in „Woche“ mit Deutung statt nur Zahlen; montags ein Hinweis auf „Heute“
-   5. Portionshilfe: kleine Bilder (in Blender gerendert) zu Portionsangaben wie „1 EL“ oder „1 Handvoll“ */
+   5. Portionshilfe: kleine Bilder (in Blender gerendert) zu Portionsangaben wie „1 EL“ oder „1 Handvoll“
+   6. „Mehr“: selten genutzte Funktionen (Koffein-Kurve, Essensplan) eingeklappt am Ende von Heute und Rezepte */
 (function(){
 "use strict";
 if(typeof renderToday !== "function") return;
@@ -17,7 +18,10 @@ css.textContent = [
   "#streakNote b{color:var(--accent); font-weight:700}",
   "#focusTiles{margin-top:8px}",
   "#focusTiles:empty{display:none}",
-  ".cafcurve{margin-top:12px; padding-top:10px; border-top:1px solid var(--line)}",
+  ".cafcurve{margin-top:4px}",
+  ".morefold .morebox > .card{box-shadow:none; border:none; padding:0; margin:0; background:none}",
+  ".morefold .morebox > * + *{margin-top:16px; padding-top:14px; border-top:1px solid var(--line)}",
+  ".morefold .morebox h2{font-size:15px}",
   ".cafcurve svg{display:block; width:100%; height:auto; margin-top:6px}",
   ".cafcurve .cl{fill:color-mix(in srgb, var(--drink) 22%, transparent); stroke:var(--drink); stroke-width:2}",
   ".cafcurve .cg{stroke:var(--line); stroke-width:1}",
@@ -92,6 +96,30 @@ document.addEventListener("click", ev => {
   sset("focusNutr", focus); drawFocusPicker(); drawFocusTiles();
 });
 
+/* ---------- 6. „Mehr“-Bereich ----------
+   Eingeklappte Karte am Ende einer Ansicht für selten genutzte Funktionen. Auf/zu wird gemerkt. */
+function moreBox(view, id, hint){
+  let d = el(id);
+  if(!d){
+    const sec = el("view-" + view); if(!sec) return null;
+    d = document.createElement("details"); d.className = "card microfold morefold"; d.id = id;
+    d.innerHTML = '<summary><h2>Mehr</h2><span class="state">' + esc(hint) + '</span></summary><div class="morebox"></div>';
+    if(uiGetX(id) === "1") d.open = true;
+    d.addEventListener("toggle", () => uiSetX(id, d.open ? "1" : "0"));
+    sec.appendChild(d);
+  }
+  return d.querySelector(".morebox");
+}
+// Essensplan aus dem Rezepte-Modul in „Mehr“ verschieben; neu eingeplante Rezepte klappen den Bereich auf
+(function movePlan(){
+  const plan = el("mealPlan"), host = plan && moreBox("rezepte", "moreRezepte", "Essensplan");
+  if(!host) return;
+  plan.classList.remove("card"); host.appendChild(plan);
+  const box = el("rvPlan"), cnt = () => box ? box.querySelectorAll("[data-rvplandel]").length : 0;
+  let last = cnt();
+  if(box) new MutationObserver(() => { const n = cnt(); if(n > last) el("moreRezepte").open = true; last = n; }).observe(box, {childList: true, subtree: true});
+})();
+
 /* ---------- 3. Koffein-Kurve ----------
    Halbwertszeit von Koffein bei Erwachsenen im Mittel etwa 5 Stunden (große Spannbreite: 2–10 h).
    Aufnahme vereinfacht über 45 Minuten. Einträge ohne Uhrzeit (nachgetragen oder kopiert) bekommen die
@@ -110,14 +138,12 @@ function cafAt(es, h){
   }, 0);
 }
 function drawCaffeine(){
-  const cv = el("cafVal"); if(!cv) return;
-  const card = cv.closest(".card");
+  if(!el("cafVal")) return;
   let box = el("cafCurve");
-  if(!box){ box = document.createElement("div"); box.id = "cafCurve"; box.className = "cafcurve"; const q = el("quickDrinks"); card.insertBefore(box, q || null); }
+  if(!box){ const host = moreBox("heute", "moreHeute", "Koffein-Kurve"); if(!host) return; box = document.createElement("div"); box.id = "cafCurve"; box.className = "cafcurve"; host.appendChild(box); }
   const day = curDay(), isToday = day === todayKey();
   const es = log.filter(e => e.date === day && e.cf > 0).map(e => ({cf: e.cf, h: hourOf(e)}));
-  if(!es.length){ box.innerHTML = ""; box.style.display = "none"; return; }
-  box.style.display = "";
+  if(!es.length){ box.innerHTML = '<div class="small"><b>Koffein im Körper</b></div><div class="small muted">Sobald du ' + (isToday ? "heute" : "an diesem Tag") + ' Kaffee, Tee oder andere koffeinhaltige Getränke einträgst, siehst du hier, wie viel Koffein bis zum Schlafengehen übrig bleibt.</div>'; return; }
   const now = new Date(), hNow = now.getHours() + now.getMinutes() / 60;
   const atBed = cafAt(es, BED), atNow = cafAt(es, hNow);
   const pts = [], H0 = 6, H1 = 24.5;
