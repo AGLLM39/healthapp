@@ -141,7 +141,14 @@ textarea:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 .micro{display:grid; grid-template-columns:96px 1fr 104px; gap:8px; align-items:center; padding:5px 0}
 .micro .lbl{font-size:13px}
 .micro .bar{height:8px; background:var(--surface2); border-radius:999px; overflow:hidden}
+.micro .bar{display:flex}
 .micro .bar i{display:block; height:100%; border-radius:999px; transition:width .4s ease}
+.micro .bar i:not(:last-child){border-radius:999px 0 0 999px}
+.micro .bar i.est{border-radius:0 999px 999px 0; opacity:.55; background-image:repeating-linear-gradient(135deg, rgba(255,255,255,.55) 0 2px, transparent 2px 5px)}
+.micro .bar i.est:first-child{border-radius:999px}
+.legend i.estsw{background:var(--muted); opacity:.55; background-image:repeating-linear-gradient(135deg, rgba(255,255,255,.6) 0 2px, transparent 2px 5px)}
+.weekhint{display:flex; gap:8px; align-items:center; width:100%; text-align:left; font:inherit; font-size:13px; color:var(--ink); background:var(--surface2); border:0; border-radius:10px; padding:8px 12px; margin:0 0 10px; cursor:pointer}
+.weekhint b{font-weight:650}
 .micro .val{font-size:11.5px; color:var(--muted); text-align:right; white-space:nowrap}
 .legend{display:flex; gap:14px; margin-top:10px; font-size:11.5px; color:var(--muted); flex-wrap:wrap}
 .legend i{display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:5px; vertical-align:-1px}
@@ -871,6 +878,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
       <div id="mealsBox"></div>
     </div>
 
+    <div id="weekHint"></div>
     <details class="card microfold" id="microFold">
       <summary><h2>Mikronährstoffe</h2><span class="state num" id="microState"></span></summary>
       <div>
@@ -880,7 +888,9 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
         <span><i style="background:var(--ok)"></i>im Zielbereich</span>
         <span><i style="background:var(--warn)"></i>unter 70 %</span>
         <span><i style="background:var(--over)"></i>Natrium über Referenz</span>
+        <span><i class="estsw"></i>geschätzt</span>
       </div>
+      <div class="small muted" style="margin-top:6px">Schraffiert: Anteil aus geschätzten Werten (z. B. Durchschnitt ähnlicher Produkte). ≈ vor der Zahl: mindestens die Hälfte ist geschätzt.</div>
       <div class="small muted" style="margin-top:8px">Referenz: DGE-Referenzwerte (<span id="refLabel"></span>). Tipp auf einen Nährstoff zeigt, woher er kommt.</div>
       </div>
     </details>
@@ -2613,12 +2623,16 @@ function isLiquidFood(e){
 }
 function entryMl(e){ return e.isDrink ? (e.ml || 0) : isLiquidFood(e) ? e.amount : 0; }
 
+/* Ist dieser Mikro-Wert eines Eintrags geschätzt (ähnliches Lebensmittel, OFF-Gruppenmedian, Standardwerte)? */
+function entryEstKey(e, k){ return !!e.est && (e.estKeys ? e.estKeys.indexOf(k) >= 0 : k !== "natrium"); }
+
 function dayTotals(dk){
   const t = {}; ALL_KEYS.forEach(k=>t[k]=0);
-  t.ml=0; t.cf=0; t.drinkKcal=0; t.drinkSugar=0;
+  t.ml=0; t.cf=0; t.drinkKcal=0; t.drinkSugar=0; t.est={};
   const es = log.filter(e=>e.date===dk);
   es.forEach(e => {
     ALL_KEYS.forEach(k => t[k] += e.n[k]||0);
+    MICROS.forEach(([k]) => { if(e.n[k] && entryEstKey(e, k)) t.est[k] = (t.est[k]||0) + e.n[k]; });
     if(e.isDrink){ t.ml += e.ml||0; t.cf += e.cf||0; t.drinkKcal += e.n.kcal||0; t.drinkSugar += e.n.z||0; }
     else if(isLiquidFood(e)){ t.ml += e.amount; t.drinkKcal += e.n.kcal||0; t.drinkSugar += e.n.z||0; }
   });
@@ -2763,18 +2777,22 @@ function renderToday(){
   $("#microBox").innerHTML = MICROS.map(([k,label,unit,gr]) => {
     const head = gr !== mgrp ? '<div class="mgrp">'+(mgrp = gr)+'</div>' : '';
     const val = t[k], ref = T.micros[k], p100 = val/ref*100;
+    const estV = Math.min(val, (t.est && t.est[k]) || 0), estShare = val > 0 ? estV/val : 0;
+    const wAll = Math.min(100, p100), wEst = wAll * estShare;
     let color = p100 < 70 ? "var(--warn)" : "var(--ok)";
     if(k==="natrium") color = p100 > 100 ? "var(--over)" : "var(--ok)";
     if(k==="natrium" ? p100 <= 100 : p100 >= 70) inTarget++;
     return head + '<div class="micro" data-nutr="'+k+'" role="button" tabindex="0"><span class="lbl">'+label+'</span>' +
-      '<span class="bar"><i style="width:'+Math.min(100,p100)+'%;background:'+color+'"></i></span>' +
-      '<span class="val num">'+fmt(val, val<10?1:0)+' / '+fmtRef(ref)+' '+unit+'</span></div>';
+      '<span class="bar"><i style="width:'+(wAll-wEst)+'%;background:'+color+'"></i>' +
+      (wEst > 0 ? '<i class="est" style="width:'+wEst+'%;background-color:'+color+'"></i>' : '') + '</span>' +
+      '<span class="val num"'+(estShare > 0 ? ' title="'+Math.round(estShare*100)+' % davon geschätzt"' : '')+'>'+(estShare >= 0.5 ? '≈ ' : '')+fmt(val, val<10?1:0)+' / '+fmtRef(ref)+' '+unit+'</span></div>';
   }).join("");
   $("#microState").textContent = dayLog.length ? inTarget+" von "+MICROS.length+" im Ziel" : "noch nichts erfasst";
   const noData = dayLog.filter(e=>!e.isDrink && entryNoMicro(e)).length;
   $("#microNoData").innerHTML = noData
     ? '<div class="nodata">'+noData+(noData===1?" Eintrag":" Einträge")+' ohne Vitamindaten (Markenprodukte: auf dem Etikett stehen nur Nährwerte und Salz). Die Mikro-Balken zeigen deshalb etwas weniger, als du tatsächlich aufgenommen hast.</div>'
     : "";
+  renderWeekHint();
   $("#refLabel").textContent = (profile.geschlecht==="m"?"männlich":"weiblich") + ", " + T.gruppe + " Jahre";
   $("#microFold").open = microOpen();
 
@@ -2879,7 +2897,7 @@ function entryDetail(e){
     if(gr !== grp){ grp = gr; h += '<div class="grp">'+gr+'</div>'; }
     const isMax = k==="natrium";
     const txt = k==="o3" ? REF_NOTE.o3 : (REF_NOTE[k] || "DGE-Referenzwert")+" für "+sex+", "+T.gruppe+" Jahre";
-    h += row(k, label, n[k]||0, unit, T.micros[k], isMax, false, (nm && !isMax && !n[k]) || n[k] == null, g(T.micros[k], unit, txt, isMax), !!e.est && (e.estKeys ? e.estKeys.indexOf(k) >= 0 : k !== "natrium"));
+    h += row(k, label, n[k]||0, unit, T.micros[k], isMax, false, (nm && !isMax && !n[k]) || n[k] == null, g(T.micros[k], unit, txt, isMax), entryEstKey(e, k));
   });
   if(e.isDrink) h += '<div class="small muted" style="margin-top:6px">'+fmt(e.ml||0)+' ml Flüssigkeit'+(e.cf?' · '+fmt(Math.round(e.cf))+' mg Koffein':'')+'</div>';
   else if(isLiquidFood(e)) h += '<div class="small muted" style="margin-top:6px">Zählt mit etwa '+fmt(e.amount)+' ml zur Trinkmenge des Tages.</div>';
@@ -3093,6 +3111,19 @@ function renderWeek(){
     : '<span class="small muted" style="margin-top:8px;display:block">'+(tracked.length ? "Aktuell keine auffälligen Lücken – alle Werte über 70 % der Referenz. 🌿" : "Erfasse ein paar Tage, dann erscheint hier deine Auswertung.")+'</span>';
   $("#gapNote").innerHTML = gaps.some(g=>g.unsure)
     ? '<div class="gapnote">Ein Teil deiner Einträge hat keine Vitamindaten – diese Lücken sind möglicherweise keine.</div>' : "";
+}
+/* Einfacher Hinweis auf „Heute“: welcher Nährstoff im Schnitt der letzten 7 Tage am knappsten ist.
+   Nur sichere Lücken (genug Einträge mit Vitamindaten), ab 3 erfassten Tagen. Vitamin D bleibt außen vor –
+   ein niedriger Wert ist ohne Sonne normal und wird beim Nährstoff selbst erklärt. */
+function renderWeekHint(){
+  const box = $("#weekHint"); if(!box) return;
+  let h = "";
+  try{
+    const days = last7Keys().filter(k => log.some(e => e.date === k)).length;
+    const g = days >= 3 ? weeklyGaps().filter(x => !x.unsure && x.key !== "vitD")[0] : null;
+    if(g) h = '<button class="weekhint" data-nutr="'+g.key+'" data-scope="woche"><span aria-hidden="true">🔍</span><span>Diese Woche knapp: <b>'+esc(g.label)+'</b> – im Schnitt <b class="num">'+Math.round(g.pct)+' %</b> der Referenz.</span></button>';
+  }catch(e){}
+  box.innerHTML = h;
 }
 function weeklyGaps(){
   const T = computeTargets(profile);
