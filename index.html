@@ -1313,7 +1313,7 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
       <h4>Bundeslebensmittelschlüssel (BLS) 4.0</h4>
       <p>Max Rubner-Institut (2025): Bundeslebensmittelschlüssel (BLS), Version 4.0 – Deutsche Nährstoffdatenbank. Karlsruhe. DOI <a href="https://doi.org/10.25826/Data20251217-134202-0" target="_blank" rel="noopener">10.25826/Data20251217-134202-0</a>, <a href="https://blsdb.de" target="_blank" rel="noopener">blsdb.de</a>. Lizenz: <a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>. Für NährWert auf 21 Nährstoffe reduziert, gerundet sowie um Portionsgrößen und Koffein-Richtwerte ergänzt. Vitamin E und Omega-3 der Grundnahrungsmittel stammen ebenfalls aus dem BLS. Das Max Rubner-Institut ist nicht für die Bearbeitung verantwortlich und unterstützt NährWert nicht.</p>
       <h4>Schweizer Nährwertdatenbank</h4>
-      <p>Schweizer Nährwertdatenbank V 7.1 (01.07.2026), Bundesamt für Lebensmittelsicherheit und Veterinärwesen BLV, <a href="https://naehrwertdaten.ch" target="_blank" rel="noopener">naehrwertdaten.ch</a>. Für NährWert auf 21 Nährstoffe reduziert, Getränke über die Dichte auf 100 ml umgerechnet, Portionsgrößen und Koffein ergänzt.</p>
+      <p>Schweizer Nährwertdatenbank V 7.1 (01.07.2026), Bundesamt für Lebensmittelsicherheit und Veterinärwesen BLV, <a href="https://naehrwertdaten.ch" target="_blank" rel="noopener">naehrwertdaten.ch</a>. Für NährWert auf 22 Nährstoffe reduziert; Selen auch für gleichnamige Lebensmittel des Bundeslebensmittelschlüssels übernommen, Getränke über die Dichte auf 100 ml umgerechnet, Portionsgrößen und Koffein ergänzt.</p>
       <h4>Open Food Facts</h4>
       <p>Enthält Informationen aus <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a>, die unter der <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">Open Database License (ODbL) 1.0</a> bereitgestellt werden. Einzelne Inhalte stehen unter der <a href="https://opendatacommons.org/licenses/dbcl/1-0/" target="_blank" rel="noopener">Database Contents License (DbCL) 1.0</a>.</p>
       <p><b>Abgeleitete Datenbank:</b> NährWert hat die Open-Food-Facts-Daten bearbeitet: Einheiten umgerechnet, Koffein und Portionsgrößen aus der Produktkategorie abgeleitet und fehlende Vitamin- und Mineralstoffwerte durch den Median ähnlicher Produkte derselben Gruppe geschätzt (in der App mit „≈“ markiert). Diese bearbeiteten Daten stehen ebenfalls unter der ODbL 1.0 und lassen sich vollständig herunterladen: <a href="naehrwert-produkte.js" download>naehrwert-produkte.js</a>, <a href="naehrwert-offline-2.js" download>naehrwert-offline-2.js</a> (auch im <a href="https://github.com/AGLLM39/healthapp" target="_blank" rel="noopener">GitHub-Repository</a>).</p>
@@ -1463,15 +1463,15 @@ const MICROS = [
   ["calcium","Calcium","mg","Mineralstoffe"], ["magnesium","Magnesium","mg","Mineralstoffe"], ["phosphor","Phosphor","mg","Mineralstoffe"],
   ["kalium","Kalium","mg","Mineralstoffe"], ["natrium","Natrium","mg","Mineralstoffe"], ["eisen","Eisen","mg","Mineralstoffe"],
   ["zink","Zink","mg","Mineralstoffe"], ["kupfer","Kupfer","mg","Mineralstoffe"], ["mangan","Mangan","mg","Mineralstoffe"],
-  ["jod","Jod","µg","Mineralstoffe"],
+  ["jod","Jod","µg","Mineralstoffe"], ["selen","Selen","µg","Mineralstoffe"],
   ["o3","Omega-3","g","Fettsäuren"]
 ];
 /* Seit Oktober 2026 ergänzt. Ältere Einträge und Lebensmittel ohne Angabe haben diese Werte nicht –
    sie gelten dann als „keine Angabe“ statt als 0. */
-const NEW_MICROS = ["vitK","b1","b2","niacin","b6","pantothen","biotin","phosphor","kupfer","mangan"];
+const NEW_MICROS = ["vitK","b1","b2","niacin","b6","pantothen","biotin","phosphor","kupfer","mangan","selen"];
 /* Herkunft des Referenzwerts, wo es kein DGE-Referenzwert im engeren Sinn ist */
 const REF_NOTE = {vitE:"DGE-Schätzwert", vitK:"DGE-Schätzwert", pantothen:"DGE-Schätzwert", biotin:"DGE-Schätzwert",
-  phosphor:"DGE-Schätzwert", kupfer:"DGE-Schätzwert", mangan:"EFSA-Schätzwert", kalium:"DGE-Schätzwert", natrium:"DGE-Schätzwert (Obergrenze)",
+  phosphor:"DGE-Schätzwert", kupfer:"DGE-Schätzwert", mangan:"EFSA-Schätzwert", selen:"DGE-Schätzwert", kalium:"DGE-Schätzwert", natrium:"DGE-Schätzwert (Obergrenze)",
   o3:"0,5 % der Energie (DGE-Richtwert)"};
 const MACRO_KEYS = ["kcal","p","c","z","f","sf","b"];
 
@@ -1572,7 +1572,10 @@ const NUTRIENT_INFO = {
          "Der Wert ist ein Schätzwert der EFSA – genaue Bedarfszahlen gibt es nicht."],
   o3:   ["Lebensnotwendige Fettsäuren, die der Körper nicht selbst bilden kann.",
          "Alpha-Linolensäure aus Lein-, Raps- und Walnussöl; EPA und DHA aus fettem Seefisch für Herz, Gehirn und Augen. Fischöl-Kapseln bringen Gesunden laut Studien wenig.",
-         "Der Richtwert ist 0,5 % der Energie – mit einem Esslöffel Rapsöl kommt man schon weit."]
+         "Der Richtwert ist 0,5 % der Energie – mit einem Esslöffel Rapsöl kommt man schon weit."],
+  selen:["Bestandteil von Enzymen, die Zellen vor Oxidation schützen und die Schilddrüsenhormone aktivieren; wichtig auch für das Immunsystem.",
+         "Wie viel Selen in Pflanzen steckt, hängt vom Boden ab – europäische Böden sind eher selenarm. Tierische Lebensmittel liefern deshalb meist mehr.",
+         "Quellen: Paranüsse (schon eine bis zwei decken den Tagesbedarf), Fisch, Fleisch, Eier, Hülsenfrüchte. Präparate bringen ohne Mangel nichts, dauerhaft zu viel schadet. Die Werte stammen aus der Schweizer Nährwertdatenbank – der Bundeslebensmittelschlüssel enthält kein Selen."]
 };
 /* Liste der Kurzinfos; optional mit einer Zeile zum persönlichen Ziel vorweg */
 function infoList(k, goal){
@@ -1612,6 +1615,7 @@ function microRefs(p){
   r.phosphor = jung ? 1250 : 700;
   r.kupfer = m ? (jung ? 1.3 : 1.5) : (jung ? 1.1 : 1.25);
   r.mangan = 3;
+  r.selen = m ? 70 : 60;   // DGE-Schätzwert ab 15 Jahren
   return r;
 }
 
@@ -2532,12 +2536,18 @@ function blsItems(){
     const G = C.meta.felder, gD = G.indexOf("getraenk"), gC = G.indexOf("koffein_mg_100ml"), gP = G.indexOf("portion_index"), gS = G.indexOf("synonyme"), gM = G.indexOf("fehlend");
     const ck = ALL_KEYS.map(k => [k, G.indexOf(k)]).filter(x => x[1] >= 0);
     const have = new Set(_blsCache.map(it => it._s));
+    // BLS 4.0 hat kein Selen: bei gleichnamigen Lebensmitteln den Wert aus der Schweizer Datenbank übernehmen
+    const byName = new Map(_blsCache.map(it => [it._s, it])), gSe = G.indexOf("selen");
     const n0 = _blsCache.length;
     C.rows.forEach(function(r, i){
       const s = normalize(r[0]);
-      if(have.has(s)) return;
+      if(have.has(s)){
+        const twin = byName.get(s);
+        if(twin && gSe >= 0 && r[gSe] != null && twin.per100.selen == null){ twin.per100.selen = r[gSe]; twin.selenCH = true; }
+        return;
+      }
       const per100 = {};
-      ck.forEach(([k, j]) => per100[k] = r[j] || 0);
+      ck.forEach(([k, j]) => { if(r[j] == null && k === "selen") return; per100[k] = r[j] || 0; });   // Selen ohne Angabe: „keine Angabe“ statt 0
       const miss = (r[gM] || []).concat(NEW_MICROS.filter(k => G.indexOf(k) < 0)).map(k => (MICROS.find(m => m[0] === k) || [k, k])[1]);
       _blsCache.push({id:"C"+r[1], name:r[0], cat:"bls", isDrink:!!r[gD], per100, portions:(C.portionen[r[gP]] || []).map(x=>x.slice()),
         cf:r[gC] || 0, src:"Schweizer Nährwertdatenbank", isBLS:true, isCH:true, blsGroup:"CH", missing:miss,
@@ -2915,10 +2925,14 @@ function renderToday(){
       '<span class="val num"'+(estShare > 0 ? ' title="'+Math.round(estShare*100)+' % davon geschätzt"' : '')+'>'+(estShare >= 0.5 ? '≈ ' : '')+fmt(val, val<10?1:0)+' / '+fmtRef(ref)+' '+unit+'</span></div>';
   }).join("");
   $("#microState").textContent = dayLog.length ? inTarget+" von "+MICROS.length+" im Ziel" : "noch nichts erfasst";
+  // Nährstoffe, für die ein großer Teil der heutigen Einträge keinen Wert hat (z. B. Selen: nur Schweizer Nährwertdatenbank)
+  const foodLog = dayLog.filter(e => !e.isDrink && !entryNoMicro(e)), kcalAll = foodLog.reduce((s, e) => s + (e.n.kcal||0), 0);
+  const gapKeys = kcalAll > 0 ? MICROS.filter(([k]) => foodLog.filter(e => e.n[k] == null).reduce((s, e) => s + (e.n.kcal||0), 0) / kcalAll > 0.3) : [];
+  const gapNote = gapKeys.length ? '<div class="nodata">'+gapKeys.map(m => m[1]).join(", ")+': Für einen großen Teil deiner Einträge gibt es dazu keinen Wert'+(gapKeys.some(m => m[0] === "selen") ? ' (Selen gibt es nur aus der Schweizer Nährwertdatenbank)' : '')+'. Der Balken zeigt deshalb zu wenig.</div>' : "";
   const noData = dayLog.filter(e=>!e.isDrink && entryNoMicro(e)).length;
-  $("#microNoData").innerHTML = noData
+  $("#microNoData").innerHTML = (noData
     ? '<div class="nodata">'+noData+(noData===1?" Eintrag":" Einträge")+' ohne Vitamindaten (Markenprodukte: auf dem Etikett stehen nur Nährwerte und Salz). Die Mikro-Balken zeigen deshalb etwas weniger, als du tatsächlich aufgenommen hast.</div>'
-    : "";
+    : "") + gapNote;
   renderWeekHint();
   $("#refLabel").textContent = (profile.geschlecht==="m"?"männlich":"weiblich") + ", " + T.gruppe + " Jahre";
   $("#microFold").open = microOpen();
@@ -3284,7 +3298,7 @@ function weeklyGaps(){
 }
 
 /* ---------- Rezepte ---------- */
-const FOCUS_LABEL = {vitE:"Vitamin E",o3:"Omega-3",vitA:"Vitamin A",vitC:"Vitamin C",vitD:"Vitamin D",b12:"B12",folat:"Folat",eisen:"Eisen",calcium:"Calcium",magnesium:"Magnesium",zink:"Zink",kalium:"Kalium",jod:"Jod",b:"Ballaststoffe",p:"Protein"};
+const FOCUS_LABEL = {vitE:"Vitamin E",o3:"Omega-3",vitA:"Vitamin A",vitC:"Vitamin C",vitD:"Vitamin D",b12:"B12",folat:"Folat",eisen:"Eisen",calcium:"Calcium",magnesium:"Magnesium",zink:"Zink",kalium:"Kalium",jod:"Jod",selen:"Selen",b:"Ballaststoffe",p:"Protein"};
 function renderRecipes(){
   // Vorrang für sichere Lücken; unsichere nur, wenn es keine sicheren gibt
   const allGaps = weeklyGaps();
@@ -3502,7 +3516,7 @@ const OFF_MICROS = {vitA:["vitamin-a_100g",1e6], vitC:["vitamin-c_100g",1e3], vi
   kalium:["potassium_100g",1e3], jod:["iodine_100g",1e6], vitE:["vitamin-e_100g",1e3], o3:["omega-3-fat_100g",1],
   vitK:["vitamin-k_100g",1e6], b1:["vitamin-b1_100g",1e3], b2:["vitamin-b2_100g",1e3], niacin:["vitamin-pp_100g",1e3],
   b6:["vitamin-b6_100g",1e3], pantothen:["pantothenic-acid_100g",1e3], biotin:["biotin_100g",1e6],
-  phosphor:["phosphorus_100g",1e3], kupfer:["copper_100g",1e3], mangan:["manganese_100g",1e3]};
+  phosphor:["phosphorus_100g",1e3], kupfer:["copper_100g",1e3], mangan:["manganese_100g",1e3], selen:["selenium_100g",1e6]};
 function offMicros(nu, per100){
   let n = 0;
   Object.keys(OFF_MICROS).forEach(function(k){
