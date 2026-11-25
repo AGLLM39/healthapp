@@ -330,13 +330,13 @@ async function prepImage(file){
 }
 async function ocrLabel(file){
   const st = $("#lblOcr");
-  st.textContent = "Texterkennung wird geladen (einmalig etwa 2 MB) …";
+  st.textContent = "Texterkennung wird geladen (einmalig etwa 5 MB) …";
   try{
-    if(!window.Tesseract) await loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");
+    if(!window.Tesseract) await loadScript("vendor/tesseract/tesseract.min.js");
     if(!_tess) _tess = await Tesseract.createWorker("deu", 1, {
-      workerPath: "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js",
-      corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1",
-      langPath: "https://cdn.jsdelivr.net/npm/@tesseract.js-data/deu@1.0.0/4.0.0_best_int"});
+      workerPath: new URL("vendor/tesseract/worker.min.js", location.href).href,
+      corePath: new URL("vendor/tesseract/core", location.href).href,
+      langPath: new URL("vendor/tesseract/lang", location.href).href});
     st.textContent = "Etikett wird gelesen …";
     const r = await _tess.recognize(await prepImage(file));
     const found = parseLabel(r.data.text || "");
