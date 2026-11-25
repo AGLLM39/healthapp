@@ -2538,12 +2538,18 @@ function blsItems(){
     const have = new Set(_blsCache.map(it => it._s));
     // BLS 4.0 hat kein Selen: bei gleichnamigen Lebensmitteln den Wert aus der Schweizer Datenbank übernehmen
     const byName = new Map(_blsCache.map(it => [it._s, it])), gSe = G.indexOf("selen");
+    // Von Hand bzw. über Namensbestandteile zugeordnete Paare (BLS-Code -> Schweizer ID), siehe meta.selen_bls
+    const seMap = C.meta.selen_bls || {}, chById = new Map(C.rows.map(r => [String(r[1]), r]));
+    if(gSe >= 0) _blsCache.forEach(it => {
+      const r = chById.get(String(seMap[it.id.slice(1)] || ""));
+      if(r && r[gSe] != null && it.per100.selen == null){ it.per100.selen = r[gSe]; it.selenCH = r[0]; }
+    });
     const n0 = _blsCache.length;
     C.rows.forEach(function(r, i){
       const s = normalize(r[0]);
       if(have.has(s)){
         const twin = byName.get(s);
-        if(twin && gSe >= 0 && r[gSe] != null && twin.per100.selen == null){ twin.per100.selen = r[gSe]; twin.selenCH = true; }
+        if(twin && gSe >= 0 && r[gSe] != null && twin.per100.selen == null){ twin.per100.selen = r[gSe]; twin.selenCH = r[0]; }
         return;
       }
       const per100 = {};
