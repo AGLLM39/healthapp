@@ -228,33 +228,51 @@ document.addEventListener("click", ev => {
 
 /* ---------- 5. Portionshilfe ---------- */
 const PORT_IMG = [
-  [/esslöffel|\bel\b/i, "naehrwert-portion-el.webp", "1 Esslöffel", "etwa 10–15 g Öl, Zucker oder Kerne"],
-  [/teelöffel|\btl\b/i, "naehrwert-portion-tl.webp", "1 Teelöffel", "etwa 3–5 g"],
+  [/esslöffel|\bel\b/i, "naehrwert-portion-el.webp", "1 Esslöffel", "etwa 10 g Öl, Zucker oder Kerne"],
+  [/teelöffel|\btl\b/i, "naehrwert-portion-tl.webp", "1 Teelöffel", "etwa 5 g"],
   [/handvoll/i, "naehrwert-portion-handvoll.webp", "1 Handvoll", "so viel, wie in eine hohle Hand passt – bei Nüssen etwa 25–30 g"],
   [/scheibe/i, "naehrwert-portion-scheibe.webp", "1 Scheibe", "Brot etwa 40–50 g, Käse oder Wurst etwa 20–30 g"],
   [/\bglas\b/i, "naehrwert-portion-glas.webp", "1 Glas", "etwa 200–250 ml"],
   [/tasse|becher/i, "naehrwert-portion-tasse.webp", "1 Tasse", "etwa 150–200 ml"],
   [/portion|teller/i, "naehrwert-portion-teller.webp", "1 Portion", "gegarte Nudeln oder Reis etwa 200–250 g"]
 ];
-function portHelp(label){
+/* Löffel je Lebensmittelart (in Blender gerendert): was im Löffel liegt, passt zum gewählten Lebensmittel */
+const SPOON_KIND = [
+  [/honig|sirup|agave|melasse|dicksaft/i, "honig", "Honig oder Sirup"],
+  [/nussmus|mandelmus|cashewmus|haselnussmus|erdnussbutter|erdnussmus|tahin|sesammus|nougatcreme/i, "nussmus", "Nussmus"],
+  [/öl\b|oel\b/i, "oel", "Öl"],
+  [/zucker|salz|süßstoff|kakaopulver/i, "zucker", "Zucker oder Salz"],
+  [/kerne|samen|saat\b|sesam|chia|hanf|nüsse|nuss\b|mandel|flocken|rosinen|müsli/i, "kerne", "Kerne"]
+];
+function portHelp(label, grams, name){
   const p = PORT_IMG.find(x => x[0].test(label || ""));
-  return p ? '<div class="porthelp"><img src="' + p[1] + '" alt="" decoding="async"><span><b>' + esc(p[2]) + '</b><br>' + esc(p[3]) + '</span></div>' : "";
+  if(!p) return "";
+  let img = p[1], txt = p[3];
+  const spoon = p[1].indexOf("-el.") > 0 ? "el" : p[1].indexOf("-tl.") > 0 ? "tl" : "";
+  if(spoon){
+    const g = grams > 0 ? Math.round(grams) : (spoon === "el" ? 10 : 5);
+    const k = SPOON_KIND.find(x => x[0].test(name || ""));
+    if(k) img = "naehrwert-loeffel-" + spoon + "-" + k[1] + ".webp";
+    txt = "hier " + g + " g";
+  }
+  return '<div class="porthelp"><img src="' + img + '" alt="" decoding="async"><span><b>' + esc(p[2]) + '</b><br>' + esc(txt) + '</span></div>';
 }
 // In der Mengenauswahl beim Eintragen: zur gewählten Portionsangabe das passende Bild zeigen
-function showPortHelp(label){
+function showPortHelp(label, grams){
   const host = document.getElementById("portChips"); if(!host) return;
   let box = document.getElementById("portHelp");
-  const html = portHelp(label);
+  const sel = typeof addCtx !== "undefined" && addCtx.sel;
+  const html = portHelp(label, grams, sel ? sel.name : "");
   if(!html){ if(box) box.remove(); return; }
   if(!box){ box = document.createElement("div"); box.id = "portHelp"; host.insertAdjacentElement("afterend", box); }
   box.innerHTML = html;
 }
-document.addEventListener("click", ev => { const b = ev.target.closest("#portChips [data-amt]"); if(b) showPortHelp(b.textContent); });
+document.addEventListener("click", ev => { const b = ev.target.closest("#portChips [data-amt]"); if(b) showPortHelp(b.textContent, +b.dataset.amt); });
 if(typeof pickItem === "function"){
   const basePick = pickItem;
   pickItem = function(){
     const r = basePick.apply(this, arguments);
-    try{ const first = document.querySelector("#portChips [data-amt]"); showPortHelp(first ? first.textContent : ""); }catch(e){}
+    try{ const first = document.querySelector("#portChips [data-amt]"); showPortHelp(first ? first.textContent : "", first ? +first.dataset.amt : 0); }catch(e){}
     return r;
   };
 }

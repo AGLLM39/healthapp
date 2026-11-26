@@ -534,10 +534,20 @@ nav.tabs button.tabadd svg{width:26px; height:26px}
 .mico{width:30px; height:30px; border-radius:50%; background:var(--accent-soft); display:inline-flex; align-items:center; justify-content:center; font-size:16px; line-height:1; flex:0 0 auto}
 .mealline .mico{background:var(--surface2); filter:grayscale(.35); opacity:.85}
 /* Teller: in Blender gerenderter Porzellanteller (hell/dunkel); der Teller füllt 80 % des Bildes, der Rest ist Schatten */
-:root{--plate-img:url(naehrwert-teller-hell.png)}
-@media (prefers-color-scheme: dark){ :root{--plate-img:url(naehrwert-teller-dunkel.png)} }
-:root[data-theme="light"]{--plate-img:url(naehrwert-teller-hell.png)}
-:root[data-theme="dark"]{--plate-img:url(naehrwert-teller-dunkel.png)}
+:root{--plate-img:url(naehrwert-teller-hell.png); --emptyday-img:url(naehrwert-leerer-tag-hell.webp)}
+@media (prefers-color-scheme: dark){ :root{--plate-img:url(naehrwert-teller-dunkel.png); --emptyday-img:url(naehrwert-leerer-tag-dunkel.webp)} }
+:root[data-theme="light"]{--plate-img:url(naehrwert-teller-hell.png); --emptyday-img:url(naehrwert-leerer-tag-hell.webp)}
+:root[data-theme="dark"]{--plate-img:url(naehrwert-teller-dunkel.png); --emptyday-img:url(naehrwert-leerer-tag-dunkel.webp)}
+/* Leerer Tag: in Blender gerenderter Teller mit Besteck (hell/dunkel) */
+.emptyday{display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px 0 10px; color:var(--muted); font-size:14px}
+.emptyday .emptyplate{display:block; width:200px; height:200px; margin:-34px 0 -40px; background:var(--emptyday-img) center / contain no-repeat}
+/* Getränke: Glas mit Füllstand statt Balken */
+.fluidrow{display:flex; align-items:center; gap:12px; margin:4px 0 2px}
+.fluidglass{width:64px; height:64px; flex:0 0 auto; object-fit:contain; margin:-4px -6px -4px -8px}
+/* Schnellknöpfe mit kleinen Bildern statt Tropfen */
+.quickdrinks button.hasimg{padding-left:44px}
+.quickdrinks button.hasimg::before{display:none}
+.quickdrinks button.hasimg img{position:absolute; left:8px; top:50%; width:30px; height:30px; margin-top:-15px; object-fit:contain}
 .plate{position:relative; display:inline-block; width:104px; height:104px; flex:0 0 auto; background:var(--plate-img) center / contain no-repeat}
 .plate i{position:absolute; font-style:normal; line-height:1; filter:drop-shadow(0 2px 2px rgba(0,0,0,.16))}
 .plate .p0{font-size:36px; left:50%; top:50%; transform:translate(-50%,-50%)}
@@ -874,9 +884,13 @@ html.nw-land header.app h1::before, html.nw-land header.app h1::after{animation:
 
     <div class="card">
       <h2>Getränke</h2>
-      <div class="small num"><b id="fluidVal">0,0 l</b> <span class="muted">von <span id="fluidGoal"></span> Trinkziel</span></div>
-      <div class="fluidbar"><i id="fluidFill" style="width:0%"></i></div>
-      <div class="small muted">Gesamtbedarf ≈ <span id="fluidTotal"></span>/Tag inkl. Flüssigkeit aus fester Nahrung</div>
+      <div class="fluidrow">
+        <img id="fluidGlass" class="fluidglass" src="naehrwert-trinkglas-0.webp" alt="" width="64" height="64" decoding="async">
+        <div>
+          <div class="small num"><b id="fluidVal">0,0 l</b> <span class="muted">von <span id="fluidGoal"></span> Trinkziel</span></div>
+          <div class="small muted">Gesamtbedarf ≈ <span id="fluidTotal"></span>/Tag inkl. Flüssigkeit aus fester Nahrung</div>
+        </div>
+      </div>
       <div class="drinkstats num">
         <div class="pill" title="Richtwert: bis 400 mg pro Tag (EFSA)" aria-label="Koffein – Richtwert: bis 400 mg pro Tag (EFSA)"><b id="cafVal">0 mg</b><span>Koffein</span></div>
         <div class="pill"><b id="drinkSugar">0 g</b><span>Zucker aus Getränken</span></div>
@@ -2813,10 +2827,10 @@ function ringSVG(pct, size, stroke, color, center){
 }
 
 const QUICK_DRINKS = [
-  ["Glas Wasser", "Wasser (Leitungswasser)", 250],
-  ["Flasche Wasser", "Mineralwasser", 500],
-  ["Kaffee", "Kaffee (schwarz)", 150],
-  ["Tee", "Kräutertee", 250]
+  ["Glas Wasser", "Wasser (Leitungswasser)", 250, "glas"],
+  ["Flasche Wasser", "Mineralwasser", 500, "flasche"],
+  ["Kaffee", "Kaffee (schwarz)", 150, "kaffee"],
+  ["Tee", "Kräutertee", 250, "tee"]
 ];
 function microOpen(){ try{ return localStorage.getItem(LS+"ui.microOpen")==="1"; }catch(e){ return false; } }
 
@@ -2890,21 +2904,25 @@ function renderToday(){
   $("#fluidVal").textContent = fmt(liter,1) + " l";
   $("#fluidGoal").textContent = fmt(T.trinkziel/1000,1) + " l";
   $("#fluidTotal").textContent = fmt(T.gesamtwasser/1000,1) + " l";
-  $("#fluidFill").style.width = Math.min(100, t.ml/T.trinkziel*100) + "%";
+  // Glas mit 11 Füllständen (0–10 Zehntel des Trinkziels), in Blender gerendert
+  const lvl = Math.max(0, Math.min(10, Math.round(t.ml/T.trinkziel*10)));
+  const gl = $("#fluidGlass"), gsrc = "naehrwert-trinkglas-"+lvl+".webp";
+  if(gl.getAttribute("src") !== gsrc) gl.setAttribute("src", gsrc);
+  gl.alt = Math.round(Math.min(100, t.ml/T.trinkziel*100)) + " % des Trinkziels";
   $("#cafVal").textContent = fmt(Math.round(t.cf)) + " mg";
   // EFSA: bis 400 mg pro Tag für gesunde Erwachsene
   $("#cafVal").classList.toggle("caf-warn", t.cf >= 300 && t.cf < 400);
   $("#cafVal").classList.toggle("caf-over", t.cf >= 400);
   $("#drinkSugar").textContent = fmt(t.drinkSugar,1) + " g";
   $("#drinkKcal").textContent = fmt(Math.round(t.drinkKcal)) + " kcal";
-  $("#quickDrinks").innerHTML = QUICK_DRINKS.map((q,i)=>'<button data-quick="'+i+'">+ '+esc(q[0])+'<span class="muted num">'+q[2]+' ml</span></button>').join("");
+  $("#quickDrinks").innerHTML = QUICK_DRINKS.map((q,i)=>'<button data-quick="'+i+'"'+(q[3]?' class="hasimg"':'')+'>'+(q[3]?'<img src="naehrwert-schnell-'+q[3]+'.webp" alt="" width="30" height="30" decoding="async">':'')+'+ '+esc(q[0])+'<span class="muted num">'+q[2]+' ml</span></button>').join("");
 
   const drinks = dayLog.filter(e=>e.isDrink);
   $("#drinkList").innerHTML = drinks.length ? drinks.map(entryRow).join("") : "";
 
-  // Mahlzeiten – leere Mahlzeiten als eine Zeile
+  // Mahlzeiten – leere Mahlzeiten als eine Zeile; ganz leerer Tag: Teller mit Besteck
   const prevDay = shiftKey(day, -1);
-  let html = "";
+  let html = dayLog.some(e => !e.isDrink) ? "" : '<div class="emptyday"><span class="emptyplate" aria-hidden="true"></span><span>Noch nichts erfasst</span></div>';
   MEALS.forEach(([key,label]) => {
     const es = dayLog.filter(e=>e.meal===key);
     const prevHas = log.some(e=>e.date===prevDay && e.meal===key);

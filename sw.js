@@ -3,14 +3,15 @@
    Anfragen an fremde Server (Open Food Facts, USDA) laufen normal übers Netz und
    werden nie gecacht. Scanner- und Texterkennungs-Bibliotheken liegen unter vendor/
    und werden beim ersten Gebrauch mitgecacht. */
-const CACHE = "naehrwert-v54";
+const CACHE = "naehrwert-v55";
 const FILES = ["./", "index.html", "naehrwert-design.css", "naehrwert-produkte.js", "naehrwert-bls.js", "naehrwert-ch.js", "naehrwert-scan.js", "naehrwert-wasser.js", "naehrwert-offline-2.js", "naehrwert-sprache.js", "naehrwert-etikett.js", "naehrwert-rezepte.js", "naehrwert-extras.js", "manifest.webmanifest",
                "naehrwert-intro-hell.mov", "naehrwert-intro-dunkel.mov", "naehrwert-intro-hell.webm", "naehrwert-intro-dunkel.webm",
                "naehrwert-intro-hell.webp", "naehrwert-intro-dunkel.webp",
                "naehrwert-zoom-hell.mov", "naehrwert-zoom-dunkel.mov", "naehrwert-zoom-hell.webm", "naehrwert-zoom-dunkel.webm",
                "naehrwert-teller-hell.png", "naehrwert-teller-dunkel.png", "naehrwert-willkommen.webp", "naehrwert-willkommen.mov", "naehrwert-willkommen.webm",
                "naehrwert-portion-el.webp", "naehrwert-portion-tl.webp", "naehrwert-portion-handvoll.webp", "naehrwert-portion-scheibe.webp", "naehrwert-portion-glas.webp", "naehrwert-portion-tasse.webp", "naehrwert-portion-teller.webp",
-               "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
+               "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png",
+               "naehrwert-trinkglas-0.webp", "naehrwert-trinkglas-1.webp", "naehrwert-trinkglas-2.webp", "naehrwert-trinkglas-3.webp", "naehrwert-trinkglas-4.webp", "naehrwert-trinkglas-5.webp", "naehrwert-trinkglas-6.webp", "naehrwert-trinkglas-7.webp", "naehrwert-trinkglas-8.webp", "naehrwert-trinkglas-9.webp", "naehrwert-trinkglas-10.webp", "naehrwert-schnell-glas.webp", "naehrwert-schnell-flasche.webp", "naehrwert-schnell-kaffee.webp", "naehrwert-schnell-tee.webp", "naehrwert-leerer-tag-hell.webp", "naehrwert-leerer-tag-dunkel.webp"];
 
 self.addEventListener("install", ev => {
   // cache: "reload" – am HTTP-Cache des Browsers vorbei, sonst landen beim Update alte Datendateien im neuen Cache
